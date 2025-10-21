@@ -1,0 +1,366 @@
+/**
+ * Estilos de Acessibilidade
+ * WCAG 2.1 Level AA Compliance
+ */
+
+/* ====================
+   SR-ONLY (Screen Reader Only)
+   ==================== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ====================
+   FOCUS VISIBLE
+   ==================== */
+/* Remover outline padrão */
+*:focus {
+  outline: none;
+}
+
+/* Mostrar outline apenas quando navegando por teclado */
+.keyboard-navigation *:focus,
+*:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Focus em botões */
+button:focus-visible,
+.keyboard-navigation button:focus {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px hsla(var(--primary), 0.2);
+}
+
+/* Focus em links */
+a:focus-visible,
+.keyboard-navigation a:focus {
+  outline: 2px dashed hsl(var(--primary));
+  outline-offset: 4px;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+/* Focus em inputs */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.keyboard-navigation input:focus,
+.keyboard-navigation textarea:focus,
+.keyboard-navigation select:focus {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 0;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 4px hsla(var(--primary), 0.15);
+}
+
+/* ====================
+   CONTRASTE ALTO
+   ==================== */
+/* Melhorar contraste de textos */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Garantir contraste mínimo em textos secundários */
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.9; /* Melhor contraste */
+}
+
+/* ====================
+   SKIP LINKS
+   ==================== */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 8px 16px;
+  text-decoration: none;
+  font-weight: 600;
+  z-index: 9999;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ====================
+   REDUÇÃO DE MOVIMENTO
+   ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ====================
+   ALTO CONTRASTE
+   ==================== */
+@media (prefers-contrast: high) {
+  * {
+    border-color: currentColor;
+  }
+
+  button,
+  a {
+    text-decoration: underline;
+  }
+
+  .text-muted-foreground {
+    opacity: 1;
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ====================
+   DARK MODE com Contraste
+   ==================== */
+@media (prefers-color-scheme: dark) {
+  /* Garantir contraste adequado em modo escuro */
+  :root {
+    --contrast-ratio: 1.2;
+  }
+}
+
+/* ====================
+   BOTÕES ACESSÍVEIS
+   ==================== */
+button,
+[role="button"] {
+  cursor: pointer;
+  min-height: 44px; /* Tamanho mínimo de toque (WCAG 2.5.5) */
+  min-width: 44px;
+  touch-action: manipulation; /* Melhorar responsividade em touch */
+}
+
+/* Desabilitado com indicação visual clara */
+button:disabled,
+[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(50%);
+}
+
+/* ====================
+   LINKS ACESSÍVEIS
+   ==================== */
+a {
+  text-decoration-skip-ink: auto;
+  text-underline-offset: 0.2em;
+}
+
+/* Links devem ser claramente distinguíveis */
+a:not([class]) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ====================
+   FORMULÁRIOS ACESSÍVEIS
+   ==================== */
+label {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Indicar campos obrigatórios */
+input:required,
+textarea:required,
+select:required {
+  box-shadow: inset 0 0 0 1px hsla(var(--destructive), 0.2);
+}
+
+/* Estados de erro claros */
+[aria-invalid="true"] {
+  border-color: hsl(var(--destructive)) !important;
+  box-shadow: 0 0 0 3px hsla(var(--destructive), 0.15);
+}
+
+/* Mensagens de erro visíveis */
+[role="alert"],
+.error-message {
+  color: hsl(var(--destructive));
+  font-weight: 600;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ====================
+   TABELAS ACESSÍVEIS
+   ==================== */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  background: hsl(var(--muted));
+}
+
+/* ====================
+   TOOLTIPS E POPOVERS
+   ==================== */
+[role="tooltip"] {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  max-width: 300px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* ====================
+   MODAIS E DIALOGS
+   ==================== */
+[role="dialog"],
+[role="alertdialog"] {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Garantir que modais tenham fundo escuro */
+[role="dialog"]::backdrop,
+[role="alertdialog"]::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ====================
+   NAVEGAÇÃO
+   ==================== */
+[role="navigation"] {
+  position: relative;
+}
+
+/* Indicador de página atual */
+[aria-current="page"] {
+  font-weight: 700;
+  position: relative;
+}
+
+[aria-current="page"]::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: hsl(var(--primary));
+  border-radius: 2px;
+}
+
+/* ====================
+   LISTAS
+   ==================== */
+[role="list"] {
+  list-style: none;
+  padding: 0;
+}
+
+/* ====================
+   ESTADOS DE LOADING
+   ==================== */
+[aria-busy="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Spinner de loading acessível */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+[aria-live] {
+  position: relative;
+}
+
+/* ====================
+   IMAGENS
+   ==================== */
+img:not([alt]),
+img[alt=""] {
+  outline: 3px solid red; /* Avisar durante desenvolvimento */
+}
+
+/* Garantir que imagens decorativas não tenham outline */
+img[role="presentation"] {
+  outline: none;
+}
+
+/* ====================
+   ZOOM E TEXTO
+   ==================== */
+/* Suportar zoom de 200% */
+@media (min-width: 1280px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Permitir que o texto seja redimensionável */
+* {
+  max-width: 100%;
+}
+
+/* ====================
+   CORES SEGURAS
+   ==================== */
+/* Nunca use apenas cor para transmitir informação */
+.error-indicator::before {
+  content: '⚠ ';
+}
+
+.success-indicator::before {
+  content: '✓ ';
+}
+
+/* ====================
+   ANIMAÇÕES SUTIS
+   ==================== */
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.pulse-subtle {
+  animation: gentle-pulse 2s ease-in-out infinite;
+}

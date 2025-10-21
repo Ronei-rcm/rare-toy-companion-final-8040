@@ -1,0 +1,162 @@
+
+import React from 'react';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ShoppingCart, Heart } from 'lucide-react';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { useCart } from '@/contexts/CartContext';
+import { Produto } from '@/types/produto';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+
+interface ProdutoCardProps {
+  produto: Produto;
+}
+
+const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
+  const { toast } = useToast();
+  const { addItem, state } = useCart();
+  const [isAdding, setIsAdding] = React.useState(false);
+  const [isFav, setIsFav] = React.useState(false);
+  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+
+  React.useEffect(() => {
+    // opcional: poderíamos carregar favoritos globais e marcar
+  }, []);
+
+  const adicionarAoCarrinho = async () => {
+    setIsAdding(true);
+    try {
+      await addItem(produto);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const adicionarAosFavoritos = () => {
+    // Toggle persistente
+    (async () => {
+      try {
+        if (!isFav) {
+          const res = await fetch(`${API_BASE_URL}/favorites`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ product_id: produto.id })
+          });
+          if (!res.ok) throw new Error('Falha ao favoritar');
+          setIsFav(true);
+          toast({ title: 'Favorito adicionado', description: produto.nome });
+        } else {
+          const res = await fetch(`${API_BASE_URL}/favorites/${produto.id}`, { method: 'DELETE', credentials: 'include' });
+          if (!res.ok) throw new Error('Falha ao desfavoritar');
+          setIsFav(false);
+          toast({ title: 'Favorito removido', description: produto.nome });
+        }
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Erro', description: e?.message || 'Não foi possível atualizar favorito' });
+      }
+    })();
+  };
+
+  // Verificar se o produto está em estoque
+  const emEstoque = produto.emEstoque !== undefined ? produto.emEstoque : produto.estoque > 0;
+
+  return (
+    <Card key={produto.id} className="overflow-hidden flex flex-col transition-shadow hover:shadow-lg">
+      <CardHeader className="p-0">
+        <Dialog>
+          <div className="relative h-40 sm:h-48 md:h-56 lg:h-52 p-2 bg-gradient-to-b from-muted/40 to-transparent">
+            <div className="relative h-full">
+              <DialogTrigger asChild>
+                <button className="group block w-full h-full focus:outline-none" aria-label={`Ver imagem de ${produto.nome}`}>
+                  <img
+                    src={produto.imagemUrl}
+                    alt={produto.nome}
+                    loading="lazy"
+                    decoding="async"
+                    fetchpriority="low"
+                    className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-[1.03] rounded-md"
+                    sizes="(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder.svg';
+                    }}
+                  />
+                </button>
+              </DialogTrigger>
+
+              {produto.promocao && (
+                <Badge className="absolute top-2 right-2 bg-red-500">-{Math.min(30, Math.round((produto.descontoPercentual || 10)))}%</Badge>
+              )}
+              {produto.lancamento && (
+                <Badge className="absolute top-2 right-2 bg-blue-500">Lançamento</Badge>
+              )}
+              {produto.destaque && !produto.promocao && !produto.lancamento && (
+                <Badge className="absolute top-2 right-2 bg-amber-500">Destaque</Badge>
+              )}
+            </div>
+          </div>
+
+          <DialogContent className="max-w-lg">
+            <div className="w-full">
+              <img
+                src={produto.imagemUrl}
+                alt={produto.nome}
+                className="w-full h-auto max-h-[70vh] rounded-md object-contain bg-black/5"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent className="p-4 flex-grow">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-bold text-lg line-clamp-2">{produto.nome}</h3>
+          <Badge variant="outline" className="ml-2 whitespace-nowrap">
+            {produto.categoria}
+          </Badge>
+        </div>
+        <p className="text-xl font-bold text-primary mb-1">
+          R$ {produto.preco.toFixed(2)}
+        </p>
+        {produto.promocao && produto.precoOriginal && (
+          <p className="text-xs text-muted-foreground line-through mb-2">R$ {produto.precoOriginal.toFixed(2)}</p>
+        )}
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+          {produto.descricao}
+        </p>
+        <div className="flex items-center">
+          <Badge 
+            variant={emEstoque ? "default" : "destructive"}
+            className="text-xs"
+          >
+            {emEstoque ? 'Em estoque' : 'Fora de estoque'}
+          </Badge>
+        </div>
+        <div className="mt-2 text-xs text-muted-foreground">
+          {produto.preco >= 200 ? 'Frete grátis para este item' : 'Ganhe 5% de cashback no PIX'}
+        </div>
+      </CardContent>
+      <CardFooter className="p-4 pt-0 gap-2 flex">
+        <Button 
+          onClick={adicionarAoCarrinho} 
+          className="flex-1"
+          disabled={!emEstoque || isAdding || state.isLoading}
+        >
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          {isAdding ? 'Adicionando...' : 'Adicionar'}
+        </Button>
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={adicionarAosFavoritos}
+        >
+          <Heart className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+export default ProdutoCard;

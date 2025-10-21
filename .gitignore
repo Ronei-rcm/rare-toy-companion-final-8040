@@ -1,0 +1,177 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# Ambiente
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Testes
+coverage/
+.nyc_output/
+
+# IDEs e Editores
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Sistema Operacional
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# PM2
+.pm2/
+*.pid
+*.seed
+*.pid.lock
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Temporários
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# Uploads (se forem muitos, considere adicionar)
+# public/lovable-uploads/*
+# !public/lovable-uploads/.gitkeep
+
+# Backups
+backups/*.zip
+*.backup
+*.bak
+
+# Database dumps
+*.sql
+!database/init.sql
+!database/schema.sql
+
+# Certificados SSL (não commitar!)
+*.pem
+*.key
+*.crt
+
+# Docker
+.docker/
+*.dockerfile.swp
+
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Misc
+*.out
+.vercel
+.netlify
+
+# Arquivos sensíveis (NÃO COMMITAR!)
+cookies.txt
+*.cookies
+credentials.txt
+
+# Arquivos de lock alternativos
+bun.lockb
+
+# Config específico do servidor
+rare-toy.conf
+nginx.conf
+
+# Releases locais
+releases/
+
+# Documentação temporária e changelogs locais
+CHANGELOG_*.md
+CORRECAO_*.md
+DEBUG_*.md
+EVOLUCAO_*.md
+FIX_*.md
+GUIA_*.md
+INSTRUCOES_*.md
+INTEGRACAO_*.md
+MELHORIAS_*.md
+NOVA_*.md
+README_*.md
+RELATORIO_*.md
+RESUMO_*.md
+REVISAO_*.md
+SERVICE_WORKER_*.md
+SISTEMA_*.md
+SOLUCAO_*.md
+STATUS_*.md
+TESTE_*.txt
+TUDO_*.txt
+ANALISE_*.md
+CADASTRO_*.md
+CAROUSEL_*.md
+CATEGORIAS_*.md
+COMANDO_*.txt
+COMANDOS_*.txt
+COMMIT_*.txt
+COMO_*.txt
+DEPLOY_*.txt
+DEPLOY_*.md
+FINAL_*.txt
+FINANCEIRO_*.md
+ICONES_*.md
+INDICE_*.md
+INSTALACAO_*.md
+LIMPAR_*.md
+PROBLEMA_*.md
+
+# Scripts de teste locais
+teste_*.sh
+api_endpoints_real_data.js
+debug-categorias.html
+access-database.sh
+
+# Arquivos de deploy compactados
+*.tar.gz
+
+# Uploads temporários (descomente se não quiser versionar)
+public/lovable-uploads/
+public/forcar-*.html
+public/limpar-*.html
+
+# Documentação temporária organizada
+docs/temporarios/
+docs/obsoletos/
+
+# Scripts de teste organizados
+scripts/testes/
+
+# Backups organizados
+backups/*.tar.gz
+backups/*.zip
