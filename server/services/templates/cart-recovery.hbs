@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrinho Abandonado - MuhlStore</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .cart-items {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .cart-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+        .item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        .item-price {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .total {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .total-amount {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .discount-code {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .discount-code h3 {
+            margin: 0 0 10px 0;
+        }
+        .code {
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .urgency {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛒 Ops! Você esqueceu algo</h1>
+            <p>Seus itens estão esperando por você</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Olá, <strong>{{customerName}}</strong>! 👋
+            </div>
+            
+            <p>Notamos que você adicionou alguns produtos ao seu carrinho, mas não finalizou a compra. Não se preocupe, separamos tudo para você!</p>
+            
+            <div class="cart-items">
+                <h3>🛍️ Itens no seu carrinho:</h3>
+                {{#each cartItems}}
+                <div class="cart-item">
+                    <img src="{{imagemUrl}}" alt="{{nome}}" class="item-image">
+                    <div class="item-details">
+                        <div class="item-name">{{nome}}</div>
+                        <div class="item-price">R$ {{preco}} x {{quantidade}}</div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            
+            <div class="total">
+                <div>Total do seu pedido:</div>
+                <div class="total-amount">R$ {{totalValue}}</div>
+            </div>
+            
+            {{#if discountCode}}
+            <div class="discount-code">
+                <h3>🎁 Presente especial para você!</h3>
+                <p>Use o código abaixo e ganhe <strong>10% de desconto</strong>:</p>
+                <div class="code">{{discountCode}}</div>
+                <p><small>Válido por 24 horas</small></p>
+            </div>
+            {{/if}}
+            
+            <div class="urgency">
+                ⏰ <strong>Oferta limitada!</strong> Complete sua compra em até 24 horas e garante seus produtos com desconto especial.
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{cartLink}}" class="cta-button">Finalizar Compra Agora</a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <p>Ou continue comprando:</p>
+                <a href="{{shopLink}}" style="color: #667eea; text-decoration: none;">Ver mais produtos</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>MuhlStore</strong> - Sua loja de brinquedos favorita!</p>
+            <p>📧 {{currentDate}} | 🌐 <a href="{{shopLink}}">Visite nossa loja</a></p>
+        </div>
+    </div>
+</body>
+</html>

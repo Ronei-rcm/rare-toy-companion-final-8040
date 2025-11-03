@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Última Solução - MuhlStore</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .status {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 15px;
+            font-weight: 600;
+            border: 2px solid;
+            text-align: center;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: #ef4444;
+            color: #fecaca;
+        }
+        .warning {
+            background: rgba(245, 158, 11, 0.3);
+            border-color: #f59e0b;
+            color: #fef3c7;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.3);
+            border-color: #22c55e;
+            color: #dcfce7;
+        }
+        button {
+            background: linear-gradient(45deg, #dc2626, #991b1b);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(220, 38, 38, 0.6);
+        }
+        .step {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 15px;
+            border-left: 5px solid #ef4444;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #fecaca;
+            font-size: 1.3em;
+        }
+        .instructions {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .instructions h3 {
+            color: #fecaca;
+            margin-top: 0;
+        }
+        .instructions ol {
+            line-height: 1.8;
+        }
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        .critical {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .critical h3 {
+            color: #fecaca;
+            margin-top: 0;
+        }
+        .screenshot {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 ÚLTIMA SOLUÇÃO</h1>
+        
+        <div class="status error">
+            <strong>❌ PROBLEMA PERSISTENTE:</strong> Ainda há arquivos com status 304 (Not Modified) incluindo react-gk544L3E.js!
+        </div>
+
+        <div class="status warning">
+            <strong>⚠️ CACHE AINDA ATIVO:</strong> A caixa "Desativar cache" no DevTools NÃO está marcada!
+        </div>
+
+        <div class="status success">
+            <strong>✅ CORREÇÃO APLICADA:</strong> Headers anti-cache mais agressivos configurados no servidor.
+        </div>
+
+        <div class="critical">
+            <h3>🔥 AÇÃO CRÍTICA IMEDIATA:</h3>
+            <p>Você DEVE marcar a caixa "Desativar cache" no DevTools para resolver definitivamente o problema!</p>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <button onclick="showInstructions()" id="instructionsBtn">
+                📋 VER INSTRUÇÕES DETALHADAS
+            </button>
+            <button onclick="clearAllCache()" id="cacheBtn">
+                🧹 LIMPEZA TOTAL DE CACHE
+            </button>
+            <button onclick="goToSite()" id="siteBtn" style="display: none;">
+                🚀 IR PARA MINHA CONTA
+            </button>
+        </div>
+        
+        <div id="instructions" class="instructions" style="display: none;">
+            <h3>📋 INSTRUÇÕES DETALHADAS:</h3>
+            <ol>
+                <li><strong>Feche TODAS as abas</strong> do site MuhlStore</li>
+                <li><strong>Abra uma nova aba</strong> e vá para: <code>https://muhlstore.re9suainternet.com.br/minha-conta</code></li>
+                <li><strong>Abra o DevTools</strong> (pressione F12 ou Ctrl+Shift+I)</li>
+                <li><strong>Clique na aba "Rede"</strong> (Network)</li>
+                <li><strong>ENCONTRE a caixa "Desativar cache"</strong> na barra de ferramentas do DevTools</li>
+                <li><strong>MARQUE a caixa "Desativar cache"</strong> ✅ (isso é CRÍTICO!)</li>
+                <li><strong>Recarregue a página</strong> (F5 ou Ctrl+R)</li>
+                <li><strong>Verifique que todos os arquivos</strong> agora mostram status 200</li>
+                <li><strong>Teste a funcionalidade</strong> da página Minha Conta</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>🎯 O QUE VOCÊ DEVE VER:</h3>
+            <ul>
+                <li>✅ <strong>Todos os arquivos JS</strong> com status 200 (OK)</li>
+                <li>✅ <strong>Nenhum arquivo</strong> com status 304 (Not Modified)</li>
+                <li>✅ <strong>react-gk544L3E.js</strong> com status 200</li>
+                <li>✅ <strong>minha-conta</strong> com status 200</li>
+                <li>✅ <strong>Sem tela branca</strong></li>
+                <li>✅ <strong>Sem erro "useUser is not defined"</strong></li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>🔧 ALTERNATIVAS SE NÃO FUNCIONAR:</h3>
+            <ol>
+                <li><strong>Modo Incógnito:</strong> Abra uma janela privada e teste</li>
+                <li><strong>Navegador Diferente:</strong> Teste em Chrome, Firefox, Edge</li>
+                <li><strong>Limpeza Manual:</strong> Configurações > Privacidade > Limpar dados</li>
+                <li><strong>Reiniciar Navegador:</strong> Feche completamente e abra novamente</li>
+                <li><strong>Reiniciar Computador:</strong> Como último recurso</li>
+            </ol>
+        </div>
+
+        <div class="screenshot">
+            <strong>📍 LOCALIZAÇÃO DA CAIXA "DESATIVAR CACHE":</strong><br>
+            DevTools > Aba "Rede" > Barra de ferramentas superior > Caixa "Desativar cache"<br>
+            <br>
+            <strong>🎯 IMAGEM DE REFERÊNCIA:</strong><br>
+            A caixa deve estar MARCADA ✅ para funcionar corretamente
+        </div>
+    </div>
+
+    <script>
+        const instructionsDiv = document.getElementById('instructions');
+        const cacheBtn = document.getElementById('cacheBtn');
+        const siteBtn = document.getElementById('siteBtn');
+        const instructionsBtn = document.getElementById('instructionsBtn');
+
+        function showInstructions() {
+            if (instructionsDiv.style.display === 'none') {
+                instructionsDiv.style.display = 'block';
+                instructionsBtn.textContent = '📋 OCULTAR INSTRUÇÕES';
+            } else {
+                instructionsDiv.style.display = 'none';
+                instructionsBtn.textContent = '📋 VER INSTRUÇÕES DETALHADAS';
+            }
+        }
+
+        async function clearAllCache() {
+            cacheBtn.disabled = true;
+            cacheBtn.textContent = '🧹 LIMPANDO...';
+            
+            try {
+                // Service Workers
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+
+                // Caches
+                const cacheNames = await caches.keys();
+                for (let cacheName of cacheNames) {
+                    await caches.delete(cacheName);
+                }
+
+                // Storage
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // IndexedDB
+                if ('indexedDB' in window) {
+                    try {
+                        const databases = await indexedDB.databases();
+                        for (let db of databases) {
+                            await new Promise((resolve, reject) => {
+                                const deleteReq = indexedDB.deleteDatabase(db.name);
+                                deleteReq.onsuccess = () => resolve();
+                                deleteReq.onerror = () => reject(deleteReq.error);
+                            });
+                        }
+                    } catch (e) {
+                        console.log('Erro IndexedDB:', e.message);
+                    }
+                }
+
+                // Cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+
+                cacheBtn.textContent = '✅ CACHE LIMPO!';
+                siteBtn.style.display = 'inline-block';
+                
+                alert('🎉 Cache limpo!\n\nAgora:\n1. Marque "Desativar cache" no DevTools\n2. Recarregue a página\n3. Teste Minha Conta!');
+
+            } catch (error) {
+                cacheBtn.textContent = '❌ ERRO';
+                alert('Erro: ' + error.message);
+                cacheBtn.disabled = false;
+                cacheBtn.textContent = '🧹 TENTAR NOVAMENTE';
+            }
+        }
+
+        function goToSite() {
+            window.location.href = '/minha-conta?ultima_solucao=' + Date.now();
+        }
+
+        // Auto-mostrar instruções
+        window.onload = function() {
+            setTimeout(() => {
+                showInstructions();
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

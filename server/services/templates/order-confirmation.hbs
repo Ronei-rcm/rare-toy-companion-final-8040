@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido Confirmado - MuhlStore</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .order-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .order-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #27ae60;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .order-items {
+            margin: 20px 0;
+        }
+        .order-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        .item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 15px;
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        .item-price {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .total-section {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+        .total-final {
+            font-size: 20px;
+            font-weight: bold;
+            border-top: 2px solid #34495e;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .tracking {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .tracking-code {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .timeline {
+            margin: 20px 0;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .timeline-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #27ae60;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 14px;
+        }
+        .timeline-content {
+            flex: 1;
+        }
+        .timeline-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .timeline-desc {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Pedido Confirmado!</h1>
+            <p>Obrigado pela sua compra</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Olá, <strong>{{customerName}}</strong>! 🎉
+            </div>
+            
+            <p>Seu pedido foi confirmado com sucesso! Agora é só aguardar a entrega dos seus brinquedos favoritos.</p>
+            
+            <div class="order-info">
+                <div class="order-number">Pedido #{{order.id}}</div>
+                <div class="info-row">
+                    <span class="info-label">Data do pedido:</span>
+                    <span>{{currentDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Forma de pagamento:</span>
+                    <span>{{order.paymentMethod}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span style="color: #27ae60; font-weight: bold;">Confirmado</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Previsão de entrega:</span>
+                    <span>{{order.estimatedDelivery}}</span>
+                </div>
+            </div>
+            
+            <div class="order-items">
+                <h3>📦 Itens do seu pedido:</h3>
+                {{#each order.items}}
+                <div class="order-item">
+                    <img src="{{imagemUrl}}" alt="{{nome}}" class="item-image">
+                    <div class="item-details">
+                        <div class="item-name">{{nome}}</div>
+                        <div class="item-price">R$ {{preco}} x {{quantidade}}</div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            
+            <div class="total-section">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>R$ {{order.subtotal}}</span>
+                </div>
+                <div class="total-row">
+                    <span>Frete:</span>
+                    <span>R$ {{order.shipping}}</span>
+                </div>
+                {{#if order.discount}}
+                <div class="total-row">
+                    <span>Desconto:</span>
+                    <span style="color: #27ae60;">-R$ {{order.discount}}</span>
+                </div>
+                {{/if}}
+                <div class="total-row total-final">
+                    <span>Total:</span>
+                    <span>R$ {{order.total}}</span>
+                </div>
+            </div>
+            
+            {{#if trackingCode}}
+            <div class="tracking">
+                <h3>🚚 Código de rastreamento:</h3>
+                <div class="tracking-code">{{trackingCode}}</div>
+                <p>Use este código para acompanhar sua entrega</p>
+            </div>
+            {{/if}}
+            
+            <div class="timeline">
+                <h3>📋 Status do pedido:</h3>
+                <div class="timeline-item">
+                    <div class="timeline-icon">✓</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Pedido confirmado</div>
+                        <div class="timeline-desc">Seu pedido foi processado com sucesso</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon">📦</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Preparando para envio</div>
+                        <div class="timeline-desc">Seus produtos estão sendo separados</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon">🚚</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Enviado</div>
+                        <div class="timeline-desc">Seu pedido está a caminho</div>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-icon">🏠</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Entregue</div>
+                        <div class="timeline-desc">Seu pedido foi entregue</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{orderLink}}" class="cta-button">Acompanhar Pedido</a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <p>Dúvidas? Entre em contato conosco!</p>
+                <a href="mailto:contato@muhlstore.com" style="color: #667eea; text-decoration: none;">contato@muhlstore.com</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>MuhlStore</strong> - Sua loja de brinquedos favorita!</p>
+            <p>📧 {{currentDate}} | 🌐 <a href="{{shopLink}}">Visite nossa loja</a></p>
+        </div>
+    </div>
+</body>
+</html>

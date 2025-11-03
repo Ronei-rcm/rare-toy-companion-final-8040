@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Rotas - MuhlStore</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-item {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        .test-item img {
+            width: 64px;
+            height: 64px;
+            margin-right: 20px;
+            border-radius: 8px;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .loading { background: #fff3cd; color: #856404; }
+        h1 { text-align: center; color: #333; }
+        .test-results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste de Rotas</h1>
+        <p>Verificando se as rotas estão funcionando...</p>
+        
+        <div id="route-tests">
+            <div class="test-item">
+                <img id="icon-test" src="/icon/icon-144x144.png" alt="Ícone PWA" onerror="this.style.display='none'; document.getElementById('status-icon').innerHTML='❌ Erro'; document.getElementById('status-icon').className='status error';">
+                <div>
+                    <strong>Ícone PWA</strong>
+                    <span id="status-icon" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <img id="upload-test" src="/lovable-uploads/1761261955196-866226050.png" alt="Imagem Upload" onerror="this.style.display='none'; document.getElementById('status-upload').innerHTML='❌ Erro'; document.getElementById('status-upload').className='status error';">
+                <div>
+                    <strong>Imagem de Upload</strong>
+                    <span id="status-upload" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="test-item">
+                <img id="upload-alt-test" src="/uploads/1761261955196-866226050.png" alt="Imagem Upload Alt" onerror="this.style.display='none'; document.getElementById('status-upload-alt').innerHTML='❌ Erro'; document.getElementById('status-upload-alt').className='status error';">
+                <div>
+                    <strong>Imagem de Upload (Alt)</strong>
+                    <span id="status-upload-alt" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-results">
+            <h3>📊 Resultados do Teste</h3>
+            <div id="results">
+                <p>🔄 Executando testes...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função para testar se uma imagem carregou com sucesso
+        function testImageLoad(imgElement, statusElement) {
+            return new Promise((resolve) => {
+                imgElement.onload = () => {
+                    statusElement.innerHTML = '✅ OK';
+                    statusElement.className = 'status success';
+                    resolve(true);
+                };
+                imgElement.onerror = () => {
+                    statusElement.innerHTML = '❌ Erro';
+                    statusElement.className = 'status error';
+                    resolve(false);
+                };
+                
+                // Timeout após 5 segundos
+                setTimeout(() => {
+                    if (statusElement.innerHTML === '🔄 Testando...') {
+                        statusElement.innerHTML = '⏰ Timeout';
+                        statusElement.className = 'status error';
+                        resolve(false);
+                    }
+                }, 5000);
+            });
+        }
+        
+        // Testar todas as rotas
+        async function testAllRoutes() {
+            const routes = [
+                { id: 'icon-test', status: 'status-icon', name: 'Ícone PWA' },
+                { id: 'upload-test', status: 'status-upload', name: 'Imagem Upload' },
+                { id: 'upload-alt-test', status: 'status-upload-alt', name: 'Imagem Upload Alt' }
+            ];
+            
+            const results = [];
+            
+            for (const route of routes) {
+                const imgElement = document.getElementById(route.id);
+                const statusElement = document.getElementById(route.status);
+                const success = await testImageLoad(imgElement, statusElement);
+                results.push({ name: route.name, success });
+            }
+            
+            // Mostrar resultados
+            const successCount = results.filter(r => r.success).length;
+            const totalCount = results.length;
+            
+            document.getElementById('results').innerHTML = `
+                <p><strong>✅ Rotas funcionando:</strong> ${successCount}/${totalCount}</p>
+                <p><strong>❌ Rotas com erro:</strong> ${totalCount - successCount}/${totalCount}</p>
+                <p><strong>📈 Taxa de sucesso:</strong> ${Math.round((successCount / totalCount) * 100)}%</p>
+                ${successCount === totalCount ? '<p style="color: green; font-weight: bold;">🎉 Todas as rotas estão funcionando perfeitamente!</p>' : ''}
+            `;
+        }
+        
+        // Iniciar testes
+        testAllRoutes();
+    </script>
+</body>
+</html>
+

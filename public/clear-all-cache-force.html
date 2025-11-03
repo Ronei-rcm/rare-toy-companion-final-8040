@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpar Cache - Força Total</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #2d5016; }
+        .error { background: #501616; }
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <h1>🧹 Limpar Cache - Força Total</h1>
+    
+    <button onclick="clearAll()">Limpar TUDO e Recarregar</button>
+    
+    <div id="status"></div>
+    
+    <script>
+        const status = document.getElementById('status');
+        
+        function addStatus(message, type = 'success') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            status.appendChild(div);
+        }
+        
+        async function clearAll() {
+            addStatus('Iniciando limpeza total...', 'success');
+            
+            try {
+                // 1. Limpar localStorage
+                localStorage.clear();
+                addStatus('✅ localStorage limpo', 'success');
+                
+                // 2. Limpar sessionStorage
+                sessionStorage.clear();
+                addStatus('✅ sessionStorage limpo', 'success');
+                
+                // 3. Limpar IndexedDB
+                if ('indexedDB' in window) {
+                    const databases = await indexedDB.databases();
+                    for (const db of databases) {
+                        indexedDB.deleteDatabase(db.name);
+                    }
+                    addStatus('✅ IndexedDB limpo', 'success');
+                }
+                
+                // 4. Limpar Cache Storage
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(name => caches.delete(name))
+                    );
+                    addStatus(`✅ ${cacheNames.length} caches limpos`, 'success');
+                }
+                
+                // 5. Desregistrar service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(
+                        registrations.map(reg => reg.unregister())
+                    );
+                    addStatus(`✅ ${registrations.length} service workers desregistrados`, 'success');
+                }
+                
+                // 6. Forçar reload sem cache
+                addStatus('✅ Limpeza concluída! Recarregando...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+                
+            } catch (error) {
+                addStatus('❌ Erro: ' + error.message, 'error');
+                console.error('Erro:', error);
+            }
+        }
+        
+        // Auto-executar
+        window.onload = () => {
+            setTimeout(clearAll, 500);
+        };
+    </script>
+</body>
+</html>
+

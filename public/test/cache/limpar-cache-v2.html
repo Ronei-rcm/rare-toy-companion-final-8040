@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpando Cache - MuhlStore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        .icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .status {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .success {
+            color: #22c55e;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        
+        .info {
+            color: #3b82f6;
+            font-weight: bold;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: progress 2s ease-in-out infinite;
+        }
+        
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .steps {
+            text-align: left;
+            margin: 20px 0;
+        }
+        
+        .step {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 3px solid #e5e7eb;
+            padding-left: 15px;
+        }
+        
+        .step.done {
+            border-left-color: #22c55e;
+            color: #22c55e;
+        }
+        
+        .step.active {
+            border-left-color: #3b82f6;
+            color: #3b82f6;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🧹</div>
+        <h1>Limpeza de Cache</h1>
+        <p>Limpando cache antigo e atualizando a aplicação...</p>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div class="steps" id="steps">
+            <div class="step" id="step1">1. Verificando Service Worker...</div>
+            <div class="step" id="step2">2. Desregistrando versão antiga...</div>
+            <div class="step" id="step3">3. Limpando todos os caches...</div>
+            <div class="step" id="step4">4. Limpando localStorage e sessionStorage...</div>
+            <div class="step" id="step5">5. Finalizando...</div>
+        </div>
+        
+        <div class="status" id="status">
+            <span class="info">Iniciando limpeza...</span>
+        </div>
+        
+        <button id="reloadBtn" onclick="reloadPage()" disabled>
+            Recarregar Página
+        </button>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const steps = ['step1', 'step2', 'step3', 'step4', 'step5'];
+        
+        function updateStep(stepIndex, status = 'active') {
+            // Marcar passos anteriores como concluídos
+            for (let i = 0; i < stepIndex; i++) {
+                document.getElementById(steps[i]).classList.remove('active');
+                document.getElementById(steps[i]).classList.add('done');
+            }
+            
+            // Marcar passo atual
+            if (stepIndex < steps.length) {
+                document.getElementById(steps[stepIndex]).classList.add(status);
+            }
+            
+            currentStep = stepIndex;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `<span class="${type}">${message}</span>`;
+        }
+        
+        async function cleanEverything() {
+            try {
+                // Passo 1: Verificar Service Worker
+                updateStep(0, 'active');
+                updateStatus('Verificando Service Worker...', 'info');
+                await sleep(500);
+                
+                // Passo 2: Desregistrar Service Worker
+                updateStep(1, 'active');
+                updateStatus('Desregistrando Service Worker antigo...', 'info');
+                
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    console.log(`Encontrados ${registrations.length} Service Workers`);
+                    
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        console.log('Service Worker desregistrado:', registration.scope);
+                    }
+                }
+                
+                await sleep(500);
+                
+                // Passo 3: Limpar caches
+                updateStep(2, 'active');
+                updateStatus('Limpando todos os caches...', 'info');
+                
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    console.log(`Encontrados ${cacheNames.length} caches`);
+                    
+                    for (let cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        console.log('Cache deletado:', cacheName);
+                    }
+                }
+                
+                await sleep(500);
+                
+                // Passo 4: Limpar storages
+                updateStep(3, 'active');
+                updateStatus('Limpando localStorage e sessionStorage...', 'info');
+                
+                // Salvar informações importantes antes de limpar
+                const userSession = localStorage.getItem('userSession');
+                const cartData = localStorage.getItem('cart');
+                
+                // Limpar tudo
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Restaurar dados importantes (opcional)
+                if (userSession) {
+                    localStorage.setItem('userSession', userSession);
+                }
+                if (cartData) {
+                    localStorage.setItem('cart', cartData);
+                }
+                
+                console.log('Storage limpo (dados de sessão preservados)');
+                await sleep(500);
+                
+                // Passo 5: Finalizar
+                updateStep(4, 'active');
+                updateStatus('Limpeza concluída com sucesso! ✅', 'success');
+                
+                // Marcar último passo como concluído
+                updateStep(5, 'done');
+                
+                // Habilitar botão de reload
+                document.getElementById('reloadBtn').disabled = false;
+                document.getElementById('progressBar').style.animation = 'none';
+                document.getElementById('progressBar').style.width = '100%';
+                
+                console.log('Limpeza completa finalizada!');
+                
+                // Auto-reload após 2 segundos
+                setTimeout(() => {
+                    reloadPage();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Erro durante limpeza:', error);
+                updateStatus('Erro durante limpeza: ' + error.message, 'error');
+                document.getElementById('reloadBtn').disabled = false;
+            }
+        }
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        function reloadPage() {
+            updateStatus('Recarregando página...', 'info');
+            
+            // Forçar reload completo (bypass cache)
+            window.location.href = window.location.origin + '/?nocache=' + Date.now();
+        }
+        
+        // Iniciar limpeza automaticamente
+        window.addEventListener('load', () => {
+            console.log('Iniciando limpeza automática...');
+            setTimeout(() => {
+                cleanEverything();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+

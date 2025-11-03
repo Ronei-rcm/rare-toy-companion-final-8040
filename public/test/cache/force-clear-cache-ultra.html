@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpeza ULTRA AGRESSIVA de Cache - MuhlStore</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b6b;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: monospace;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #ee5a24;
+        }
+        .danger {
+            background: #dc3545;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>🔥 Limpeza ULTRA AGRESSIVA de Cache</h1>
+        <p>Removendo ABSOLUTAMENTE TUDO e forçando atualização completa...</p>
+        
+        <div class="danger">
+            ⚠️ <strong>ATENÇÃO:</strong> Esta operação irá remover TODOS os dados armazenados localmente!
+        </div>
+        
+        <div class="status" id="status">
+            <div>🔥 Iniciando limpeza ULTRA AGRESSIVA...</div>
+        </div>
+        
+        <div id="result" style="display: none;">
+            <div class="success">✅ Limpeza ULTRA AGRESSIVA concluída!</div>
+            <a href="/admin/pedidos" class="btn">Ir para Pedidos</a>
+            <a href="/" class="btn">Ir para Início</a>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+        
+        function addStatus(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            statusDiv.appendChild(div);
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+        
+        async function forceClearUltra() {
+            try {
+                // 1. Limpar Service Worker
+                addStatus('🔥 Removendo Service Worker...', 'warning');
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        addStatus('✅ Service Worker removido', 'success');
+                    }
+                }
+                
+                // 2. Limpar Cache API
+                addStatus('🔥 Limpando Cache API...', 'warning');
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => {
+                            addStatus(`🗑️ Removendo cache: ${cacheName}`, 'warning');
+                            return caches.delete(cacheName);
+                        })
+                    );
+                    addStatus('✅ Cache API limpo', 'success');
+                }
+                
+                // 3. Limpar LocalStorage
+                addStatus('🔥 Limpando LocalStorage...', 'warning');
+                localStorage.clear();
+                addStatus('✅ LocalStorage limpo', 'success');
+                
+                // 4. Limpar SessionStorage
+                addStatus('🔥 Limpando SessionStorage...', 'warning');
+                sessionStorage.clear();
+                addStatus('✅ SessionStorage limpo', 'success');
+                
+                // 5. Limpar IndexedDB
+                addStatus('🔥 Limpando IndexedDB...', 'warning');
+                if ('indexedDB' in window) {
+                    try {
+                        const databases = await indexedDB.databases();
+                        await Promise.all(
+                            databases.map(db => {
+                                addStatus(`🗑️ Removendo DB: ${db.name}`, 'warning');
+                                return new Promise((resolve, reject) => {
+                                    const deleteReq = indexedDB.deleteDatabase(db.name);
+                                    deleteReq.onsuccess = () => resolve();
+                                    deleteReq.onerror = () => reject(deleteReq.error);
+                                });
+                            })
+                        );
+                        addStatus('✅ IndexedDB limpo', 'success');
+                    } catch (error) {
+                        addStatus('⚠️ Erro ao limpar IndexedDB: ' + error.message, 'warning');
+                    }
+                }
+                
+                // 6. Limpar Cookies
+                addStatus('🔥 Limpando Cookies...', 'warning');
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                addStatus('✅ Cookies limpos', 'success');
+                
+                // 7. Forçar reload com cache bypass
+                addStatus('🔥 Forçando reload com bypass de cache...', 'warning');
+                addStatus('✅ Reload forçado', 'success');
+                
+                // 8. Aguardar um pouco
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // 9. Mostrar resultado
+                statusDiv.style.display = 'none';
+                resultDiv.style.display = 'block';
+                
+                // 10. Redirecionar após 5 segundos
+                setTimeout(() => {
+                    window.location.href = '/admin/pedidos';
+                }, 5000);
+                
+            } catch (error) {
+                addStatus('❌ Erro: ' + error.message, 'error');
+                console.error('Erro na limpeza:', error);
+            }
+        }
+        
+        // Iniciar processo
+        forceClearUltra();
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# robots.txt para MuhlStore
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin/*
+Disallow: /api/
+Disallow: /carrinho
+Disallow: /auth/
+Disallow: /minha-conta/
+
+# Permitir crawlers em páginas públicas
+Allow: /loja
+Allow: /produto/
+Allow: /colecao/
+Allow: /sobre
+Allow: /eventos
+Allow: /destaques
+
+# Sitemap
+Sitemap: https://muhlstore.re9suainternet.com.br/sitemap.xml
+
+# Crawl-delay (opcional, para evitar sobrecarga)
+Crawl-delay: 1
+
+# Bloquear bots mal-intencionados
+User-agent: AhrefsBot
+User-agent: MJ12bot
+User-agent: SemrushBot
+Disallow: /
+
+# Google Image Bot
+User-agent: Googlebot-Image
+Allow: /lovable-uploads/
+Allow: /public/images/
+
+# Indexar imagens de produtos
+User-agent: Googlebot-Image
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.webp$
+

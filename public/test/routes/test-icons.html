@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Ícones PWA - MuhlStore</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .icon-test {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        .icon-test img {
+            width: 64px;
+            height: 64px;
+            margin-right: 20px;
+            border-radius: 8px;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .loading { background: #fff3cd; color: #856404; }
+        h1 { text-align: center; color: #333; }
+        .test-results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste de Ícones PWA</h1>
+        <p>Verificando se os ícones PWA estão acessíveis...</p>
+        
+        <div id="icon-tests">
+            <div class="icon-test">
+                <img id="icon-72" src="/icons/icon-72x72.png" alt="Ícone 72x72" onerror="this.style.display='none'; document.getElementById('status-72').innerHTML='❌ Erro'; document.getElementById('status-72').className='status error';">
+                <div>
+                    <strong>Ícone 72x72</strong>
+                    <span id="status-72" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-96" src="/icons/icon-96x96.png" alt="Ícone 96x96" onerror="this.style.display='none'; document.getElementById('status-96').innerHTML='❌ Erro'; document.getElementById('status-96').className='status error';">
+                <div>
+                    <strong>Ícone 96x96</strong>
+                    <span id="status-96" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-128" src="/icons/icon-128x128.png" alt="Ícone 128x128" onerror="this.style.display='none'; document.getElementById('status-128').innerHTML='❌ Erro'; document.getElementById('status-128').className='status error';">
+                <div>
+                    <strong>Ícone 128x128</strong>
+                    <span id="status-128" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-144" src="/icons/icon-144x144.png" alt="Ícone 144x144" onerror="this.style.display='none'; document.getElementById('status-144').innerHTML='❌ Erro'; document.getElementById('status-144').className='status error';">
+                <div>
+                    <strong>Ícone 144x144</strong>
+                    <span id="status-144" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-152" src="/icons/icon-152x152.png" alt="Ícone 152x152" onerror="this.style.display='none'; document.getElementById('status-152').innerHTML='❌ Erro'; document.getElementById('status-152').className='status error';">
+                <div>
+                    <strong>Ícone 152x152</strong>
+                    <span id="status-152" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-192" src="/icons/icon-192x192.png" alt="Ícone 192x192" onerror="this.style.display='none'; document.getElementById('status-192').innerHTML='❌ Erro'; document.getElementById('status-192').className='status error';">
+                <div>
+                    <strong>Ícone 192x192</strong>
+                    <span id="status-192" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-256" src="/icons/icon-256x256.png" alt="Ícone 256x256" onerror="this.style.display='none'; document.getElementById('status-256').innerHTML='❌ Erro'; document.getElementById('status-256').className='status error';">
+                <div>
+                    <strong>Ícone 256x256</strong>
+                    <span id="status-256" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-384" src="/icons/icon-384x384.png" alt="Ícone 384x384" onerror="this.style.display='none'; document.getElementById('status-384').innerHTML='❌ Erro'; document.getElementById('status-384').className='status error';">
+                <div>
+                    <strong>Ícone 384x384</strong>
+                    <span id="status-384" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+            
+            <div class="icon-test">
+                <img id="icon-512" src="/icons/icon-512x512.png" alt="Ícone 512x512" onerror="this.style.display='none'; document.getElementById('status-512').innerHTML='❌ Erro'; document.getElementById('status-512').className='status error';">
+                <div>
+                    <strong>Ícone 512x512</strong>
+                    <span id="status-512" class="status loading">🔄 Testando...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-results">
+            <h3>📊 Resultados do Teste</h3>
+            <div id="results">
+                <p>🔄 Executando testes...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função para testar se uma imagem carregou com sucesso
+        function testImageLoad(imgElement, statusElement) {
+            return new Promise((resolve) => {
+                imgElement.onload = () => {
+                    statusElement.innerHTML = '✅ OK';
+                    statusElement.className = 'status success';
+                    resolve(true);
+                };
+                imgElement.onerror = () => {
+                    statusElement.innerHTML = '❌ Erro';
+                    statusElement.className = 'status error';
+                    resolve(false);
+                };
+                
+                // Timeout após 5 segundos
+                setTimeout(() => {
+                    if (statusElement.innerHTML === '🔄 Testando...') {
+                        statusElement.innerHTML = '⏰ Timeout';
+                        statusElement.className = 'status error';
+                        resolve(false);
+                    }
+                }, 5000);
+            });
+        }
+        
+        // Testar todos os ícones
+        async function testAllIcons() {
+            const icons = [
+                { id: 'icon-72', status: 'status-72' },
+                { id: 'icon-96', status: 'status-96' },
+                { id: 'icon-128', status: 'status-128' },
+                { id: 'icon-144', status: 'status-144' },
+                { id: 'icon-152', status: 'status-152' },
+                { id: 'icon-192', status: 'status-192' },
+                { id: 'icon-256', status: 'status-256' },
+                { id: 'icon-384', status: 'status-384' },
+                { id: 'icon-512', status: 'status-512' }
+            ];
+            
+            const results = [];
+            
+            for (const icon of icons) {
+                const imgElement = document.getElementById(icon.id);
+                const statusElement = document.getElementById(icon.status);
+                const success = await testImageLoad(imgElement, statusElement);
+                results.push({ name: icon.id, success });
+            }
+            
+            // Mostrar resultados
+            const successCount = results.filter(r => r.success).length;
+            const totalCount = results.length;
+            
+            document.getElementById('results').innerHTML = `
+                <p><strong>✅ Ícones funcionando:</strong> ${successCount}/${totalCount}</p>
+                <p><strong>❌ Ícones com erro:</strong> ${totalCount - successCount}/${totalCount}</p>
+                <p><strong>📈 Taxa de sucesso:</strong> ${Math.round((successCount / totalCount) * 100)}%</p>
+                ${successCount === totalCount ? '<p style="color: green; font-weight: bold;">🎉 Todos os ícones estão funcionando perfeitamente!</p>' : ''}
+            `;
+        }
+        
+        // Iniciar testes
+        testAllIcons();
+    </script>
+</body>
+</html>
+
