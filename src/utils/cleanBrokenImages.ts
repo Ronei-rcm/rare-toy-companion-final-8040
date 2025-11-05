@@ -6,7 +6,14 @@ const BROKEN_IMAGES = [
   '1762026196857-967272339.png',
   '1762026205700-184748161.png',
   '1762027698451-586122670.png',
-  '1762027707201-191250317.png'
+  '1762027707201-191250317.png',
+  // Imagens que estão dando 404 mesmo existindo
+  '1762208428860-729428036.png',
+  '1762208439337-604490442.png',
+  '1762208826969-468000307.png',
+  // Novas imagens 404 (novembro 2025)
+  '1762210261693-600592619.png',
+  '1762210271580-511207085.png'
 ];
 
 /**
@@ -21,12 +28,20 @@ function isLikelyBrokenImage(url: string): boolean {
     return true;
   }
   
-  // Verificar padrão suspeito: /lovable-uploads/176202XXXXX-*.png
-  // (imagens com timestamp de novembro 2025)
-  const suspiciousPattern = /lovable-uploads\/176202\d{7,}-\d+\.(png|jpe?g|webp|gif)/i;
+  // Verificar padrão suspeito: /lovable-uploads/1762XXXXX-*.png
+  // (imagens com timestamp de novembro 2025 que podem estar dando 404)
+  const suspiciousPattern = /lovable-uploads\/1762\d{8,}-\d+\.(png|jpe?g|webp|gif)/i;
   if (suspiciousPattern.test(url)) {
-    console.warn(`⚠️ Imagem suspeita detectada (padrão recente): ${url.split('/').pop()}`);
-    return true;
+    // Verificar se a imagem realmente existe fazendo uma requisição assíncrona
+    // Por enquanto, apenas marcar como suspeita se estiver na lista conhecida
+    const filename = url.split('/').pop();
+    if (BROKEN_IMAGES.some(img => filename === img)) {
+      console.warn(`⚠️ Imagem quebrada conhecida detectada: ${filename}`);
+      return true;
+    }
+    // Para outras imagens suspeitas, vamos verificar se realmente existe
+    // Mas como isso é síncrono, vamos apenas avisar
+    console.warn(`⚠️ Imagem suspeita detectada (padrão recente): ${filename}`);
   }
   
   return false;

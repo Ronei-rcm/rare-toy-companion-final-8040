@@ -1,8 +1,8 @@
 // Service Worker para MuhlStore PWA
-const CACHE_NAME = 'muhlstore-v1.0.0';
-const STATIC_CACHE = 'muhlstore-static-v1.0.0';
-const DYNAMIC_CACHE = 'muhlstore-dynamic-v1.0.0';
-const API_CACHE = 'muhlstore-api-v1.0.0';
+const CACHE_NAME = 'muhlstore-v1.0.2';
+const STATIC_CACHE = 'muhlstore-static-v1.0.2';
+const DYNAMIC_CACHE = 'muhlstore-dynamic-v1.0.2';
+const API_CACHE = 'muhlstore-api-v1.0.2';
 
 // Arquivos estáticos para cache
 const STATIC_FILES = [
@@ -62,7 +62,26 @@ self.addEventListener('activate', (event) => {
           })
         );
       })
-      .then(() => {
+      .then(async () => {
+        // Limpar respostas 404 do cache de imagens
+        console.log('Service Worker: Limpando respostas 404 do cache...');
+        const cache = await caches.open(STATIC_CACHE);
+        const keys = await cache.keys();
+        let cleaned = 0;
+        
+        for (const request of keys) {
+          const response = await cache.match(request);
+          if (response && response.status === 404) {
+            await cache.delete(request);
+            cleaned++;
+            console.log('Service Worker: Removido 404 do cache:', request.url);
+          }
+        }
+        
+        if (cleaned > 0) {
+          console.log(`Service Worker: ${cleaned} resposta(s) 404 removida(s) do cache`);
+        }
+        
         console.log('Service Worker: Ativação concluída');
         return self.clients.claim();
       })
@@ -131,24 +150,69 @@ async function handleApiRequest(request) {
 
 // Estratégia para arquivos estáticos
 async function handleStaticRequest(request) {
+  const url = new URL(request.url);
+  
+  // Ignorar URLs de extensões do Chrome e outros esquemas não suportados
+  if (url.protocol === 'chrome-extension:' || 
+      url.protocol === 'moz-extension:' || 
+      url.protocol === 'safari-extension:') {
+    // Não tentar cachear extensões do navegador
+    return fetch(request);
+  }
+  
   const cachedResponse = await caches.match(request);
   
+  // Se houver cache, verificar se não é 404
   if (cachedResponse) {
-    return cachedResponse;
+    // Se for 404 em cache, remover do cache e buscar novamente
+    if (cachedResponse.status === 404) {
+      console.log('Service Worker: Removendo 404 do cache e tentando novamente:', request.url);
+      const cache = await caches.open(STATIC_CACHE);
+      await cache.delete(request);
+    } else {
+      // Retornar cache válido
+      return cachedResponse;
+    }
   }
   
   try {
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
+    // Só cachear se for resposta OK (200-299) e não for extensão
+    if (networkResponse.ok && url.protocol.startsWith('http')) {
       const cache = await caches.open(STATIC_CACHE);
       cache.put(request, networkResponse.clone());
+      console.log('Service Worker: Arquivo estático cacheado:', request.url);
+    } else if (!networkResponse.ok) {
+      // Se for 404 em imagens, não logar (é esperado quando imagens não existem)
+      // Detectar imagens de várias formas para garantir precisão
+      const pathname = url.pathname.toLowerCase();
+      const acceptHeader = request.headers ? request.headers.get('accept') : null;
+      
+      // Detecção robusta de imagens
+      const hasImageExtension = /\.(jpg|jpeg|png|gif|webp|svg|avif|ico|bmp)$/i.test(pathname);
+      const isLovableUploadsImage = pathname.includes('/lovable-uploads/') && 
+                                    /\.(jpg|jpeg|png|gif|webp|svg|avif|ico|bmp)/i.test(pathname);
+      
+      const isImage = 
+        request.destination === 'image' || 
+        (acceptHeader && acceptHeader.includes('image/')) ||
+        hasImageExtension ||
+        isLovableUploadsImage;
+      
+      // Só logar se NÃO for uma imagem 404 (silenciosamente ignorar 404s de imagens)
+      const isImage404 = isImage && networkResponse.status === 404;
+      if (!isImage404) {
+        console.warn('Service Worker: Arquivo não encontrado (não será cacheado):', request.url);
+      }
+      // Para imagens 404: não logar, não cachear, apenas deixar passar silenciosamente
     }
     
     return networkResponse;
   } catch (error) {
     console.log('Service Worker: Erro ao buscar arquivo estático:', error);
-    return new Response('Arquivo não encontrado', { status: 404 });
+    // Não retornar 404 genérico, deixar o navegador lidar
+    return fetch(request);
   }
 }
 

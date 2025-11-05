@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
+import { useCustomerSync } from '@/hooks/useCustomerSync';
 import { toast } from 'sonner';
-import { Loader2, Save, User, Mail, Phone, MapPin, Lock } from 'lucide-react';
+import { Loader2, Save, User, Mail, Phone, MapPin, Lock, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { AvatarUpload } from '@/components/ui/avatar-upload';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Schema para validação dos dados pessoais
 const dadosSchema = z.object({
@@ -37,6 +39,7 @@ const senhaSchema = z.object({
 
 const DadosTab = () => {
   const { user, updateUser, isLoading } = useCurrentUser();
+  const { customerData, isSyncing, lastSync, syncAfterUpdate, validateBeforeSave, validation } = useCustomerSync();
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -84,6 +87,11 @@ const DadosTab = () => {
   const onSubmitDados = async (values: z.infer<typeof dadosSchema>) => {
     if (!user) return;
 
+    // Validar antes de salvar
+    if (!validateBeforeSave(values)) {
+      return;
+    }
+
     try {
       setIsSaving(true);
       const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
@@ -95,8 +103,14 @@ const DadosTab = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao atualizar perfil');
+      
+      // Atualizar contexto
       await updateUser(data.user || values);
-      toast.success('Dados atualizados com sucesso!');
+      
+      // Sincronizar dados atualizados
+      await syncAfterUpdate();
+      
+      toast.success('Dados atualizados e sincronizados com sucesso!');
     } catch (error: any) {
       toast.error(error.message || 'Erro ao atualizar dados');
     } finally {
@@ -145,10 +159,49 @@ const DadosTab = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Meus Dados</h2>
-        <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Meus Dados</h2>
+          <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isSyncing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Sincronizando...</span>
+            </div>
+          )}
+          {lastSync && !isSyncing && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle className="h-3 w-3 text-green-500" />
+              <span>Atualizado {new Date(lastSync).toLocaleTimeString()}</span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => syncAfterUpdate()}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
+
+      {/* Avisos de validação */}
+      {validation.warnings.length > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-1">
+              {validation.warnings.map((warning, index) => (
+                <p key={index} className="text-sm">{warning}</p>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Dados Pessoais */}
       <Card>

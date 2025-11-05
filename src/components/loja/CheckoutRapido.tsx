@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/contexts/CartContext';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
-import { CreditCard, QrCode, User, MapPin, Phone, Mail, Loader2, CheckCircle, Zap, Smartphone, Wallet, Tag, X, Percent, Gift } from 'lucide-react';
+import { CreditCard, QrCode, User, MapPin, Phone, Mail, Loader2, CheckCircle, Zap, Smartphone, Wallet, Tag, X, Percent, Gift, Clock, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SelosSeguranca from './SelosSeguranca';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -841,42 +841,126 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
               </CardHeader>
               <CardContent className="space-y-6">
                 {metodoPagamento === 'pix' && (
-                  <div className="text-center space-y-4">
+                  <div className="space-y-6">
                     {isGeneratingPix ? (
-                      <div className="py-8">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                        <p className="text-lg font-medium">Gerando QR Code Pix...</p>
-                        <p className="text-sm text-muted-foreground">Aguarde um momento</p>
+                      <div className="py-12 text-center">
+                        <div className="relative inline-block">
+                          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <QrCode className="h-6 w-6 text-primary/50" />
+                          </div>
+                        </div>
+                        <p className="text-lg font-semibold mb-2">Gerando QR Code Pix...</p>
+                        <p className="text-sm text-muted-foreground">Aguarde um momento, estamos preparando seu pagamento</p>
                       </div>
                     ) : pixData ? (
-                      <div className="space-y-4">
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <img 
-                            src={pixData.qr_code_url} 
-                            alt="QR Code Pix" 
-                            className="w-48 h-48 mx-auto border rounded-lg bg-white p-2"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Código Pix (copie e cole no seu app):</p>
-                          <div className="bg-gray-100 p-3 rounded-lg font-mono text-xs break-all">
-                            {pixData.qr_code}
+                      <div className="space-y-6">
+                        {/* Banner de desconto PIX */}
+                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-lg shadow-lg">
+                          <div className="flex items-center justify-center gap-3">
+                            <Zap className="h-6 w-6" />
+                            <div className="text-center">
+                              <p className="text-sm font-medium opacity-90">Você ganhou</p>
+                              <p className="text-2xl font-bold">R$ {descontoPix.toFixed(2)} de desconto</p>
+                              <p className="text-xs opacity-90 mt-1">Pagamento via PIX - Aprovação instantânea</p>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="text-center space-y-2">
-                          <p className="text-lg font-semibold">Valor: R$ {pixData.amount.toFixed(2)}</p>
-                          <p className="text-sm text-muted-foreground">
-                            QR Code válido por 30 minutos
+                        {/* QR Code destacado */}
+                        <div className="bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-purple-200 shadow-lg">
+                          <div className="text-center mb-4">
+                            <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm">
+                              <QrCode className="h-5 w-5 text-purple-600" />
+                              <span className="font-semibold text-purple-900">Escaneie o QR Code</span>
+                            </div>
+                          </div>
+                          <div className="bg-white p-6 rounded-lg shadow-inner flex items-center justify-center">
+                            <img 
+                              src={pixData.qr_code_url} 
+                              alt="QR Code Pix" 
+                              className="w-64 h-64 mx-auto border-4 border-purple-200 rounded-xl shadow-lg"
+                            />
+                          </div>
+                          <p className="text-center text-sm text-muted-foreground mt-4">
+                            Abra o app do seu banco e escaneie o código
                           </p>
                         </div>
 
+                        {/* Valor do pedido destacado */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4">
+                          <div className="text-center space-y-2">
+                            <p className="text-sm text-muted-foreground">Valor total do pedido</p>
+                            <p className="text-3xl font-bold text-blue-900">R$ {pixData.amount.toFixed(2)}</p>
+                            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>QR Code válido por 30 minutos</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Código PIX copiável */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-semibold flex items-center gap-2">
+                              <Copy className="h-4 w-4" />
+                              Código PIX (Copiar)
+                            </Label>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (pixData.qr_code) {
+                                  navigator.clipboard.writeText(pixData.qr_code);
+                                  toast({
+                                    title: 'Código copiado! ✅',
+                                    description: 'Cole no seu app de pagamento',
+                                  });
+                                }
+                              }}
+                              className="gap-2"
+                            >
+                              <Copy className="h-4 w-4" />
+                              Copiar
+                            </Button>
+                          </div>
+                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 p-4 rounded-lg">
+                            <p className="font-mono text-xs break-all text-gray-700 select-all">
+                              {pixData.qr_code}
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Caso não consiga escanear, copie e cole o código acima no app do seu banco
+                          </p>
+                        </div>
+
+                        {/* Informações importantes */}
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-xs font-bold text-amber-900">!</span>
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <p className="text-sm font-semibold text-amber-900">Importante</p>
+                              <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
+                                <li>O pagamento é confirmado automaticamente após o pagamento</li>
+                                <li>Você receberá um e-mail de confirmação</li>
+                                <li>Mantenha esta página aberta até confirmar o pagamento</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+
                         {paymentStatus === 'waiting_payment' && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-center gap-2 text-orange-600">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span className="text-sm">Aguardando pagamento...</span>
+                          <div className="space-y-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <div className="flex items-center justify-center gap-3">
+                                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                                <div className="text-center">
+                                  <p className="font-semibold text-blue-900">Aguardando pagamento...</p>
+                                  <p className="text-xs text-blue-700 mt-1">Após o pagamento, confirmaremos automaticamente</p>
+                                </div>
+                              </div>
                             </div>
                             
                             <Button 

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useHomeConfig } from "@/contexts/HomeConfigContext";
-import { Calendar, MapPin, Users, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Users, ArrowRight, Clock } from "lucide-react";
 import { useUpcomingEvents } from "@/hooks/useEvents";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -81,10 +81,41 @@ export const EventosDestaque = () => {
                 )}
 
                 <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    {format(new Date(event.data_evento), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                  </div>
+                  {(() => {
+                    // Usar data_inicio se disponível, senão data_evento (compatibilidade)
+                    const dataInicio = event.data_inicio || event.data_evento;
+                    const dataFim = event.data_fim;
+                    const isMultiDay = !!dataFim;
+                    
+                    return (
+                      <div className="space-y-2">
+                        {isMultiDay ? (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs px-1.5 py-0">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Múltiplos Dias
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground pl-6 space-y-0.5">
+                              <div>
+                                <span className="font-medium">Início:</span> {format(new Date(dataInicio), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </div>
+                              <div>
+                                <span className="font-medium">Término:</span> {format(new Date(dataFim), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="w-4 h-4" />
+                            {format(new Date(dataInicio), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {event.local && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

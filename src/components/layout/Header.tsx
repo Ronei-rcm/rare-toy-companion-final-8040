@@ -154,52 +154,55 @@ const Header = () => {
       {/* Header Principal */}
       <header 
         className={cn(
-          'fixed left-0 right-0 z-40 px-6 py-3 transition-all duration-300 bg-white border-b',
+          'fixed left-0 right-0 z-40 px-3 sm:px-6 py-3 transition-all duration-300 bg-white border-b',
           showTopBar ? 'mt-10' : 'mt-0',
           isScrolled ? 'shadow-md' : ''
         )}
       >
         <div className="container max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="flex items-center">
+          <div className="flex items-center justify-between gap-2">
+            {/* Botão Menu Mobile - Primeiro (esquerda) */}
+            <button 
+              className="lg:hidden p-2 hover:bg-muted rounded-md flex-shrink-0 order-first"
+              onClick={toggleMenu}
+              aria-label="Menu"
+            >
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            {/* Logo - Centralizado no mobile, esquerda no desktop */}
+            <Link to="/" className="flex items-center space-x-2 flex-shrink-0 min-w-0 flex-1 lg:flex-none justify-center lg:justify-start">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <img 
                   src={(import.meta as any).env?.VITE_BRAND_LOGO_URL || config.theme.logoUrl || defaultLogo} 
                   alt="MuhlStore Logo" 
-                  className="h-10 mr-2"
+                  className="h-8 sm:h-10 flex-shrink-0"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = defaultLogo;
                   }}
                 />
-                <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+                {/* Texto "MuhlStore" - oculto em telas muito pequenas para evitar sobreposição */}
+                <span className="font-bold text-base sm:text-xl tracking-tight bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent hidden sm:inline-block">
                   MuhlStore
                 </span>
               </div>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-1">
+            <nav className="hidden lg:flex items-center space-x-1 flex-1">
               <NavLinks isAdmin={isAdmin} isLogged={Boolean(user)} />
             </nav>
 
             {/* Ações à direita: Conta, Favoritos, Carrinho */}
-            <div className="flex items-center gap-2">
-              {/* Botão Menu Mobile */}
-              <button 
-                className="lg:hidden p-2 hover:bg-muted rounded-md"
-                onClick={toggleMenu}
-              >
-                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
 
               {/* Usuário/Login */}
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="relative inline-flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:opacity-90 transition-opacity">
-                      <User className="h-5 w-5" />
+                    <button className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:opacity-90 transition-opacity flex-shrink-0">
+                      <User className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -221,9 +224,9 @@ const Header = () => {
               ) : (
                 <Link 
                   to="/auth/login" 
-                  className="relative inline-flex items-center justify-center h-10 w-10 rounded-full border-2 border-orange-500 text-orange-500 hover:bg-orange-50 transition-colors"
+                  className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full border-2 border-orange-500 text-orange-500 hover:bg-orange-50 transition-colors flex-shrink-0"
                 >
-                  <User className="h-5 w-5" />
+                  <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Link>
               )}
             
@@ -231,11 +234,11 @@ const Header = () => {
               <Link 
                 to="/minha-conta?tab=favoritos" 
                 aria-label="Favoritos" 
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-muted/50 transition-colors"
+                className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-md hover:bg-muted/50 transition-colors flex-shrink-0"
               >
-                <Heart className="h-5 w-5 text-orange-500" />
+                <Heart className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
                 {favoritesCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg">
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-bold shadow-lg text-[10px] sm:text-xs">
                     {favoritesCount > 9 ? '9+' : favoritesCount}
                   </span>
                 )}
@@ -246,9 +249,9 @@ const Header = () => {
                 to="/admin" 
                 aria-label="Área Administrativa" 
                 title="Acesso Admin"
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-orange-50 transition-colors group"
+                className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-md hover:bg-orange-50 transition-colors group flex-shrink-0"
               >
-                <Shield className="h-5 w-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
               </Link>
 
               {/* Notificações de E-mail (apenas para admins) */}
@@ -260,14 +263,14 @@ const Header = () => {
               {/* Carrinho */}
               <button
                 onClick={() => setCartOpen(true)}
-                className="relative inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-muted/50 transition-colors"
+                className="relative inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-md hover:bg-muted/50 transition-colors flex-shrink-0"
                 aria-label="Carrinho de compras"
               >
-                <ShoppingCart className="h-5 w-5 text-orange-500" />
+                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
                 {state.quantidadeTotal > 0 && (
                   <span 
                     className={cn(
-                      "absolute -top-1 -right-1 bg-gradient-to-r from-orange-600 to-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg",
+                      "absolute -top-1 -right-1 bg-gradient-to-r from-orange-600 to-red-600 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center font-bold shadow-lg text-[10px] sm:text-xs",
                       badgeBump && "animate-bounce"
                     )}
                   >

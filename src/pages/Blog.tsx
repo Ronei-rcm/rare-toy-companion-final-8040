@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Clock, Eye, Search, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { onImageError } from '@/utils/resolveImage';
 
 interface BlogPost {
   id: string;
@@ -133,7 +134,8 @@ export default function Blog() {
                         <img
                           src={post.imagem_destaque}
                           alt={post.titulo}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 max-w-full max-h-full"
+                          onError={onImageError}
                         />
                         {post.categoria && (
                           <Badge className="absolute top-3 left-3 bg-white/90 text-black hover:bg-white">

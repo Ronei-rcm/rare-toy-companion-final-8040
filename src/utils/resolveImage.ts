@@ -10,22 +10,35 @@ export function resolveImage(src?: string): string {
 
 /**
  * Hook para tratar erro de carregamento de imagem
+ * Trata 404s silenciosamente e substitui por placeholder
  */
 export function onImageError(e: React.SyntheticEvent<HTMLImageElement>): void {
   const img = e.currentTarget;
   const src = img.src;
   
   // Evitar loop infinito
-  if (img.src.includes('/placeholder.png') || img.dataset.errorHandled === 'true') {
+  if (img.src.includes('/placeholder') || img.dataset.errorHandled === 'true') {
     return;
   }
   
   img.dataset.errorHandled = 'true';
-  console.warn(`🖼️ Imagem não encontrada: ${src.split('/').pop()}`);
   
-  // Substituir por placeholder
-  img.src = '/placeholder.png';
+  // Não logar 404s - são esperados quando imagens não existem
+  // Silenciosamente substituir por placeholder
+  
+  // Tentar usar placeholder.svg primeiro, depois placeholder.png
+  const placeholderSrc = '/placeholder.svg';
+  img.src = placeholderSrc;
   img.alt = 'Imagem não disponível';
+  
+  // Se o placeholder.svg também falhar, tentar placeholder.png
+  const handlePlaceholderError = () => {
+    if (img.src !== '/placeholder.png') {
+      img.src = '/placeholder.png';
+    }
+  };
+  
+  img.onerror = handlePlaceholderError;
 }
 
 export default resolveImage;

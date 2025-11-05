@@ -316,7 +316,7 @@ const Hero = () => {
                   <motion.img 
                     src={`${currentItem.imagem}?v=${Date.now()}`} 
                     alt={currentItem.nome} 
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover max-w-full max-h-full"
                     initial={{ scale: 1.1 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 1, ease: "easeOut" }}

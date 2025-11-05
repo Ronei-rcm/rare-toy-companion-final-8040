@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { onImageError } from '@/utils/resolveImage';
 
 interface BlogPost {
   id: string;
@@ -160,6 +161,7 @@ const BlogPost = () => {
                 src={post.imagem_destaque}
                 alt={post.titulo}
                 className="w-full h-full object-cover"
+                onError={onImageError}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             </div>

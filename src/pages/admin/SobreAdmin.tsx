@@ -857,9 +857,9 @@ const SobreAdmin = () => {
       {/* Modal de Edição Moderno */}
       {editingItem && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-orange-100">
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-orange-100">
             {/* Header do Modal */}
-            <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-6">
+            <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-6 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -895,8 +895,8 @@ const SobreAdmin = () => {
               </div>
             </div>
             
-            {/* Conteúdo do Modal */}
-            <div className="p-8 max-h-[calc(90vh-120px)] overflow-y-auto">
+            {/* Conteúdo do Modal - Scrollável */}
+            <div className="p-8 flex-1 overflow-y-auto">
               <div className="space-y-6">
                 {/* Campos Básicos */}
                 <div className="grid md:grid-cols-2 gap-6">
@@ -1104,8 +1104,8 @@ const SobreAdmin = () => {
               </div>
             </div>
             
-            {/* Footer do Modal */}
-            <div className="px-8 py-6 bg-slate-50 border-t border-orange-100 flex justify-end gap-3">
+            {/* Footer do Modal - Fixo na parte inferior */}
+            <div className="px-8 py-6 bg-slate-50 border-t border-orange-100 flex justify-end gap-3 flex-shrink-0">
               <Button 
                 variant="outline" 
                 onClick={handleCancel}
@@ -1113,19 +1113,23 @@ const SobreAdmin = () => {
               >
                 Cancelar
               </Button>
-                  <Button 
-                    onClick={() => handleSave(editingItem || activeTab)}
-                    className="gradient-brand text-white"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
-                    {isLoading ? 'Salvando...' : 
-                     editingItem && formData.id ? 'Atualizar' : 'Criar'}
-                  </Button>
+              <Button 
+                onClick={() => handleSave(editingItem || activeTab)}
+                className="gradient-brand text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {editingItem && formData.id ? 'Atualizar' : 'Criar'}
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>

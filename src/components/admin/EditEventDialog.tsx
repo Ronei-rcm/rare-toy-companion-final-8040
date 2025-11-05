@@ -25,7 +25,8 @@ export const EditEventDialog = ({ event, open, onOpenChange }: EditEventDialogPr
   const [formData, setFormData] = useState({
     titulo: "",
     descricao: "",
-    data_evento: "",
+    data_inicio: "",
+    data_fim: "",
     local: "",
     imagem_url: "",
     vagas_limitadas: false,
@@ -37,19 +38,27 @@ export const EditEventDialog = ({ event, open, onOpenChange }: EditEventDialogPr
 
   useEffect(() => {
     if (event) {
-      const dataEvento = new Date(event.data_evento);
-      // Format datetime-local value
-      const year = dataEvento.getFullYear();
-      const month = String(dataEvento.getMonth() + 1).padStart(2, '0');
-      const day = String(dataEvento.getDate()).padStart(2, '0');
-      const hours = String(dataEvento.getHours()).padStart(2, '0');
-      const minutes = String(dataEvento.getMinutes()).padStart(2, '0');
-      const dateTimeLocalValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+      // Função para formatar data para datetime-local
+      const formatDateTimeLocal = (dateString: string | undefined) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      };
+
+      // Usar data_inicio se disponível, senão usar data_evento (compatibilidade)
+      const dataInicio = event.data_inicio || event.data_evento;
+      const dataFim = event.data_fim || "";
 
       setFormData({
         titulo: event.titulo,
         descricao: event.descricao || "",
-        data_evento: dateTimeLocalValue,
+        data_inicio: formatDateTimeLocal(dataInicio),
+        data_fim: formatDateTimeLocal(dataFim),
         local: event.local || "",
         imagem_url: event.imagem_url || "",
         vagas_limitadas: event.vagas_limitadas || false,
@@ -62,11 +71,25 @@ export const EditEventDialog = ({ event, open, onOpenChange }: EditEventDialogPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validar que data_inicio foi preenchida
+    if (!formData.data_inicio) {
+      alert('Por favor, preencha a data de início do evento.');
+      return;
+    }
+
+    // Validar que data_fim não é anterior a data_inicio
+    if (formData.data_fim && formData.data_fim < formData.data_inicio) {
+      alert('A data de término não pode ser anterior à data de início.');
+      return;
+    }
+    
     updateEvent.mutate({
       id: event.id,
       titulo: formData.titulo,
       descricao: formData.descricao || null,
-      data_evento: formData.data_evento,
+      data_inicio: formData.data_inicio,
+      data_fim: formData.data_fim || null, // NULL = evento de 1 dia
+      data_evento: formData.data_inicio, // Mantido para compatibilidade
       local: formData.local || null,
       imagem_url: formData.imagem_url || null,
       vagas_limitadas: formData.vagas_limitadas,
@@ -114,17 +137,32 @@ export const EditEventDialog = ({ event, open, onOpenChange }: EditEventDialogPr
             </div>
 
             <div>
-              <Label htmlFor="data_evento">Data e Hora *</Label>
+              <Label htmlFor="data_inicio">Data e Hora de Início *</Label>
               <Input
-                id="data_evento"
+                id="data_inicio"
                 type="datetime-local"
-                value={formData.data_evento}
-                onChange={(e) => setFormData({ ...formData, data_evento: e.target.value })}
+                value={formData.data_inicio}
+                onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
                 required
               />
             </div>
 
             <div>
+              <Label htmlFor="data_fim">Data e Hora de Término (Opcional)</Label>
+              <Input
+                id="data_fim"
+                type="datetime-local"
+                value={formData.data_fim}
+                onChange={(e) => setFormData({ ...formData, data_fim: e.target.value })}
+                min={formData.data_inicio || undefined}
+                placeholder="Deixe em branco para evento de 1 dia"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Deixe em branco se o evento durar apenas 1 dia
+              </p>
+            </div>
+
+            <div className="col-span-2">
               <Label htmlFor="local">Local</Label>
               <Input
                 id="local"

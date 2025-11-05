@@ -24,7 +24,59 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (data?.authenticated && data?.user?.email) {
-            setUser({ id: data.user.id || data.user.email, email: data.user.email, nome: data.user.nome, avatar_url: data.user.avatar_url } as any);
+            // Buscar dados completos do cliente
+            const userId = data.user.id || data.user.email;
+            let fullUserData = {
+              id: userId,
+              email: data.user.email,
+              nome: data.user.nome || data.user.email,
+              avatar_url: data.user.avatar_url
+            };
+
+            // Tentar buscar dados completos do cliente
+            try {
+              const customerRes = await fetch(`${API_BASE_URL}/customers/${userId}`, {
+                credentials: 'include'
+              });
+
+              // Se não encontrar por ID, tentar por email
+              if (!customerRes.ok && data.user.email) {
+                const emailRes = await fetch(`${API_BASE_URL}/customers/by-email/${encodeURIComponent(data.user.email)}`, {
+                  credentials: 'include'
+                });
+                
+                if (emailRes.ok) {
+                  const customerData = await emailRes.json();
+                  fullUserData = {
+                    ...fullUserData,
+                    nome: customerData.nome || fullUserData.nome,
+                    telefone: customerData.telefone || customerData.phone,
+                    endereco: customerData.endereco || customerData.address,
+                    cidade: customerData.cidade || customerData.city,
+                    estado: customerData.estado || customerData.state,
+                    cep: customerData.cep || customerData.postal_code,
+                    avatar_url: customerData.avatar_url || customerData.avatar || fullUserData.avatar_url
+                  };
+                }
+              } else if (customerRes.ok) {
+                const customerData = await customerRes.json();
+                fullUserData = {
+                  ...fullUserData,
+                  nome: customerData.nome || fullUserData.nome,
+                  telefone: customerData.telefone || customerData.phone,
+                  endereco: customerData.endereco || customerData.address,
+                  cidade: customerData.cidade || customerData.city,
+                  estado: customerData.estado || customerData.state,
+                  cep: customerData.cep || customerData.postal_code,
+                  avatar_url: customerData.avatar_url || customerData.avatar || fullUserData.avatar_url
+                };
+              }
+            } catch (e) {
+              // Se não conseguir buscar dados completos, usar dados básicos
+              console.log('Não foi possível buscar dados completos do cliente:', e);
+            }
+
+            setUser(fullUserData as any);
           }
         }
       } catch (e) {
@@ -40,7 +92,13 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     try {
       setIsLoading(true);
-      setUser({ ...user, ...userData });
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      
+      // Notificar outros componentes sobre a atualização
+      window.dispatchEvent(new CustomEvent('user-data-updated', {
+        detail: updatedUser
+      }));
     } finally {
       setIsLoading(false);
     }

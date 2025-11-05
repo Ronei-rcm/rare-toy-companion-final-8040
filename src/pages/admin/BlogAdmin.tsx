@@ -40,6 +40,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { uploadApi } from '@/services/upload-api';
+import { onImageError } from '@/utils/resolveImage';
 
 interface BlogPost {
   id: string;
@@ -356,6 +357,29 @@ const BlogAdmin = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
+          <Button 
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/admin/blog/clean-broken-images', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                  toast.success(data.message || 'Imagens quebradas limpas com sucesso!');
+                  loadPosts();
+                } else {
+                  toast.error('Erro ao limpar imagens quebradas');
+                }
+              } catch (error) {
+                console.error('Erro ao limpar imagens:', error);
+                toast.error('Erro ao limpar imagens quebradas');
+              }
+            }}
+            variant="outline" 
+            size="sm"
+            className="text-orange-600 hover:text-orange-700"
+          >
+            <ImageIcon className="h-4 w-4 mr-2" />
+            Limpar Imagens Quebradas
+          </Button>
           <Button onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Post
@@ -513,9 +537,7 @@ const BlogAdmin = () => {
                           src={post.imagem_url}
                           alt={post.titulo}
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          }}
+                          onError={onImageError}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -772,10 +794,7 @@ const BlogAdmin = () => {
                         src={formData.imagem_url} 
                         alt="Preview" 
                         className="w-full h-48 object-cover rounded border" 
-                        onError={(e) => {
-                          console.error('Erro ao carregar imagem:', formData.imagem_url);
-                          (e.target as HTMLImageElement).src = '/placeholder.svg';
-                        }}
+                        onError={onImageError}
                       />
                     </div>
                   )}
@@ -795,10 +814,7 @@ const BlogAdmin = () => {
                         src={formData.imagem_destaque} 
                         alt="Preview" 
                         className="w-full h-48 object-cover rounded border" 
-                        onError={(e) => {
-                          console.error('Erro ao carregar imagem:', formData.imagem_destaque);
-                          (e.target as HTMLImageElement).src = '/placeholder.svg';
-                        }}
+                        onError={onImageError}
                       />
                     </div>
                   )}

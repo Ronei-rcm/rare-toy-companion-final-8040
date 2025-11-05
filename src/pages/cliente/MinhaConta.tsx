@@ -58,7 +58,7 @@ const MinhaConta = () => {
   const navigate = useNavigate();
   const { user, isLoading, logout } = useCurrentUser() as any;
   const [activeTab, setActiveTab] = useState('pedidos');
-  const [showWelcome, setShowWelcome] = useState(true);
+  // Removido showWelcome - banner desnecessário
   const [cacheVersion] = useState('v8.0.0-' + Date.now());
   const [buildTimestamp] = useState(Date.now());
   
@@ -298,49 +298,6 @@ const MinhaConta = () => {
           </div>
         )}
 
-        {/* Banner de boas-vindas */}
-        {user && showWelcome && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed bottom-6 right-6 max-w-sm z-50"
-          >
-            <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 shadow-2xl">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-white/20 rounded-full">
-                    <Crown className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold mb-1">Bem-vindo de volta!</h3>
-                    <p className="text-sm text-white/90 mb-3">
-                      Você tem {displayStats.pedidos?.pendentes || 0} pedidos aguardando processamento.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="secondary" 
-                        className="bg-white/20 text-white hover:bg-white/30"
-                        onClick={() => setActiveTab('pedidos')}
-                      >
-                        Ver Pedidos
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-white/80 hover:text-white"
-                        onClick={() => setShowWelcome(false)}
-                      >
-                        Fechar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
       </div>
     </Layout>
   );

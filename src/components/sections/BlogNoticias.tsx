@@ -7,6 +7,7 @@ import { Calendar, Clock, ArrowRight, BookOpen, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { onImageError } from '@/utils/resolveImage';
 
 interface BlogPost {
   id: string;
@@ -150,9 +151,7 @@ const BlogNoticias = () => {
                       src={postDestaque.imagem_destaque || postDestaque.imagem_url || '/placeholder.svg'}
                       alt={postDestaque.titulo}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder.svg';
-                      }}
+                      onError={onImageError}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute top-4 left-4">
@@ -203,9 +202,7 @@ const BlogNoticias = () => {
                           src={post.imagem_url || '/placeholder.svg'}
                           alt={post.titulo}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          }}
+                          onError={onImageError}
                         />
                       </div>
                       <div className="flex-1">

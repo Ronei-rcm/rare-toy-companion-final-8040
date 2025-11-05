@@ -94,16 +94,69 @@ try {
     console.log('📁 Diretório criado:', uploadsDir);
   }
   app.use('/lovable-uploads', (req, res, next) => {
-    const rel = String(req.path || '').replace(/^\/+/, '');
-    const target = path.join(uploadsDir, rel);
-    if (fs.existsSync(target)) {
-      return res.sendFile(target);
+    // req.path já inclui /lovable-uploads, então precisamos remover esse prefixo
+    const pathWithoutPrefix = req.path.replace(/^\/lovable-uploads\/?/, '');
+    const filename = pathWithoutPrefix.split('/').pop(); // Pegar apenas o nome do arquivo
+    const target = path.join(uploadsDir, filename);
+    
+    // Log para debug (apenas para PNG para não poluir logs)
+    const isPng = filename.toLowerCase().endsWith('.png');
+    if (isPng) {
+      console.log(`🔍 [lovable-uploads] ${req.path} -> ${filename} -> ${target}`);
+      console.log(`   Existe? ${fs.existsSync(target)}`);
     }
+    
+    if (fs.existsSync(target)) {
+      // Verificar se é um arquivo (não diretório)
+      const stats = fs.statSync(target);
+      if (stats.isFile()) {
+        // Determinar Content-Type baseado na extensão
+        const ext = path.extname(filename).toLowerCase();
+        const mimeTypes = {
+          '.png': 'image/png',
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.gif': 'image/gif',
+          '.webp': 'image/webp',
+          '.svg': 'image/svg+xml',
+          '.avif': 'image/avif',
+          '.bmp': 'image/bmp'
+        };
+        
+        const contentType = mimeTypes[ext] || 'application/octet-stream';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
+        
+        if (isPng) {
+          console.log(`✅ Servindo arquivo PNG: ${filename} (Content-Type: ${contentType}, Size: ${stats.size} bytes)`);
+        }
+        return res.sendFile(path.resolve(target));
+      } else {
+        console.warn(`⚠️ Caminho não é arquivo: ${target}`);
+      }
+    } else {
+      if (isPng) {
+        console.warn(`⚠️ Arquivo PNG não encontrado: ${target}`);
+      }
+    }
+    
     // Fallback para placeholder se arquivo não existir
     const placeholderPng = path.join(process.cwd(), 'public', 'placeholder.png');
     const placeholderSvg = path.join(process.cwd(), 'public', 'placeholder.svg');
-    if (fs.existsSync(placeholderPng)) return res.sendFile(placeholderPng);
-    if (fs.existsSync(placeholderSvg)) return res.sendFile(placeholderSvg);
+    if (fs.existsSync(placeholderPng)) {
+      if (isPng) {
+        console.warn(`⚠️ Usando placeholder para PNG não encontrado: ${req.path}`);
+      }
+      res.setHeader('Content-Type', 'image/png');
+      return res.sendFile(path.resolve(placeholderPng));
+    }
+    if (fs.existsSync(placeholderSvg)) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return res.sendFile(path.resolve(placeholderSvg));
+    }
+    console.error(`❌ Arquivo não encontrado e placeholder indisponível: ${req.path}`);
     return res.status(404).send('Not Found');
   });
 } catch (e) {
@@ -168,12 +221,6 @@ app.get(/^\/https?:\/\/[^/]+(\/.*)$/i, (req, res) => {
   }
 });
 
-// Serve static files from public directory (com headers para evitar ORB)
-app.use('/lovable-uploads', (req, res, next) => {
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  next();
-}, express.static(path.join(__dirname, '../public/lovable-uploads')));
 // Também servir uploads padrão
 // servir /uploads do mesmo diretório base do multer
 app.use('/uploads', (req, res, next) => {
@@ -325,10 +372,24 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
+    // Aceitar qualquer tipo de imagem
     if (file.mimetype.startsWith('image/')) {
+      // Log específico para PNG para debug
+      if (file.mimetype === 'image/png' || file.originalname.toLowerCase().endsWith('.png')) {
+        console.log(`📸 Upload de PNG detectado: ${file.originalname} (mimetype: ${file.mimetype})`);
+      }
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed!'), false);
+      // Também verificar por extensão caso o mimetype não seja detectado
+      const ext = path.extname(file.originalname).toLowerCase();
+      const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif', '.bmp'];
+      if (imageExts.includes(ext)) {
+        console.log(`📸 Upload de imagem por extensão: ${file.originalname} (mimetype: ${file.mimetype}, extensão: ${ext})`);
+        cb(null, true);
+      } else {
+        console.warn(`⚠️ Arquivo rejeitado: ${file.originalname} (mimetype: ${file.mimetype}, extensão: ${ext})`);
+        cb(new Error('Only image files are allowed!'), false);
+      }
     }
   }
 });
@@ -1717,14 +1778,14 @@ app.get('/api/events', async (req, res) => {
     console.log('🔄 Buscando eventos...');
     const [rows] = await pool.execute(`
       SELECT 
-        id, titulo, descricao, data_evento, local, numero_vagas,
+        id, titulo, descricao, data_evento, data_inicio, data_fim, local, numero_vagas,
         vagas_limitadas, imagem_url, ativo,
         NULL AS feira_fechada,
         NULL AS renda_total,
         NULL AS participantes_confirmados,
         created_at, updated_at
       FROM events 
-      ORDER BY data_evento ASC
+      ORDER BY COALESCE(data_inicio, data_evento) ASC
     `);
     
     console.log(`✅ ${rows.length} eventos encontrados`);
@@ -1787,17 +1848,26 @@ app.post('/api/events', async (req, res) => {
     const eventoData = req.body;
     console.log('🔄 Criando evento:', eventoData.titulo);
     
+    // Usar data_inicio se disponível, senão data_evento (compatibilidade)
+    const dataInicio = eventoData.data_inicio || eventoData.data_evento;
+    const dataFim = eventoData.data_fim || null;
+    
+    // Se data_inicio não foi fornecida, usar data_evento
+    const dataEvento = dataInicio || eventoData.data_evento;
+    
     const [result] = await pool.execute(`
       INSERT INTO events (
-        id, titulo, descricao, data_evento, local, numero_vagas,
+        id, titulo, descricao, data_evento, data_inicio, data_fim, local, numero_vagas,
         vagas_limitadas, imagem_url, ativo, feira_fechada, renda_total,
         participantes_confirmados
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       require('crypto').randomUUID(),
       eventoData.titulo,
       eventoData.descricao || null,
-      formatDateForMySQL(eventoData.data_evento),
+      formatDateForMySQL(dataEvento),
+      formatDateForMySQL(dataInicio),
+      dataFim ? formatDateForMySQL(dataFim) : null,
       eventoData.local || null,
       eventoData.numero_vagas || null,
       eventoData.vagas_limitadas || false,
@@ -1823,16 +1893,25 @@ app.put('/api/events/:id', async (req, res) => {
     const eventoData = req.body;
     console.log(`🔄 Atualizando evento ID: ${id}`);
     
+    // Usar data_inicio se disponível, senão data_evento (compatibilidade)
+    const dataInicio = eventoData.data_inicio || eventoData.data_evento;
+    const dataFim = eventoData.data_fim || null;
+    
+    // Se data_inicio não foi fornecida, usar data_evento
+    const dataEvento = dataInicio || eventoData.data_evento;
+    
     const [result] = await pool.execute(`
       UPDATE events SET 
-        titulo = ?, descricao = ?, data_evento = ?, local = ?,
+        titulo = ?, descricao = ?, data_evento = ?, data_inicio = ?, data_fim = ?, local = ?,
         numero_vagas = ?, vagas_limitadas = ?, imagem_url = ?, ativo = ?,
         feira_fechada = ?, renda_total = ?, participantes_confirmados = ?, updated_at = NOW()
       WHERE id = ?
     `, [
       eventoData.titulo,
       eventoData.descricao || null,
-      formatDateForMySQL(eventoData.data_evento),
+      formatDateForMySQL(dataEvento),
+      formatDateForMySQL(dataInicio),
+      dataFim ? formatDateForMySQL(dataFim) : null,
       eventoData.local || null,
       eventoData.numero_vagas || null,
       eventoData.vagas_limitadas || false,
@@ -5683,6 +5762,36 @@ app.post('/api/collections/seed', async (req, res) => {
   }
 });
 
+// Função utilitária para verificar se uma imagem existe
+function imageExists(imageUrl) {
+  if (!imageUrl) return false;
+  
+  // Remover query params e fragmentos
+  const cleanUrl = imageUrl.split('?')[0].split('#')[0];
+  
+  // Se for URL absoluta, extrair o path
+  let filePath = cleanUrl;
+  if (cleanUrl.startsWith('http')) {
+    try {
+      const url = new URL(cleanUrl);
+      filePath = url.pathname;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // Remover /lovable-uploads/ do início se existir
+  const filename = filePath.replace(/^\/lovable-uploads\//, '');
+  const uploadsDir = path.join(__dirname, '../public/lovable-uploads');
+  const fullPath = path.join(uploadsDir, filename);
+  
+  try {
+    return fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
+  } catch (e) {
+    return false;
+  }
+}
+
 // Upload de imagem para coleções
 app.post('/api/collections/upload-image', upload.single('image'), async (req, res) => {
   try {
@@ -5690,10 +5799,19 @@ app.post('/api/collections/upload-image', upload.single('image'), async (req, re
       return res.status(400).json({ error: 'Nenhuma imagem foi enviada' });
     }
 
+    // Verificar se o arquivo foi realmente salvo
+    const uploadsDir = path.join(__dirname, '../public/lovable-uploads');
+    const filePath = path.join(uploadsDir, req.file.filename);
+    
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ Arquivo não foi salvo: ${req.file.filename}`);
+      return res.status(500).json({ error: 'Erro ao salvar arquivo' });
+    }
+
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
     const fullUrl = getPublicUrl(req, imageUrl);
     
-    console.log(`✅ Imagem de coleção enviada: ${req.file.filename}`);
+    console.log(`✅ Imagem de coleção enviada e validada: ${req.file.filename}`);
     
     res.json({ 
       success: true, 
@@ -9962,6 +10080,26 @@ app.post('/api/admin/blog/posts', async (req, res) => {
       return res.status(400).json({ error: 'Título, resumo e conteúdo são obrigatórios' });
     }
     
+    // Validar URLs de imagens antes de salvar
+    let validImagemUrl = null;
+    let validImagemDestaque = null;
+    
+    if (imagem_url) {
+      if (imageExists(imagem_url)) {
+        validImagemUrl = imagem_url;
+      } else {
+        console.warn(`⚠️ Imagem URL não encontrada: ${imagem_url} - será ignorada`);
+      }
+    }
+    
+    if (imagem_destaque) {
+      if (imageExists(imagem_destaque)) {
+        validImagemDestaque = imagem_destaque;
+      } else {
+        console.warn(`⚠️ Imagem destaque não encontrada: ${imagem_destaque} - será ignorada`);
+      }
+    }
+    
     // Gerar slug se não fornecido
     const finalSlug = slug || titulo.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
@@ -9981,7 +10119,7 @@ app.post('/api/admin/blog/posts', async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId, titulo, finalSlug, resumo, conteudo, categoria,
-        imagem_url, imagem_destaque, autor, autor_avatar,
+        validImagemUrl, validImagemDestaque, autor, autor_avatar,
         tempo_leitura, destaque, status, JSON.stringify(tags),
         meta_title || titulo, meta_description || resumo, meta_keywords,
         publicado_em || (status === 'publicado' ? new Date() : null)
@@ -10005,10 +10143,93 @@ app.post('/api/admin/blog/posts', async (req, res) => {
   }
 });
 
+// POST /api/admin/blog/clean-broken-images - Limpar imagens quebradas
+app.post('/api/admin/blog/clean-broken-images', async (req, res) => {
+  try {
+    // Buscar todos os posts com imagens
+    const [posts] = await pool.execute(
+      'SELECT id, titulo, imagem_url, imagem_destaque FROM blog_posts WHERE imagem_url IS NOT NULL OR imagem_destaque IS NOT NULL'
+    );
+    
+    let cleaned = 0;
+    let errors = [];
+    
+    for (const post of posts) {
+      let needsUpdate = false;
+      let newImagemUrl = post.imagem_url;
+      let newImagemDestaque = post.imagem_destaque;
+      
+      // Verificar imagem_url
+      if (post.imagem_url && !imageExists(post.imagem_url)) {
+        console.warn(`⚠️ Limpando imagem quebrada: ${post.imagem_url} (post: ${post.titulo})`);
+        newImagemUrl = null;
+        needsUpdate = true;
+      }
+      
+      // Verificar imagem_destaque
+      if (post.imagem_destaque && !imageExists(post.imagem_destaque)) {
+        console.warn(`⚠️ Limpando imagem destaque quebrada: ${post.imagem_destaque} (post: ${post.titulo})`);
+        newImagemDestaque = null;
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        try {
+          await pool.execute(
+            'UPDATE blog_posts SET imagem_url = ?, imagem_destaque = ?, updated_at = NOW() WHERE id = ?',
+            [newImagemUrl, newImagemDestaque, post.id]
+          );
+          cleaned++;
+        } catch (error) {
+          errors.push(`Erro ao limpar post ${post.id}: ${error.message}`);
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      total: posts.length,
+      cleaned,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `${cleaned} post(s) limpo(s) com sucesso`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao limpar imagens quebradas:', error);
+    res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
+  }
+});
+
 // PUT /api/admin/blog/posts/:id - Atualizar post
 app.put('/api/admin/blog/posts/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Validar URLs de imagens antes de atualizar
+    let validImagemUrl = undefined; // undefined = não alterar, null = limpar, string = atualizar
+    let validImagemDestaque = undefined;
+    
+    if (req.body.imagem_url !== undefined) {
+      if (req.body.imagem_url && imageExists(req.body.imagem_url)) {
+        validImagemUrl = req.body.imagem_url;
+      } else if (req.body.imagem_url) {
+        console.warn(`⚠️ Imagem URL não encontrada: ${req.body.imagem_url} - será ignorada`);
+        validImagemUrl = undefined; // Não alterar se não existe
+      } else {
+        validImagemUrl = null; // Permite limpar a imagem (string vazia)
+      }
+    }
+    
+    if (req.body.imagem_destaque !== undefined) {
+      if (req.body.imagem_destaque && imageExists(req.body.imagem_destaque)) {
+        validImagemDestaque = req.body.imagem_destaque;
+      } else if (req.body.imagem_destaque) {
+        console.warn(`⚠️ Imagem destaque não encontrada: ${req.body.imagem_destaque} - será ignorada`);
+        validImagemDestaque = undefined; // Não alterar se não existe
+      } else {
+        validImagemDestaque = null; // Permite limpar a imagem
+      }
+    }
     const {
       titulo,
       slug,
@@ -10032,47 +10253,34 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
     // Converter undefined para null
     const tagsValue = tags !== undefined ? (Array.isArray(tags) ? JSON.stringify(tags) : tags) : null;
     
+    // Construir query UPDATE dinamicamente
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (titulo !== undefined) { updateFields.push('titulo = ?'); updateValues.push(titulo); }
+    if (slug !== undefined) { updateFields.push('slug = ?'); updateValues.push(slug); }
+    if (resumo !== undefined) { updateFields.push('resumo = ?'); updateValues.push(resumo); }
+    if (conteudo !== undefined) { updateFields.push('conteudo = ?'); updateValues.push(conteudo); }
+    if (categoria !== undefined) { updateFields.push('categoria = ?'); updateValues.push(categoria); }
+    if (validImagemUrl !== undefined) { updateFields.push('imagem_url = ?'); updateValues.push(validImagemUrl); }
+    if (validImagemDestaque !== undefined) { updateFields.push('imagem_destaque = ?'); updateValues.push(validImagemDestaque); }
+    if (autor !== undefined) { updateFields.push('autor = ?'); updateValues.push(autor); }
+    if (autor_avatar !== undefined) { updateFields.push('autor_avatar = ?'); updateValues.push(autor_avatar); }
+    if (tempo_leitura !== undefined) { updateFields.push('tempo_leitura = ?'); updateValues.push(tempo_leitura); }
+    if (destaque !== undefined) { updateFields.push('destaque = ?'); updateValues.push(destaque); }
+    if (status !== undefined) { updateFields.push('status = ?'); updateValues.push(status); }
+    if (tags !== undefined) { updateFields.push('tags = ?'); updateValues.push(tagsValue); }
+    if (meta_title !== undefined) { updateFields.push('meta_title = ?'); updateValues.push(meta_title); }
+    if (meta_description !== undefined) { updateFields.push('meta_description = ?'); updateValues.push(meta_description); }
+    if (meta_keywords !== undefined) { updateFields.push('meta_keywords = ?'); updateValues.push(meta_keywords); }
+    if (publicado_em !== undefined) { updateFields.push('publicado_em = ?'); updateValues.push(publicado_em); }
+    
+    updateFields.push('updated_at = NOW()');
+    updateValues.push(id);
+    
     const [result] = await pool.execute(
-      `UPDATE blog_posts SET
-        titulo = ?,
-        slug = ?,
-        resumo = ?,
-        conteudo = ?,
-        categoria = ?,
-        imagem_url = ?,
-        imagem_destaque = ?,
-        autor = ?,
-        autor_avatar = ?,
-        tempo_leitura = ?,
-        destaque = ?,
-        status = ?,
-        tags = ?,
-        meta_title = ?,
-        meta_description = ?,
-        meta_keywords = ?,
-        publicado_em = ?,
-        updated_at = NOW()
-      WHERE id = ?`,
-      [
-        titulo ?? null,
-        slug ?? null,
-        resumo ?? null,
-        conteudo ?? null,
-        categoria ?? null,
-        imagem_url ?? null,
-        imagem_destaque ?? null,
-        autor ?? null,
-        autor_avatar ?? null,
-        tempo_leitura ?? null,
-        destaque ?? null,
-        status ?? null,
-        tagsValue,
-        meta_title ?? null,
-        meta_description ?? null,
-        meta_keywords ?? null,
-        publicado_em ?? null,
-        id
-      ]
+      `UPDATE blog_posts SET ${updateFields.join(', ')} WHERE id = ?`,
+      updateValues
     );
     
     if (result.affectedRows === 0) {

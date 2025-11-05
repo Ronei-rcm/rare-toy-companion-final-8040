@@ -1,33 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Package, 
   MapPin, 
   Heart, 
-  Bell, 
-  Gift, 
-  Star, 
-  Settings, 
-  User,
   TrendingUp,
   ShoppingCart,
-  Award,
   Clock,
-  CheckCircle,
   AlertCircle
 } from 'lucide-react';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
 import { useCart } from '@/contexts/CartContext';
+import { useCustomerStats } from '@/hooks/useCustomerStats';
+import { useNavigate } from 'react-router-dom';
 
 interface StatsCardProps {
   title: string;
   value: string | number;
   description: string;
   icon: React.ReactNode;
-  trend?: 'up' | 'down' | 'neutral';
   color?: 'primary' | 'secondary' | 'success' | 'warning' | 'destructive';
 }
 
@@ -36,7 +30,6 @@ const StatsCard: React.FC<StatsCardProps> = ({
   value, 
   description, 
   icon, 
-  trend = 'neutral',
   color = 'primary'
 }) => {
   const getColorClasses = () => {
@@ -49,29 +42,18 @@ const StatsCard: React.FC<StatsCardProps> = ({
     }
   };
 
-  const getTrendIcon = () => {
-    switch (trend) {
-      case 'up': return <TrendingUp className="h-3 w-3 text-green-500" />;
-      case 'down': return <TrendingUp className="h-3 w-3 text-red-500 rotate-180" />;
-      default: return null;
-    }
-  };
-
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-lg ${getColorClasses()}`}>
-              {icon}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">{title}</p>
-              <p className="text-2xl font-bold">{value}</p>
-              <p className="text-xs text-muted-foreground">{description}</p>
-            </div>
+        <div className="flex items-center space-x-4">
+          <div className={`p-3 rounded-lg ${getColorClasses()}`}>
+            {icon}
           </div>
-          {getTrendIcon()}
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -127,64 +109,16 @@ const QuickAction: React.FC<QuickActionProps> = ({
 };
 
 const EnhancedMinhaConta: React.FC = () => {
-  const { user } = useCurrentUser();
   const { state: cartState } = useCart();
-  const [stats, setStats] = useState({
-    totalPedidos: 0,
-    pedidosPendentes: 0,
-    totalGasto: 0,
-    favoritos: 0,
-    enderecos: 0,
-    cupons: 0
-  });
-
-  useEffect(() => {
-    // Carregar estatísticas reais da API
-    loadStats();
-  }, [user]);
-
-  const loadStats = async () => {
-    try {
-      // Tentar buscar dados reais primeiro
-      const response = await fetch('/api/customers/current/stats', { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        // Se retornou dados válidos (não apenas zeros), usar
-        if (data.totalPedidos > 0 || data.totalGasto > 0) {
-          setStats(data);
-          return;
-        }
-      }
-      
-      // Fallback para dados simulados para demonstração
-      setStats({
-        totalPedidos: 12,
-        pedidosPendentes: 2,
-        totalGasto: 1250.75,
-        favoritos: 8,
-        enderecos: 3,
-        cupons: 2
-      });
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-      // Fallback para dados simulados
-      setStats({
-        totalPedidos: 12,
-        pedidosPendentes: 2,
-        totalGasto: 1250.75,
-        favoritos: 8,
-        enderecos: 3,
-        cupons: 2
-      });
-    }
-  };
+  const navigate = useNavigate();
+  const { stats, loading, error, refetch } = useCustomerStats();
 
   const quickActions = [
     {
       title: 'Fazer Pedido',
       description: 'Adicionar produtos ao carrinho',
       icon: <ShoppingCart className="h-4 w-4" />,
-      onClick: () => window.location.href = '/loja',
+      onClick: () => navigate('/loja'),
       badge: cartState.quantidadeTotal > 0 ? `${cartState.quantidadeTotal} itens` : undefined,
       color: 'primary' as const
     },
@@ -192,93 +126,98 @@ const EnhancedMinhaConta: React.FC = () => {
       title: 'Rastrear Pedido',
       description: 'Acompanhe seus pedidos em tempo real',
       icon: <Package className="h-4 w-4" />,
-      onClick: () => {},
-      badge: stats.pedidosPendentes > 0 ? `${stats.pedidosPendentes} pendentes` : undefined,
+      onClick: () => navigate('/minha-conta?tab=pedidos'),
+      badge: (stats?.pedidosPendentes || 0) > 0 ? `${stats.pedidosPendentes} pendentes` : undefined,
       color: 'warning' as const
     },
     {
       title: 'Adicionar Endereço',
       description: 'Gerencie seus endereços de entrega',
       icon: <MapPin className="h-4 w-4" />,
-      onClick: () => {},
+      onClick: () => navigate('/minha-conta?tab=enderecos'),
       color: 'secondary' as const
     },
     {
       title: 'Ver Favoritos',
       description: 'Produtos que você ama',
       icon: <Heart className="h-4 w-4" />,
-      onClick: () => {},
-      badge: stats.favoritos > 0 ? `${stats.favoritos} itens` : undefined,
+      onClick: () => navigate('/minha-conta?tab=favoritos'),
+      badge: (stats?.favoritos || 0) > 0 ? `${stats.favoritos} itens` : undefined,
       color: 'success' as const
     }
   ];
 
+  if (loading && !stats.lastUpdated) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-12">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-muted rounded w-1/2" />
+              <div className="h-4 bg-muted rounded w-3/4" />
+              <div className="grid grid-cols-4 gap-4 mt-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-24 bg-muted rounded" />
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header com boas-vindas */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-blue-900">
-                Olá, {user?.nome || 'Cliente'}! 👋
-              </h1>
-              <p className="text-blue-700 mt-1">
-                Bem-vindo à sua área personalizada
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-blue-600">Cliente desde</p>
-              <p className="font-semibold text-blue-900">Janeiro 2024</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Erro ao carregar - apenas se houver erro real */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Estatísticas principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Total de Pedidos"
-          value={stats.totalPedidos}
+          value={stats?.totalPedidos || 0}
           description="Todos os tempos"
           icon={<Package className="h-5 w-5" />}
-          trend="up"
           color="primary"
         />
         <StatsCard
           title="Pedidos Pendentes"
-          value={stats.pedidosPendentes}
+          value={stats?.pedidosPendentes || 0}
           description="Aguardando processamento"
           icon={<Clock className="h-5 w-5" />}
           color="warning"
         />
         <StatsCard
           title="Total Gasto"
-          value={`R$ ${Number(stats.totalGasto || 0).toFixed(2)}`}
+          value={`R$ ${Number(stats?.totalGasto || 0).toFixed(2)}`}
           description="Valor total das compras"
           icon={<TrendingUp className="h-5 w-5" />}
-          trend="up"
           color="success"
         />
         <StatsCard
           title="Favoritos"
-          value={stats.favoritos}
+          value={stats?.favoritos || 0}
           description="Produtos salvos"
           icon={<Heart className="h-5 w-5" />}
           color="secondary"
         />
       </div>
 
-      {/* Ações rápidas */}
+      {/* Ações rápidas - simplificado */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Award className="h-5 w-5" />
-            <span>Ações Rápidas</span>
-          </CardTitle>
-          <CardDescription>
-            Acesso rápido às funcionalidades mais usadas
-          </CardDescription>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Ações Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -288,63 +227,6 @@ const EnhancedMinhaConta: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Status da conta */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span>Status da Conta</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Verificação de Email</span>
-              <Badge variant="default" className="bg-green-100 text-green-800">
-                Verificado
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Endereços Cadastrados</span>
-              <Badge variant="outline">
-                {stats.enderecos} endereço{stats.enderecos !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Cupons Disponíveis</span>
-              <Badge variant="secondary">
-                {stats.cupons} cupom{stats.cupons !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertCircle className="h-5 w-5 text-yellow-500" />
-              <span>Atividades Recentes</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 text-sm">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Último login: Hoje às 14:30</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Pedido #1234 enviado</span>
-              </div>
-              <div className="flex items-center space-x-3 text-sm">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span>Novo endereço adicionado</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };

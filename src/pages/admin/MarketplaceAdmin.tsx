@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadApi } from '@/services/upload-api';
+import { onImageError } from '@/utils/resolveImage';
 
 interface MarketplaceSeller {
   id: string;
@@ -867,10 +868,7 @@ const MarketplaceAdmin = () => {
                       src={formData.imagem_perfil} 
                       alt="Preview" 
                       className="w-48 h-48 object-cover rounded border" 
-                      onError={(e) => {
-                        console.error('Erro ao carregar imagem:', formData.imagem_perfil);
-                        (e.target as HTMLImageElement).src = '/placeholder.svg';
-                      }}
+                      onError={onImageError}
                     />
                   </div>
                 )}
@@ -890,10 +888,7 @@ const MarketplaceAdmin = () => {
                       src={formData.imagem_capa} 
                       alt="Preview" 
                       className="w-full h-48 object-cover rounded border" 
-                      onError={(e) => {
-                        console.error('Erro ao carregar imagem:', formData.imagem_capa);
-                        (e.target as HTMLImageElement).src = '/placeholder.svg';
-                      }}
+                      onError={onImageError}
                     />
                   </div>
                 )}

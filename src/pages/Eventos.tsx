@@ -213,14 +213,53 @@ const Eventos = () => {
                       )}
 
                       <div className="space-y-4 mb-6">
-                        <div className="flex items-center text-slate-500">
-                          <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-amber-100 rounded-lg flex items-center justify-center mr-3">
-                            <Calendar className="h-4 w-4 text-orange-600" />
-                          </div>
-                          <span className="font-medium">
-                            {format(new Date(event.data_evento), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                        </div>
+                        {(() => {
+                          // Usar data_inicio se disponível, senão data_evento (compatibilidade)
+                          const dataInicio = event.data_inicio || event.data_evento;
+                          const dataFim = event.data_fim;
+                          const isMultiDay = !!dataFim;
+                          
+                          return (
+                            <div className="space-y-2">
+                              {isMultiDay ? (
+                                // Evento com duração (múltiplos dias)
+                                <>
+                                  <div className="flex items-center text-slate-500">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-amber-100 rounded-lg flex items-center justify-center mr-3">
+                                      <Calendar className="h-4 w-4 text-orange-600" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                                          <Clock className="w-3 h-3 mr-1" />
+                                          Múltiplos Dias
+                                        </Badge>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="font-medium">
+                                          <span className="text-slate-400">Início:</span> {format(new Date(dataInicio), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                                        </div>
+                                        <div className="font-medium">
+                                          <span className="text-slate-400">Término:</span> {format(new Date(dataFim), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                // Evento de 1 dia
+                                <div className="flex items-center text-slate-500">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-amber-100 rounded-lg flex items-center justify-center mr-3">
+                                    <Calendar className="h-4 w-4 text-orange-600" />
+                                  </div>
+                                  <span className="font-medium">
+                                    {format(new Date(dataInicio), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {event.local && (
                           <div className="flex items-center text-slate-500">

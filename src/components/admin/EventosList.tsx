@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, MapPin, Users, Edit, Trash2, Plus, DollarSign, CheckCircle, Copy, RefreshCw, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Users, Edit, Trash2, Plus, DollarSign, CheckCircle, Copy, RefreshCw, ExternalLink, Clock } from "lucide-react";
 import { useEvents, useDeleteEvent, useFecharFeira } from "@/hooks/useEvents";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -125,17 +125,49 @@ export const EventosList = () => {
                   <div className="flex-1">
                     <CardTitle className="text-lg mb-2">{event.titulo}</CardTitle>
                     
-                    <div className="flex items-center gap-4 mb-2 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {format(new Date(event.data_evento), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                      </div>
-                      {event.local && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {event.local}
-                        </div>
-                      )}
+                    <div className="space-y-2 mb-2">
+                      {(() => {
+                        // Usar data_inicio se disponível, senão data_evento (compatibilidade)
+                        const dataInicio = event.data_inicio || event.data_evento;
+                        const dataFim = event.data_fim;
+                        const isMultiDay = !!dataFim;
+                        
+                        return (
+                          <div className="flex items-start gap-4 text-sm text-muted-foreground flex-wrap">
+                            <div className="flex items-start gap-2 flex-1 min-w-[200px]">
+                              <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                {isMultiDay ? (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs px-1.5 py-0">
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        Múltiplos Dias
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs">
+                                      <span className="font-medium">Início:</span> {format(new Date(dataInicio), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                    </div>
+                                    <div className="text-xs">
+                                      <span className="font-medium">Término:</span> {format(new Date(dataFim), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="font-medium">
+                                    {format(new Date(dataInicio), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {event.local && (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-4 h-4" />
+                                <span>{event.local}</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {event.descricao && (

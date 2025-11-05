@@ -141,11 +141,23 @@
 
 ### 🐛 Correções Implementadas
 
-#### Correções Recentes (Nov 2025)
+#### Correções Recentes (Jan 2025)
+
+| Correção | Problema Resolvido | Link |
+|----------|-------------------|------|
+| **Dashboard Cliente Simplificado** | Remoção de elementos redundantes | [MELHORIAS_DASHBOARD_E_FORMULARIO.md](docs/MELHORIAS_DASHBOARD_E_FORMULARIO.md) |
+| **Botão Salvar Equipe** | Botão não aparecia no formulário | [MELHORIAS_DASHBOARD_E_FORMULARIO.md](docs/MELHORIAS_DASHBOARD_E_FORMULARIO.md) |
+| **Changelog 11 Jan** | Registro de todas melhorias | [CHANGELOG_2025_01_11.md](docs/CHANGELOG_2025_01_11.md) |
+
+#### Correções Anteriores (Nov 2025)
 
 | Correção | Problema Resolvido | Link |
 |----------|-------------------|------|
 | **Imagens 404** | Sistema de limpeza automática | [CORRECAO_IMAGENS_404.md](docs/correções/CORRECAO_IMAGENS_404.md) |
+| **Imagens 404 Nov** | Correção novembro 2025 | [CORRECAO_IMAGENS_404_SW_NOVEMBRO_2025.md](docs/correções/CORRECAO_IMAGENS_404_SW_NOVEMBRO_2025.md) |
+| **Imagens Ajuste Auto** | Ajuste automático de tamanho | [CORRECAO_IMAGENS_AJUSTE_AUTOMATICO.md](docs/correções/CORRECAO_IMAGENS_AJUSTE_AUTOMATICO.md) |
+| **Service Worker Chrome** | Erro chrome-extension | [CORRECAO_SERVICE_WORKER_CHROME_EXTENSION.md](docs/correções/CORRECAO_SERVICE_WORKER_CHROME_EXTENSION.md) |
+| **Header Mobile** | Sobreposição do nome | [CORRECAO_HEADER_MOBILE_SOBREPOSICAO.md](docs/correções/CORRECAO_HEADER_MOBILE_SOBREPOSICAO.md) |
 | **WebSocket** | Correção do WebSocket | [CORRECAO_WEBSOCKET.md](docs/correções/CORRECAO_WEBSOCKET.md) |
 | **Erros 500** | Correção de erros 500 | [CORRECAO_ERROS_500.md](docs/correções/CORRECAO_ERROS_500.md) |
 | **Erros API 500** | Correção API 500 | [CORRECAO_ERROS_API_500.md](docs/correções/CORRECAO_ERROS_API_500.md) |
