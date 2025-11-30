@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, X } from 'lucide-react';
+import { MessageCircle, X, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useHomeConfig } from '@/contexts/HomeConfigContext';
@@ -70,10 +70,17 @@ const WhatsAppFloatingButton: React.FC<WhatsAppFloatingButtonProps> = ({
                 className="relative"
               >
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 pr-8 max-w-[200px] border">
-                  <p className="text-sm font-medium mb-1">Precisa de ajuda?</p>
-                  <p className="text-xs text-muted-foreground">
-                    Fale conosco pelo WhatsApp!
-                  </p>
+                  <div className="flex items-start gap-2">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <MessageSquare className="w-4 h-4 text-green-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-1">Precisa de ajuda?</p>
+                      <p className="text-xs text-muted-foreground">
+                        Fale conosco pelo WhatsApp!
+                      </p>
+                    </div>
+                  </div>
                   <button
                     onClick={() => setIsExpanded(false)}
                     className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"

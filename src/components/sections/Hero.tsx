@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useScrollAnimation, getAnimationClass } from '@/lib/animation';
-import { ArrowRight, ChevronLeft, ChevronRight, Play, Sparkles, Star } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, Star } from 'lucide-react';
 import { useCarousel } from '@/hooks/useCarousel';
 import { useState, useEffect } from 'react';
 import { useHomeConfig } from '@/contexts/HomeConfigContext';
@@ -52,7 +52,6 @@ const Hero = () => {
     if (carouselItems && carouselItems.length > 0) {
       const newSlide = (currentSlide + 1) % carouselItems.length;
       setCurrentSlide(newSlide);
-      announce(`Slide ${newSlide + 1} de ${carouselItems.length}: ${carouselItems[newSlide].nome}`);
     }
   };
 
@@ -60,14 +59,12 @@ const Hero = () => {
     if (carouselItems && carouselItems.length > 0) {
       const newSlide = (currentSlide - 1 + carouselItems.length) % carouselItems.length;
       setCurrentSlide(newSlide);
-      announce(`Slide ${newSlide + 1} de ${carouselItems.length}: ${carouselItems[newSlide].nome}`);
     }
   };
 
   const goToSlide = (index: number) => {
     if (carouselItems && carouselItems.length > 0) {
       setCurrentSlide(index);
-      announce(`Slide ${index + 1} de ${carouselItems.length}: ${carouselItems[index].nome}`);
     }
   };
 
@@ -137,13 +134,13 @@ const Hero = () => {
                   <div className="relative group">
                     <div className="absolute -inset-2 bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500" />
                     
-                    <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden shadow-2xl bg-muted">
+                    <div className="relative w-full h-[300px] rounded-xl overflow-hidden shadow-2xl bg-muted">
                       <img 
                         src={`${item.imagem}?v=${Date.now()}`} 
                         alt={item.nome} 
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
                     </div>
                   </div>
                 </motion.div>
@@ -309,42 +306,35 @@ const Hero = () => {
               className="flex justify-center mb-20"
             >
               <div className="relative group">
-                {/* Glow Effect */}
-                <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/20 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500" />
+                {/* Glow Effect - mais sutil e elegante */}
+                <div className="absolute -inset-4 bg-gradient-to-r from-primary/15 via-secondary/15 to-accent/15 rounded-3xl blur-2xl group-hover:blur-3xl transition-all duration-500 opacity-60" />
                 
-                <div className="relative w-full max-w-5xl aspect-[16/9] md:aspect-[21/9] rounded-2xl overflow-hidden shadow-2xl bg-muted">
-                  <motion.img 
-                    src={`${currentItem.imagem}?v=${Date.now()}`} 
-                    alt={currentItem.nome} 
-                    className="h-full w-full object-cover max-w-full max-h-full"
-                    initial={{ scale: 1.1 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    whileHover={{ scale: 1.05 }}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAyMEMyNi40NzcyIDIwIDIyIDI0LjQ3NzIgMjIgMzBTMjYuNDc3MiA0MCAzMiA0MEMzNy41MjI4IDQwIDQyIDM1LjUyMjggNDIgMzBTMzcuNTIyOCAyMCAzMiAyMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTMyIDI0QzI4LjY4NjMgMjQgMjYgMjYuNjg2MyAyNiAzMEMyNiAzMy4zMTM3IDI4LjY4NjMgMzYgMzIgMzZDMzUuMzEzNyAzNiAzOCAzMy4zMTM3IDM4IDMwQzM4IDI2LjY4NjMgMzUuMzEzNyAyNCAzMiAyNFoiIGZpbGw9IiM2Qjc0ODAiLz4KPC9zdmc+';
-                    }}
-                  />
+                {/* Borda sutil com gradiente */}
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/30 via-secondary/30 to-accent/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
+                
+                <div className="relative w-full max-w-5xl h-[500px] md:h-[600px] rounded-2xl overflow-hidden shadow-2xl bg-muted border border-border/50 group-hover:border-primary/30 transition-all duration-300">
+                  <AnimatePresence mode="wait">
+                    <motion.img 
+                      key={currentSlide}
+                      src={`${currentItem.imagem}?v=${Date.now()}`} 
+                      alt={currentItem.nome} 
+                      className="h-full w-full object-contain"
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAyMEMyNi40NzcyIDIwIDIyIDI0LjQ3NzIgMjIgMzBTMjYuNDc3MiA0MCAzMiA0MEMzNy41MjI4IDQwIDQyIDM1LjUyMjggNDIgMzBTMzcuNTIyOCAyMCAzMiAyMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTMyIDI0QzI4LjY4NjMgMjQgMjYgMjYuNjg2MyAyNiAzMEMyNiAzMy4zMTM3IDI4LjY4NjMgMzYgMzIgMzZDMzUuMzEzNyAzNiAzOCAzMy4zMTM3IDM4IDMwQzM4IDI2LjY4NjMgMzUuMzEzNyAyNCAzMiAyNFoiIGZpbGw9IiM2Qjc0ODAiLz4KPC9zdmc+';
+                      }}
+                    />
+                  </AnimatePresence>
                   
-                  {/* Overlay Gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+                  {/* Overlay Gradient - mais sutil */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
                   
-                  {/* Play Button Overlay */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 1.2, duration: 0.5 }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="w-20 h-20 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer shadow-xl"
-                    >
-                      <Play className="w-8 h-8 text-primary ml-1" />
-                    </motion.div>
-                  </motion.div>
+                  {/* Efeito de brilho sutil no hover */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
                 </div>
               </div>
             </motion.div>
