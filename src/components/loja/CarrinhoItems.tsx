@@ -2,13 +2,14 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Minus, Plus, Package, AlertCircle } from 'lucide-react';
+import { Trash2, Minus, Plus, Package, AlertCircle, Bookmark } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import CartLoadingOverlay from './CartLoadingOverlay';
 import OptimizedProductImage from '@/components/ui/OptimizedProductImage';
+import { saveItemForLater } from './CartSaveForLater';
 
 const CarrinhoItems = () => {
   const { state, removeItem, updateQuantity, clearCorruptedCart } = useCart();
@@ -168,8 +169,31 @@ const CarrinhoItems = () => {
                       </div>
                     </div>
                     
-                    {/* Botão remover */}
-                    <div className="flex flex-col justify-start">
+                    {/* Botões de ação */}
+                    <div className="flex flex-col justify-start gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (saveItemForLater(produto)) {
+                            toast({
+                              title: 'Salvo para depois',
+                              description: `${produto.nome} foi salvo para comprar depois`
+                            });
+                            handleRemoverItem(item.id);
+                          } else {
+                            toast({
+                              title: 'Já está salvo',
+                              description: 'Este produto já está na sua lista de salvos'
+                            });
+                          }
+                        }}
+                        disabled={state.isLoading}
+                        className="h-8 w-8 hover:bg-orange-50 hover:text-orange-600"
+                        title="Salvar para depois"
+                      >
+                        <Bookmark className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

@@ -2,6 +2,7 @@ import React, { Suspense, Component, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ModernAdminDashboard from '@/components/admin/ModernAdminDashboard';
 
 // ErrorBoundary customizado
 class ErrorBoundary extends Component<
@@ -150,12 +151,9 @@ const Dashboard = () => {
       <div className="p-4 md:p-6">
         <ErrorBoundary
           fallback={ErrorFallback}
-          onError={(error) => {
-            console.error('Dashboard Error:', error);
-          }}
         >
           <Suspense fallback={<SimpleDashboard />}>
-            <SimpleDashboard />
+            <ModernAdminDashboard />
           </Suspense>
         </ErrorBoundary>
       </div>

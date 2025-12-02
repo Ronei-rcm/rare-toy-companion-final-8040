@@ -13,6 +13,9 @@ import SmartProductSuggestions from '@/components/loja/SmartProductSuggestions';
 import CartAnalytics from '@/components/loja/CartAnalytics';
 import CartQuickActions from '@/components/loja/CartQuickActions';
 import CartPriceComparison from '@/components/loja/CartPriceComparison';
+import CartSaveForLater from '@/components/loja/CartSaveForLater';
+import CartCouponCode from '@/components/loja/CartCouponCode';
+import CartDeliveryEstimate from '@/components/loja/CartDeliveryEstimate';
 // Novas funcionalidades avançadas
 import SmartCartAI from '@/components/loja/SmartCartAI';
 import CartGamification from '@/components/loja/CartGamification';
@@ -145,12 +148,21 @@ const Carrinho = () => {
                   
                   <CarrinhoEncouragement />
                   
+                  {/* Itens salvos para depois */}
+                  <CartSaveForLater />
+                  
                   {/* Sugestões inteligentes de produtos */}
                   <SmartProductSuggestions cartItems={state.itens} maxSuggestions={4} />
                 </div>
                 
                 <div className="lg:col-span-1 space-y-6">
                   <CarrinhoResumo />
+                  
+                  {/* Cupom de desconto */}
+                  <CartCouponCode />
+                  
+                  {/* Cálculo de frete */}
+                  <CartDeliveryEstimate subtotal={state.total} />
                   
                   {/* Comparação de preços */}
                   <CartPriceComparison

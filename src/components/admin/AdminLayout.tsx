@@ -38,10 +38,12 @@ import {
   ChevronRight,
   Headphones,
   FileText,
-  Star
+  Star,
+  Video as VideoIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClearCacheButton } from './ClearCacheButton';
+import DashboardNotifications from './DashboardNotifications';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -121,37 +123,39 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     navigate('/admin/login');
   };
 
-  // Navegação agrupada por categoria
+  // Navegação agrupada por categoria - Organizada e sem duplicatas
   const navigation: NavigationItem[] = [
-    // VENDAS
+    // VENDAS - Gestão de Vendas e Pedidos
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard, category: 'vendas', shortcut: '⌘D' },
     { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart, category: 'vendas', badge: 3, shortcut: '⌘O' },
-    { name: 'Pedidos Evolved', href: '/admin/pedidos-evolved', icon: TrendingUp, category: 'vendas' },
-    { name: 'Pedidos Advanced', href: '/admin/pedidos-advanced', icon: BarChart, category: 'vendas' },
+    { name: 'Automações', href: '/admin/automacoes', icon: Zap, category: 'vendas' },
     { name: 'Clientes', href: '/admin/clientes', icon: Users, category: 'vendas', shortcut: '⌘C' },
     { name: 'Marketplace', href: '/admin/marketplace', icon: Store, category: 'vendas' },
     
-    // CONTEÚDO
+    // CONTEÚDO - Produtos e Conteúdo
     { name: 'Produtos', href: '/admin/produtos', icon: Package, category: 'conteudo', shortcut: '⌘P' },
     { name: 'Categorias', href: '/admin/categorias', icon: FolderTree, category: 'conteudo' },
     { name: 'Coleções', href: '/admin/colecoes', icon: Layers, category: 'conteudo' },
     { name: 'Blog & Notícias', href: '/admin/blog', icon: BookOpen, category: 'conteudo' },
     { name: 'Eventos', href: '/admin/eventos', icon: Calendar, category: 'conteudo' },
-    { name: 'Página Sobre', href: '/admin/sobre', icon: Info, category: 'conteudo' },
+    { name: 'Reviews', href: '/admin/reviews', icon: Star, category: 'conteudo' },
     { name: 'Home Config', href: '/admin/home-config', icon: Settings, category: 'conteudo' },
+    { name: 'Galeria de Vídeos', href: '/admin/video-gallery', icon: VideoIcon, category: 'conteudo' },
+    { name: 'Página Sobre', href: '/admin/sobre', icon: Info, category: 'conteudo' },
     
-    // ANALYTICS & OPERACIONAL
+    // ANALYTICS - Relatórios e Análises
     { name: 'Financeiro', href: '/admin/financeiro', icon: DollarSign, category: 'analytics', shortcut: '⌘F' },
+    { name: 'Relatórios', href: '/admin/relatorios', icon: FileText, category: 'analytics', shortcut: '⌘R' },
+    { name: 'Analytics', href: '/admin/analytics', icon: BarChart, category: 'analytics' },
+    { name: 'Fornecedores', href: '/admin/fornecedores', icon: Truck, category: 'analytics' },
     { name: 'Funcionários', href: '/admin/funcionarios', icon: UserCheck, category: 'analytics' },
     { name: 'Usuários Admin', href: '/admin/usuarios', icon: Shield, category: 'analytics' },
-    { name: 'Fornecedores', href: '/admin/fornecedores', icon: Truck, category: 'analytics' },
-    { name: 'Recuperação', href: '/admin/recuperacao', icon: Mail, category: 'analytics' },
     
-    // CONFIGURAÇÕES
+    // CONFIGURAÇÕES - Sistema e Integrações
     { name: 'Configurações', href: '/admin/configuracoes', icon: Settings, category: 'config' },
     { name: 'Suporte', href: '/admin/suporte', icon: Headphones, category: 'config' },
     { name: 'Páginas', href: '/admin/paginas', icon: FileText, category: 'config' },
-    { name: 'Reviews', href: '/admin/reviews', icon: Star, category: 'conteudo' },
+    { name: 'Recuperação', href: '/admin/recuperacao', icon: Mail, category: 'config' },
     { name: 'WhatsApp Grupos', href: '/admin/whatsapp-grupos', icon: MessageCircle, category: 'config' },
     { name: 'Instagram', href: '/admin/instagram', icon: Instagram, category: 'config' },
   ];
@@ -499,9 +503,20 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         )}
       </div>
 
+      {/* Header com Notificações */}
+      <header className={cn(
+        "fixed top-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 transition-all duration-300",
+        sidebarOpen ? "md:left-64" : "md:left-20",
+        "left-0"
+      )}>
+        <div className="flex items-center justify-end gap-4 px-4 py-3">
+          <DashboardNotifications />
+        </div>
+      </header>
+
       {/* Conteúdo principal */}
       <main className={cn(
-        "flex-1 transition-all duration-300",
+        "flex-1 transition-all duration-300 pt-16",
         sidebarOpen ? "md:ml-64" : "md:ml-20"
       )}>
         <div className="min-h-screen bg-background">

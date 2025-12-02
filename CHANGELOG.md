@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [29 de Novembro de 2025] - Correções de Erros nos Logs 🔧
+
+### Corrigido
+- **PathError:** Corrigido erro de rota com regex incorreta no Express que causava `PathError [TypeError]: Missing parameter name at index 1: *`
+- **Autenticação Analytics:** Adicionado middleware `authenticateAdmin` em todos os endpoints de analytics do dashboard
+- **Nginx Configuration:** Corrigida interceptação de requisições `/api/uploads/` pelo filesystem através de prioridade `^~` e regex modificada
+- **MySQL2 Warnings:** Removidas opções não suportadas (`acquireTimeout`, `timeout`, `reconnect`) de `server/routes/sync-api.cjs` e `server/test-api.cjs`
+- **Endpoints Faltantes:** Criados endpoints `/api/analytics/realtime` e `/api/analytics/web-vitals` para métricas em tempo real
+
+### Adicionado
+- Rotas de redirecionamento para compatibilidade com endpoints antigos de analytics (`/analytics/*` → `/api/admin/analytics/*`)
+- Prioridade `^~` nas regras do Nginx para `/api/` e `/lovable-uploads/` garantindo proxy antes de regex
+- Regex modificada para excluir rotas de API e uploads: `^(?!/api/)(?!/lovable-uploads/).*\.(png|ico|json|svg)$`
+- Documentação completa em `docs/correções/CORRECOES_ERROS_LOG_NOV_2025.md`
+
+### Modificado
+- `server/server.cjs` - Rotas de analytics com autenticação e redirecionamento
+- `src/pages/admin/Analytics.tsx` - Endpoint e headers corrigidos
+- `server/routes/sync-api.cjs` - Removidas opções MySQL2 não suportadas
+- `server/test-api.cjs` - Removidas opções MySQL2 não suportadas
+- `/etc/nginx/sites-enabled/muhlstore` - Configuração de prioridade de rotas
+
 ## [02 de Novembro de 2025 - 06:00] - Admin Páginas Evoluído 🚀
 
 ### Added

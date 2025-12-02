@@ -21,7 +21,8 @@ import {
   Home,
   CreditCard,
   MessageSquare,
-  Shield
+  Shield,
+  Clock
 } from 'lucide-react';
 
 interface EnhancedClienteProfileProps {
@@ -105,6 +106,14 @@ const EnhancedClienteProfile: React.FC<EnhancedClienteProfileProps> = ({
       description: 'Alertas e novidades',
       badge: '3',
       gradient: 'from-indigo-500 to-indigo-600'
+    },
+    {
+      id: 'atividades',
+      label: 'Atividades',
+      icon: Clock,
+      description: 'Histórico de ações',
+      badge: null,
+      gradient: 'from-cyan-500 to-blue-600'
     },
     {
       id: 'configuracoes',

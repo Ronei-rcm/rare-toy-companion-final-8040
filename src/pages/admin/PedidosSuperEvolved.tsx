@@ -170,6 +170,8 @@ const PedidosSuperEvolved = () => {
     searchCustomers,
     bulkAction,
     exportOrders,
+    deleteOrder,
+    deleteOrders,
   } = useAdminOrders();
 
   // Estados principais
@@ -198,9 +200,11 @@ const PedidosSuperEvolved = () => {
   // Modais e diálogos
   const [detailsModal, setDetailsModal] = useState<Order | null>(null);
   const [statusModal, setStatusModal] = useState<Order | null>(null);
+  const [statusNotes, setStatusNotes] = useState('');
   const [trackingModal, setTrackingModal] = useState<Order | null>(null);
   const [notesModal, setNotesModal] = useState<Order | null>(null);
   const [customerModal, setCustomerModal] = useState<Order | null>(null);
+  const [deleteModal, setDeleteModal] = useState<Order | null>(null);
   const [bulkActionModal, setBulkActionModal] = useState(false);
   const [exportModal, setExportModal] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
@@ -238,20 +242,89 @@ const PedidosSuperEvolved = () => {
     }
   }, [autoRefresh, refreshInterval]);
 
-  // Aplicar filtros
+  // Aplicar filtros no backend quando mudarem
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const loadWithFilters = async () => {
+      const filters: any = {
+        page: pagination.page,
+        limit: pagination.limit,
+      };
+      
+      if (statusFilter !== 'all') filters.status = statusFilter;
+      if (paymentFilter !== 'all') filters.payment_method = paymentFilter;
+      if (searchTerm) filters.search = searchTerm;
+      
+      // Mapear sortBy para campos do banco
+      if (sortBy !== 'recent') {
+        filters.sort = sortBy === 'total' ? 'total' : 
+                      sortBy === 'customer' ? 'nome' : 
+                      sortBy === 'status' ? 'status' : 
+                      'created_at';
+      } else {
+        filters.sort = 'created_at';
+      }
+      filters.order = sortOrder.toUpperCase();
+      
+      // Filtros de data
+      if (dateFilter !== 'all') {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        switch (dateFilter) {
+          case 'today':
+            filters.date_from = today.toISOString().split('T')[0];
+            break;
+          case 'week':
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            filters.date_from = weekAgo.toISOString().split('T')[0];
+            break;
+          case 'month':
+            const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            filters.date_from = monthAgo.toISOString().split('T')[0];
+            break;
+          case 'year':
+            const yearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+            filters.date_from = yearAgo.toISOString().split('T')[0];
+            break;
+        }
+      }
+      
+      await loadOrders(filters);
+    };
+    
+    // Debounce para busca (evitar muitas requisições)
+    if (searchTerm) {
+      timeoutId = setTimeout(loadWithFilters, 500);
+    } else {
+      loadWithFilters();
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [statusFilter, paymentFilter, searchTerm, sortBy, sortOrder, dateFilter, pagination.page, pagination.limit]);
+  
+  // Aplicar filtros locais adicionais (preço, tags) após carregar
   useEffect(() => {
     applyAdvancedFilters();
-  }, [orders, searchTerm, statusFilter, paymentFilter, dateFilter, priorityFilter, customerFilter, sortBy, sortOrder, priceRange, tagsFilter]);
+  }, [orders, priceRange, tagsFilter, priorityFilter]);
 
   const loadInitialData = async () => {
     try {
+      // Carregar dados principais primeiro
       await Promise.all([
-        loadOrders(),
-        loadStats(),
+        loadOrders({ page: pagination.page, limit: pagination.limit }),
+        loadStats()
+      ]);
+      
+      // Carregar dados secundários depois
+      Promise.all([
         loadAnalytics(),
         loadNotifications(),
         loadSavedFilters()
-      ]);
+      ]).catch(err => console.warn('Erro ao carregar dados secundários:', err));
     } catch (error) {
       console.error('Erro ao carregar dados iniciais:', error);
       toast({
@@ -414,6 +487,21 @@ const PedidosSuperEvolved = () => {
     setFilteredOrders(filtered);
   };
 
+  const canDeleteOrder = (order: Order) => {
+    // Apenas pedidos pendentes ou cancelados podem ser deletados
+    return order.status === 'pending' || order.status === 'cancelled';
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deleteModal) return;
+    
+    const success = await deleteOrder(deleteModal.id);
+    if (success) {
+      setDeleteModal(null);
+      await loadOrders();
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -444,13 +532,70 @@ const PedidosSuperEvolved = () => {
     }
 
     try {
-      await bulkAction(action, selectedOrders);
-      setSelectedOrders([]);
-      setBulkActionModal(false);
-      toast({
-        title: "Sucesso",
-        description: `Ação ${action} executada em ${selectedOrders.length} pedidos`,
+      // Converter selectedOrders (array de objetos Order) para array de IDs
+      const orderIds = selectedOrders
+        .map(order => order?.id)
+        .filter(id => id !== null && id !== undefined && id !== '');
+      
+      console.log('[handleBulkAction] Dados preparados:', {
+        selectedOrdersCount: selectedOrders.length,
+        orderIds,
+        action,
+        orderIdsType: orderIds.length > 0 ? typeof orderIds[0] : 'empty'
       });
+      
+      if (orderIds.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Nenhum ID de pedido válido encontrado nos pedidos selecionados",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Tratar ações que não são suportadas pelo backend
+      const unsupportedActions = ['export', 'add_note', 'send_email'];
+      if (unsupportedActions.includes(action)) {
+        toast({
+          title: "Ação não implementada",
+          description: `A ação "${action}" ainda não está disponível para ações em lote.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Para update_status, precisaríamos de um modal adicional para selecionar o novo status
+      if (action === 'update_status') {
+        toast({
+          title: "Ação não implementada",
+          description: "A alteração de status em lote requer seleção do novo status. Use a ação individual.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Apenas 'delete' está totalmente implementado
+      if (action !== 'delete') {
+        toast({
+          title: "Ação não suportada",
+          description: `A ação "${action}" não está disponível no momento.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('[handleBulkAction] Chamando bulkAction com:', {
+        orderIds,
+        action,
+        orderIdsLength: orderIds.length,
+        orderIdsType: typeof orderIds[0]
+      });
+      
+      const success = await bulkAction(orderIds, action);
+      if (success) {
+        setSelectedOrders([]);
+        setBulkActionModal(false);
+      }
     } catch (error) {
       toast({
         title: "Erro",
@@ -932,19 +1077,42 @@ const PedidosSuperEvolved = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                    <div className="flex flex-col">
+                      <span>{new Date(order.created_at).toLocaleDateString('pt-BR')}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(order.status)}>
-                      {getStatusIcon(order.status)}
-                      <span className="ml-1 capitalize">{order.status}</span>
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(order.status)}>
+                        {getStatusIcon(order.status)}
+                        <span className="ml-1 capitalize">{order.status}</span>
+                      </Badge>
+                      {!canDeleteOrder(order) && (
+                        <Badge variant="outline" className="text-xs">
+                          Protegido
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell>{order.payment_method}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-sm">{order.payment_method || 'N/A'}</span>
+                      {order.payment_status && (
+                        <Badge variant="outline" className="text-xs mt-1 w-fit">
+                          {order.payment_status}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     R$ {Number(order.total || 0).toFixed(2)}
                   </TableCell>
-                  <TableCell>{order.items_count}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{order.items_count || 0}</Badge>
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -974,6 +1142,15 @@ const PedidosSuperEvolved = () => {
                         <DropdownMenuItem onClick={() => setCustomerModal(order)}>
                           <Users className="h-4 w-4 mr-2" />
                           Ver Cliente
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => setDeleteModal(order)}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                          disabled={!canDeleteOrder(order)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir Pedido
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1073,6 +1250,86 @@ const PedidosSuperEvolved = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Atualização de Status */}
+      <Dialog open={!!statusModal} onOpenChange={() => {
+        setStatusModal(null);
+        setStatusNotes('');
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Status do Pedido</DialogTitle>
+            <DialogDescription>
+              Pedido #{statusModal?.id}
+            </DialogDescription>
+          </DialogHeader>
+          {statusModal && (
+            <div className="space-y-4">
+              <div>
+                <Label>Status Atual</Label>
+                <Badge className={getStatusColor(statusModal.status)}>
+                  {getStatusIcon(statusModal.status)}
+                  <span className="ml-1 capitalize">{statusModal.status}</span>
+                </Badge>
+              </div>
+              <div>
+                <Label>Novo Status</Label>
+                <Select
+                  value={statusModal.status}
+                  onValueChange={(value) => setStatusModal({ ...statusModal, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="processing">Processando</SelectItem>
+                    <SelectItem value="shipped">Enviado</SelectItem>
+                    <SelectItem value="delivered">Entregue</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Notas (opcional)</Label>
+                <Textarea
+                  placeholder="Adicione uma nota sobre esta alteração..."
+                  rows={3}
+                  value={statusNotes}
+                  onChange={(e) => setStatusNotes(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  setStatusModal(null);
+                  setStatusNotes('');
+                }}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (statusModal) {
+                      const success = await updateOrderStatus(
+                        statusModal.id,
+                        statusModal.status,
+                        statusNotes
+                      );
+                      if (success) {
+                        setStatusModal(null);
+                        setStatusNotes('');
+                        await loadOrders();
+                        await loadStats();
+                      }
+                    }
+                  }}
+                >
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Ações em Lote */}
       <Dialog open={bulkActionModal} onOpenChange={setBulkActionModal}>
         <DialogContent>
@@ -1112,8 +1369,114 @@ const PedidosSuperEvolved = () => {
                 <Send className="h-4 w-4 mr-2" />
                 Enviar Email
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleBulkAction('delete')}
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir Selecionados
+              </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={!!deleteModal} onOpenChange={(open) => !open && setDeleteModal(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o pedido #{deleteModal?.id}?
+              <br />
+              <span className="font-semibold text-red-600 mt-2 block">
+                Esta ação não pode ser desfeita!
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteModal(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOrder}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir Pedido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Atualização de Status */}
+      <Dialog open={!!statusModal} onOpenChange={() => setStatusModal(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Status do Pedido</DialogTitle>
+            <DialogDescription>
+              Pedido #{statusModal?.id}
+            </DialogDescription>
+          </DialogHeader>
+          {statusModal && (
+            <div className="space-y-4">
+              <div>
+                <Label>Novo Status</Label>
+                <Select
+                  value={statusModal.status}
+                  onValueChange={(value) => setStatusModal({ ...statusModal, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="processing">Processando</SelectItem>
+                    <SelectItem value="shipped">Enviado</SelectItem>
+                    <SelectItem value="delivered">Entregue</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Notas (opcional)</Label>
+                <Textarea
+                  placeholder="Adicione uma nota sobre esta alteração..."
+                  rows={3}
+                  value={statusNotes}
+                  onChange={(e) => setStatusNotes(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  setStatusModal(null);
+                  setStatusNotes('');
+                }}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (statusModal) {
+                      const success = await updateOrderStatus(
+                        statusModal.id,
+                        statusModal.status,
+                        statusNotes
+                      );
+                      if (success) {
+                        setStatusModal(null);
+                        setStatusNotes('');
+                        await loadOrders();
+                        await loadStats();
+                      }
+                    }
+                  }}
+                >
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

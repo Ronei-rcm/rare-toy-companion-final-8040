@@ -1,14 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Eye, Scale } from 'lucide-react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/contexts/CartContext';
 import { Produto } from '@/types/produto';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import ProductQuickView from './ProductQuickView';
+import { useProductComparison } from '@/hooks/useProductComparison';
+import { cn } from '@/lib/utils';
 
 interface ProdutoCardProps {
   produto: Produto;
@@ -19,6 +22,8 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
   const { addItem, state } = useCart();
   const [isAdding, setIsAdding] = React.useState(false);
   const [isFav, setIsFav] = React.useState(false);
+  const [showQuickView, setShowQuickView] = useState(false);
+  const { addToComparison, isInComparison, canAddMore } = useProductComparison();
   const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
   React.useEffect(() => {
@@ -56,6 +61,62 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
         toast({ variant: 'destructive', title: 'Erro', description: e?.message || 'Não foi possível atualizar favorito' });
       }
     })();
+  };
+
+  const handleAddToComparison = () => {
+    if (!canAddMore) {
+      toast({
+        title: 'Limite atingido',
+        description: 'Você pode comparar no máximo 4 produtos',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (isInComparison(produto.id)) {
+      toast({
+        title: 'Já está na comparação',
+        description: 'Este produto já está na sua lista de comparação'
+      });
+      return;
+    }
+
+    addToComparison({
+      id: produto.id,
+      nome: produto.nome,
+      preco: produto.preco,
+      preco_original: produto.promocao ? produto.preco * 1.2 : undefined,
+      descricao: produto.descricao,
+      imagem_url: produto.imagemUrl,
+      estoque: produto.estoque,
+      categoria: produto.categoria,
+      avaliacao: produto.avaliacao,
+      total_avaliacoes: produto.totalAvaliacoes,
+      promocao: produto.promocao,
+      destaque: produto.destaque,
+      lancamento: produto.lancamento
+    });
+
+    toast({
+      title: 'Adicionado à comparação',
+      description: `${produto.nome} foi adicionado à comparação`
+    });
+  };
+
+  const produtoForQuickView = {
+    id: produto.id,
+    nome: produto.nome,
+    preco: produto.preco,
+    preco_original: produto.promocao ? produto.preco * 1.2 : undefined, // Simular preço original se em promoção
+    descricao: produto.descricao,
+    imagem_url: produto.imagemUrl,
+    estoque: produto.estoque,
+    categoria: produto.categoria,
+    avaliacao: produto.avaliacao,
+    total_avaliacoes: produto.totalAvaliacoes,
+    promocao: produto.promocao,
+    destaque: produto.destaque,
+    lancamento: produto.lancamento
   };
 
   // Verificar se o produto está em estoque
@@ -138,23 +199,62 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
           {produto.preco >= 200 ? 'Frete grátis para este item' : 'Ganhe 5% de cashback no PIX'}
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 gap-2 flex">
-        <Button 
-          onClick={adicionarAoCarrinho} 
-          className="flex-1"
-          disabled={!emEstoque || isAdding || state.isLoading}
-        >
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          {isAdding ? 'Adicionando...' : 'Adicionar'}
-        </Button>
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={adicionarAosFavoritos}
-        >
-          <Heart className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
-        </Button>
+      <CardFooter className="p-4 pt-0 gap-2 flex flex-col">
+        <div className="flex gap-2 w-full">
+          <Button 
+            onClick={adicionarAoCarrinho} 
+            className="flex-1"
+            disabled={!emEstoque || isAdding || state.isLoading}
+          >
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            {isAdding ? 'Adicionando...' : 'Adicionar'}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={adicionarAosFavoritos}
+            title="Favoritar"
+          >
+            <Heart className={`h-4 w-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+          </Button>
+        </div>
+        <div className="flex gap-2 w-full">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={() => setShowQuickView(true)}
+          >
+            <Eye className="h-3 w-3 mr-1" />
+            Ver Rápido
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "flex-1 text-xs",
+              isInComparison(produto.id) && "bg-orange-50 border-orange-200 text-orange-700"
+            )}
+            onClick={handleAddToComparison}
+            disabled={!canAddMore && !isInComparison(produto.id)}
+            title={isInComparison(produto.id) ? 'Já está na comparação' : 'Adicionar à comparação'}
+          >
+            <Scale className="h-3 w-3 mr-1" />
+            {isInComparison(produto.id) ? 'Na Lista' : 'Comparar'}
+          </Button>
+        </div>
       </CardFooter>
+
+      {/* Quick View Modal */}
+      <ProductQuickView
+        product={showQuickView ? produtoForQuickView : null}
+        isOpen={showQuickView}
+        onClose={() => setShowQuickView(false)}
+        onAddToCart={() => {
+          setShowQuickView(false);
+          adicionarAoCarrinho();
+        }}
+      />
     </Card>
   );
 };

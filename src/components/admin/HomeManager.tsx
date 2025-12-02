@@ -36,7 +36,8 @@ import {
   Target,
   MessageSquare,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Video as VideoIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useHomeConfig, HomeSectionConfig } from '@/contexts/HomeConfigContext';
@@ -75,6 +76,7 @@ const HomeManager = () => {
     'categorias': <Layout className="h-4 w-4" />,
     'personagens-colecao': <Users className="h-4 w-4" />,
     'eventos': <Calendar className="h-4 w-4" />,
+    'video-gallery': <VideoIcon className="h-4 w-4" />,
     'social-proof': <Target className="h-4 w-4" />,
     'blog': <Type className="h-4 w-4" />,
     'features': <Zap className="h-4 w-4" />,
@@ -85,11 +87,23 @@ const HomeManager = () => {
   const resolveImageUrl = (url: string | undefined): string => {
     if (!url) return '';
     const trimmed = url.trim();
-    const isAbsolute = /^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:');
-    if (isAbsolute) return trimmed;
+    
+    // Se já é uma URL absoluta ou data URL, retornar como está
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    
+    // Se é uma URL relativa, garantir que comece com /
+    const relativeUrl = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    
+    // Se não tem base URL configurada, retornar relativa (browser resolve)
     const base = import.meta.env.VITE_API_URL || '';
-    const joined = `${base.replace(/\/$/, '')}/${trimmed.replace(/^\//, '')}`;
-    return joined;
+    if (!base) {
+      return relativeUrl;
+    }
+    
+    // Combinar base URL com relativa
+    return `${base.replace(/\/$/, '')}${relativeUrl}`;
   };
 
   // Carregar dados do carrossel ao inicializar
@@ -1010,9 +1024,13 @@ const HomeManager = () => {
                 {config.theme.backgroundType === 'image' ? (
                   <ImageUpload
                     value={config.theme.heroBackground}
-                    onChange={(imageUrl) => updateConfig({ 
-                      theme: { ...config.theme, heroBackground: imageUrl } 
-                    })}
+                    onChange={(imageUrl) => {
+                      console.log('🔄 Atualizando heroBackground:', imageUrl);
+                      updateConfig({ 
+                        theme: { ...config.theme, heroBackground: imageUrl } 
+                      });
+                      console.log('✅ heroBackground atualizado');
+                    }}
                     label="Imagem de Background"
                     placeholder="URL da imagem de fundo ou faça upload"
                   />
@@ -1036,9 +1054,13 @@ const HomeManager = () => {
                 <h3 className="text-lg font-medium">Logo</h3>
                 <ImageUpload
                   value={config.theme.logoUrl}
-                  onChange={(logoUrl) => updateConfig({ 
-                    theme: { ...config.theme, logoUrl } 
-                  })}
+                  onChange={(logoUrl) => {
+                    console.log('🔄 Atualizando logoUrl:', logoUrl);
+                    updateConfig({ 
+                      theme: { ...config.theme, logoUrl } 
+                    });
+                    console.log('✅ logoUrl atualizado');
+                  }}
                   label="Logo da Loja"
                   placeholder="URL do logo ou faça upload"
                 />

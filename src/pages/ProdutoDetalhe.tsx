@@ -4,9 +4,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useScrollAnimation, getAnimationClass } from '@/lib/animation';
 import ProdutoInfo from '@/components/loja/ProdutoInfo';
+import ProductDetailsEnhanced from '@/components/loja/ProductDetailsEnhanced';
 import ProdutoImageGallery from '@/components/loja/ProdutoImageGallery';
 import { ProductReviews } from '@/components/produto/ProductReviews';
 import ProdutosRelacionados from '@/components/loja/ProdutosRelacionados';
+import { useProductDetails } from '@/hooks/useProductDetails';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Package } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -23,6 +25,7 @@ const ProdutoDetalhe = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const animation = useScrollAnimation();
+  const { product, loading } = useProductDetails(id);
   
   // Scroll para o topo ao carregar a página
   useEffect(() => {
@@ -84,7 +87,7 @@ const ProdutoDetalhe = () => {
           </div>
           
           <div className={getAnimationClass(animation.isInView, 'slide-up')}>
-            <ProdutoInfo produtoId={id} />
+            <ProductDetailsEnhanced product={product} loading={loading} />
           </div>
         </div>
         

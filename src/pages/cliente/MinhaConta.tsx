@@ -21,11 +21,15 @@ import SettingsTab from '@/components/cliente/SettingsTab';
 import EnhancedSettingsTab from '@/components/cliente/EnhancedSettingsTab';
 import ReviewsTab from '@/components/cliente/ReviewsTab';
 import EnhancedMinhaConta from '@/components/cliente/EnhancedMinhaConta';
+import DashboardSuperEvolved from '@/components/cliente/DashboardSuperEvolved';
 import EnhancedAddressManager from '@/components/cliente/EnhancedAddressManager';
 import EnhancedPedidosTab from '@/components/cliente/EnhancedPedidosTab';
 import OrdersUnified from '@/components/cliente/OrdersUnified';
+import ActivityHistory from '@/components/cliente/ActivityHistory';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
 import { useUserStats, useRefreshUserData, formatCurrency, getFidelityColor, getFidelityIcon } from '@/hooks/useUserStats';
+import { useCustomerStats } from '@/hooks/useCustomerStats';
+import { useCart } from '@/contexts/CartContext';
 // Cache busting import - v5.1
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,6 +69,8 @@ const MinhaConta = () => {
   // Buscar dados reais do usuário
   const { data: userStats, isLoading: statsLoading, error: statsError } = useUserStats(user?.id || '');
   const { refreshAll } = useRefreshUserData();
+  const { stats: customerStats, loading: customerStatsLoading } = useCustomerStats();
+  const { state: cartState } = useCart();
   
   // Sincronizar aba via querystring (?tab=enderecos) - v8 - DADOS REAIS
   useEffect(() => {
@@ -119,7 +125,7 @@ const MinhaConta = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return user ? <EnhancedMinhaConta /> : null;
+        return user ? <DashboardSuperEvolved /> : null;
       case 'pedidos':
         return user ? <OrdersUnified /> : <PedidosTab />;
       case 'enderecos':
@@ -136,6 +142,8 @@ const MinhaConta = () => {
         return user ? <EnhancedSettingsTab userId={user.id} /> : <EnhancedSettingsTab userId="cliente@exemplo.com" />;
       case 'dados':
         return user ? <CustomerProfile userId={user.id} /> : <DadosTab />;
+      case 'atividades':
+        return user ? <ActivityHistory userId={user.id} /> : null;
       default:
         return user ? <EnhancedMinhaConta /> : null;
     }
@@ -223,33 +231,39 @@ const MinhaConta = () => {
                       </div>
                     </div>
 
-                    {/* Estatísticas rápidas */}
+                    {/* Estatísticas rápidas - Sincronizadas com dados reais */}
                     <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 lg:mt-0">
                       <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
                         <CardContent className="p-4 text-center">
                           <Package className="h-8 w-8 mx-auto mb-2 text-blue-300" />
-                          <div className="text-2xl font-bold">{displayStats.pedidos?.total || 0}</div>
+                          <div className="text-2xl font-bold">
+                            {customerStatsLoading ? '...' : (customerStats?.totalPedidos || 0)}
+                          </div>
                           <div className="text-sm text-white/80">Pedidos</div>
                         </CardContent>
                       </Card>
                       <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
                         <CardContent className="p-4 text-center">
                           <Clock className="h-8 w-8 mx-auto mb-2 text-yellow-300" />
-                          <div className="text-2xl font-bold">{displayStats.pedidos?.pendentes || 0}</div>
+                          <div className="text-2xl font-bold">
+                            {customerStatsLoading ? '...' : (customerStats?.pedidosPendentes || 0)}
+                          </div>
                           <div className="text-sm text-white/80">Pendentes</div>
                         </CardContent>
                       </Card>
                       <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
                         <CardContent className="p-4 text-center">
                           <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-300" />
-                          <div className="text-2xl font-bold">{formatCurrency(displayStats.pedidos?.total_gasto || 0)}</div>
+                          <div className="text-2xl font-bold">
+                            {customerStatsLoading ? '...' : formatCurrency(customerStats?.totalGasto || 0)}
+                          </div>
                           <div className="text-sm text-white/80">Total Gasto</div>
                         </CardContent>
                       </Card>
                       <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
                         <CardContent className="p-4 text-center">
                           <ShoppingCart className="h-8 w-8 mx-auto mb-2 text-purple-300" />
-                          <div className="text-2xl font-bold">{displayStats.carrinho?.itens || 0}</div>
+                          <div className="text-2xl font-bold">{cartState.quantidadeTotal || 0}</div>
                           <div className="text-sm text-white/80">Carrinho</div>
                         </CardContent>
                       </Card>

@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/contexts/CartContext';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
-import { CreditCard, QrCode, User, MapPin, Phone, Mail, Loader2, CheckCircle, Zap, Smartphone, Wallet, Tag, X, Percent, Gift, Clock, Copy } from 'lucide-react';
+import { CreditCard, QrCode, User, MapPin, Phone, Mail, Loader2, CheckCircle, Zap, Smartphone, Wallet, Tag, X, Percent, Gift, Clock, Copy, Radio } from 'lucide-react';
+import InfiniteTapPayment from './InfiniteTapPayment';
+import { useInfiniteTap } from '@/hooks/useInfiniteTap';
 import { useNavigate } from 'react-router-dom';
 import SelosSeguranca from './SelosSeguranca';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -49,6 +51,8 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'waiting_payment' | 'paid' | 'failed'>('pending');
   const [isGeneratingPix, setIsGeneratingPix] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [qrCodeError, setQrCodeError] = useState(false);
+  const { initiateTapTransaction, processTapResult } = useInfiniteTap();
   const [enderecos, setEnderecos] = useState<any[]>([]);
   const [enderecoSelecionado, setEnderecoSelecionado] = useState<string>('');
   const [salvarEndereco, setSalvarEndereco] = useState<boolean>(true);
@@ -327,6 +331,12 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
       if (metodoPagamento === 'pix') {
         await gerarPix(pedido.id, pedido.total);
       }
+      
+      // Se for InfiniteTap, iniciar transação
+      if (metodoPagamento === 'infinitetap') {
+        // O componente InfiniteTapPayment vai lidar com isso
+        setStep('pagamento');
+      }
 
       toast({
         title: 'Pedido criado com sucesso! 🎉',
@@ -365,6 +375,7 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
       const pixResponse = await res.json();
       setPixData(pixResponse);
       setPaymentStatus('waiting_payment');
+      setQrCodeError(false); // Resetar erro ao gerar novo QR Code
 
       // Iniciar verificação de pagamento
       startPaymentCheck(orderId);
@@ -792,6 +803,23 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
                     </Label>
                   </div>
 
+                  {/* InfiniteTap */}
+                  <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-muted/50">
+                    <RadioGroupItem value="infinitetap" id="infinitetap" />
+                    <Label htmlFor="infinitetap" className="flex-1 cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-4 w-4 text-blue-600" />
+                          <span>InfiniteTap</span>
+                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">NOVO</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Pagamento por aproximação
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+
                   {/* Cartão de Crédito */}
                   <div className="flex items-center space-x-2 p-3 border rounded-md hover:bg-muted/50">
                     <RadioGroupItem value="cartao" id="cartao" />
@@ -819,6 +847,10 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       <span>Apple Pay / Google Pay: Pagamento seguro e rápido</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>InfiniteTap: Pagamento por aproximação no celular</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -875,12 +907,33 @@ const CheckoutRapido = ({ isOpen, onClose, variant = 'page' }: CheckoutRapidoPro
                               <span className="font-semibold text-purple-900">Escaneie o QR Code</span>
                             </div>
                           </div>
-                          <div className="bg-white p-6 rounded-lg shadow-inner flex items-center justify-center">
-                            <img 
-                              src={pixData.qr_code_url} 
-                              alt="QR Code Pix" 
-                              className="w-64 h-64 mx-auto border-4 border-purple-200 rounded-xl shadow-lg"
-                            />
+                          <div className="bg-white p-6 rounded-lg shadow-inner flex items-center justify-center min-h-[256px]">
+                            {qrCodeError ? (
+                              <div className="text-center p-4">
+                                <QrCode className="h-16 w-16 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm text-muted-foreground">QR Code não disponível</p>
+                                <p className="text-xs text-muted-foreground mt-2">Use o código PIX abaixo para pagar</p>
+                              </div>
+                            ) : pixData.qr_code_url ? (
+                              <img 
+                                src={pixData.qr_code_url} 
+                                alt="QR Code Pix" 
+                                className="w-64 h-64 mx-auto border-4 border-purple-200 rounded-xl shadow-lg"
+                                onError={() => {
+                                  console.error('❌ Erro ao carregar QR Code:', pixData.qr_code_url);
+                                  setQrCodeError(true);
+                                }}
+                                onLoad={() => {
+                                  console.log('✅ QR Code carregado com sucesso');
+                                  setQrCodeError(false);
+                                }}
+                              />
+                            ) : (
+                              <div className="text-center p-4">
+                                <Loader2 className="h-16 w-16 mx-auto mb-2 animate-spin text-primary" />
+                                <p className="text-sm text-muted-foreground">Carregando QR Code...</p>
+                              </div>
+                            )}
                           </div>
                           <p className="text-center text-sm text-muted-foreground mt-4">
                             Abra o app do seu banco e escaneie o código

@@ -36,8 +36,11 @@ import {
   Repeat,
   Share2,
   XCircle,
-  Trash2
+  Trash2,
+  FileText,
+  Printer
 } from 'lucide-react';
+import OrderTimeline from './OrderTimeline';
 
 interface Order {
   id: string;
@@ -410,56 +413,7 @@ const OrdersUnified: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header com estatísticas pessoais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Meus Pedidos</p>
-                <p className="text-2xl font-bold">{stats?.total || 0}</p>
-              </div>
-              <ShoppingBag className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Gasto</p>
-                <p className="text-2xl font-bold">R$ {Number(stats?.totalRevenue || 0).toFixed(2)}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Ticket Médio</p>
-                <p className="text-2xl font-bold">R$ {Number(stats?.averageTicket || 0).toFixed(2)}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <p className="text-2xl font-bold">{stats?.pending || 0} pendentes</p>
-              </div>
-              <Clock className="h-8 w-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Cards removidos - agora estão apenas no header superior da página */}
 
       {/* Notificações */}
       {notifications.length > 0 && (
@@ -523,6 +477,37 @@ const OrdersUnified: React.FC = () => {
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Atualizar
             </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Exportar pedidos para CSV
+                const csv = [
+                  ['ID', 'Data', 'Status', 'Total', 'Itens'].join(','),
+                  ...orders.map(order => [
+                    order.id.substring(0, 8),
+                    new Date(order.created_at).toLocaleDateString('pt-BR'),
+                    getStatusInfo(order.status).label,
+                    Number(order.total || 0).toFixed(2),
+                    order.items.length
+                  ].join(','))
+                ].join('\n');
+                
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `pedidos_${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+                
+                toast({
+                  title: 'Exportado!',
+                  description: 'Lista de pedidos exportada com sucesso'
+                });
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar CSV
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -533,6 +518,14 @@ const OrdersUnified: React.FC = () => {
           <CardTitle className="flex items-center justify-between">
             <span>Meus Pedidos ({orders.length})</span>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowStatsModal(true)}
+              >
+                <BarChart className="h-4 w-4 mr-2" />
+                Estatísticas
+              </Button>
               <Badge variant={wsConnected ? "default" : "destructive"}>
                 {wsConnected ? "Atualizações em tempo real" : "Modo offline"}
               </Badge>
@@ -754,35 +747,77 @@ const OrdersUnified: React.FC = () => {
                 </div>
               </div>
               
-              {/* Timeline de Status */}
-              {selectedOrder.status_timeline && selectedOrder.status_timeline.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-2">Histórico de Status</h3>
-                  <div className="space-y-2">
-                    {selectedOrder.status_timeline.map((entry, index) => {
-                      const statusInfo = getStatusInfo(entry.status);
-                      const StatusIcon = statusInfo.icon;
-                      
-                      return (
-                        <div key={index} className="flex items-center gap-3 p-2 border rounded">
-                          <StatusIcon className={`h-4 w-4 ${statusInfo.color.replace('bg-', 'text-')}`} />
-                          <div className="flex-1">
-                            <p className="font-medium">{statusInfo.label}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(entry.created_at).toLocaleString('pt-BR')}
-                            </p>
-                            {entry.notes && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {entry.notes}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Timeline de Status Visual */}
+              <div>
+                <h3 className="font-medium mb-4">Acompanhamento do Pedido</h3>
+                <OrderTimeline
+                  currentStatus={selectedOrder.status}
+                  timeline={selectedOrder.status_timeline}
+                  createdAt={selectedOrder.created_at}
+                />
+              </div>
+              
+              {/* Ações do Pedido */}
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
+                {selectedOrder.tracking_code && (
+                  <Button
+                    variant="outline"
+                    onClick={() => trackOrder(selectedOrder.tracking_code!)}
+                    className="flex-1"
+                  >
+                    <Truck className="h-4 w-4 mr-2" />
+                    Rastrear Entrega
+                  </Button>
+                )}
+                
+                {selectedOrder.status === 'delivered' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => reorderItems(selectedOrder.id)}
+                    className="flex-1"
+                  >
+                    <Repeat className="h-4 w-4 mr-2" />
+                    Comprar Novamente
+                  </Button>
+                )}
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    window.print();
+                  }}
+                  className="flex-1"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const orderText = `
+Pedido #${selectedOrder.id.substring(0, 8)}
+Data: ${new Date(selectedOrder.created_at).toLocaleDateString('pt-BR')}
+Status: ${getStatusInfo(selectedOrder.status).label}
+Total: R$ ${Number(selectedOrder.total || 0).toFixed(2)}
+
+Itens:
+${selectedOrder.items.map(item => 
+  `- ${item.name || item.product_name} (${item.quantity}x) - R$ ${Number(item.price || 0).toFixed(2)}`
+).join('\n')}
+                    `.trim();
+                    navigator.clipboard.writeText(orderText);
+                    toast({
+                      title: 'Copiado!',
+                      description: 'Detalhes do pedido copiados para a área de transferência'
+                    });
+                  }}
+                  className="flex-1"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Copiar Detalhes
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -910,6 +945,91 @@ const OrdersUnified: React.FC = () => {
           </DialogContent>
         </Dialog>
       )}
+      
+      {/* Modal de Estatísticas */}
+      <Dialog open={showStatsModal} onOpenChange={setShowStatsModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Estatísticas dos Pedidos</DialogTitle>
+            <DialogDescription>
+              Análise detalhada do seu histórico de compras
+            </DialogDescription>
+          </DialogHeader>
+          
+          {stats && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total de Pedidos</p>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">
+                    R$ {Number(stats.totalRevenue || 0).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total Gasto</p>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <p className="text-2xl font-bold text-purple-600">
+                    R$ {Number(stats.averageTicket || 0).toFixed(2)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Ticket Médio</p>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded-lg">
+                  <p className="text-2xl font-bold text-orange-600">
+                    {stats.avgDeliveryTimeHours ? `${Math.round(stats.avgDeliveryTimeHours)}h` : 'N/A'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Tempo Médio Entrega</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Por Status</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Pendentes:</span>
+                      <span className="font-medium">{stats.pending || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Processando:</span>
+                      <span className="font-medium">{stats.processing || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Enviados:</span>
+                      <span className="font-medium">{stats.shipped || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Entregues:</span>
+                      <span className="font-medium">{stats.delivered || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cancelados:</span>
+                      <span className="font-medium">{stats.cancelled || 0}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-2">Hoje</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Pedidos:</span>
+                      <span className="font-medium">{stats.todayOrders || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Receita:</span>
+                      <span className="font-medium">
+                        R$ {Number(stats.todayRevenue || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

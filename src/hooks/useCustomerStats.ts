@@ -127,40 +127,86 @@ export function useCustomerStats() {
       return null;
     }
 
+    // Evitar requisições muito frequentes (debounce)
+    const now = Date.now();
+    const lastFetchTime = lastFetch ? lastFetch.getTime() : 0;
+    const timeSinceLastFetch = now - lastFetchTime;
+    
+    // Se não for refresh forçado e foi há menos de 5 segundos, pular
+    if (!forceRefresh && timeSinceLastFetch < 5000) {
+      console.log('⏭️ Pulando fetchStats - muito recente');
+      return null;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      // Tentar múltiplos endpoints
-      const endpoints = [
-        `${API_BASE_URL}/customers/current/stats`,
-        `${API_BASE_URL}/customers/${user.id}/stats`,
-        user.email ? `${API_BASE_URL}/customers/by-email/${encodeURIComponent(user.email)}/stats` : null
-      ].filter(Boolean) as string[];
-
+      // Tentar apenas o endpoint principal primeiro
+      const primaryEndpoint = `${API_BASE_URL}/customers/current/stats`;
       let statsData: any = null;
-      let lastSuccessfulResponse = null;
 
-      for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(primaryEndpoint, {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': forceRefresh ? 'no-cache' : 'max-age=60'
+          }
+        });
+
+        // Se receber 429, parar imediatamente e não tentar outros endpoints
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After') || '60';
+          setError(`Muitas requisições. Aguarde ${retryAfter} segundos.`);
+          setLoading(false);
+          return null;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && (data.totalPedidos !== undefined || data.totalGasto !== undefined)) {
+            statsData = data;
+          }
+        }
+      } catch (e) {
+        console.log(`Erro ao buscar em ${primaryEndpoint}:`, e);
+      }
+
+      // Se o endpoint principal falhou e não foi 429, tentar fallback
+      if (!statsData && user.id) {
+        const fallbackEndpoint = `${API_BASE_URL}/customers/${user.id}/stats`;
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetch(fallbackEndpoint, {
             credentials: 'include',
             headers: {
               'Cache-Control': forceRefresh ? 'no-cache' : 'max-age=60'
             }
           });
 
+          // Se receber 429, parar
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After') || '60';
+            setError(`Muitas requisições. Aguarde ${retryAfter} segundos.`);
+            setLoading(false);
+            return null;
+          }
+
           if (response.ok) {
             const data = await response.json();
-            if (data && (data.totalPedidos !== undefined || data.totalGasto !== undefined)) {
-              statsData = data;
-              lastSuccessfulResponse = response;
-              break;
+            if (data && (data.totalOrders !== undefined || data.totalSpent !== undefined)) {
+              // Normalizar dados do fallback
+              statsData = {
+                totalPedidos: data.totalOrders || 0,
+                totalGasto: data.totalSpent || 0,
+                pedidosPendentes: 0,
+                favoritos: data.favoriteProducts || 0,
+                enderecos: 0,
+                cupons: 0
+              };
             }
           }
         } catch (e) {
-          console.log(`Erro ao buscar em ${endpoint}:`, e);
-          continue;
+          console.log(`Erro ao buscar em ${fallbackEndpoint}:`, e);
         }
       }
 
@@ -251,42 +297,66 @@ export function useCustomerStats() {
 
     } catch (error: any) {
       console.error('Erro ao buscar estatísticas:', error);
-      setError(error.message || 'Erro ao carregar estatísticas');
-      toast.error('Erro ao carregar estatísticas do dashboard');
+      // Não mostrar erro se for 429 (já tratado acima)
+      if (!error.message?.includes('429')) {
+        setError(error.message || 'Erro ao carregar estatísticas');
+        toast.error('Erro ao carregar estatísticas do dashboard');
+      }
       return null;
     } finally {
       setLoading(false);
     }
-  }, [user, API_BASE_URL, validateStats, calculateUserLevel, calculateLoyaltyPoints, lastFetch]);
+  }, [user?.id, user?.email, API_BASE_URL, validateStats, calculateUserLevel, calculateLoyaltyPoints]);
 
-  // Carregar estatísticas inicialmente
+  // Carregar estatísticas inicialmente (apenas uma vez quando user muda)
   useEffect(() => {
-    if (user) {
-      fetchStats();
+    if (user?.id || user?.email) {
+      // Delay inicial para evitar requisições imediatas em múltiplos componentes
+      const timer = setTimeout(() => {
+        fetchStats();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [user, fetchStats]);
+  }, [user?.id, user?.email]); // Removido fetchStats das dependências
 
-  // Sincronizar periodicamente (a cada 2 minutos se página visível)
+  // Sincronizar periodicamente (a cada 5 minutos se página visível) - AUMENTADO DE 2 PARA 5 MINUTOS
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id && !user?.email) return;
 
     const syncInterval = setInterval(() => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        fetchStats(true);
+        // Verificar se passou tempo suficiente desde última busca
+        const now = Date.now();
+        const lastFetchTime = lastFetch ? lastFetch.getTime() : 0;
+        if (now - lastFetchTime > 4 * 60 * 1000) { // Pelo menos 4 minutos desde última busca
+          fetchStats(true);
+        }
       }
-    }, 2 * 60 * 1000); // 2 minutos
+    }, 5 * 60 * 1000); // 5 minutos
 
-    // Sincronizar quando voltar online
+    // Sincronizar quando voltar online (com debounce)
+    let onlineTimeout: NodeJS.Timeout;
     const handleOnline = () => {
-      fetchStats(true);
+      clearTimeout(onlineTimeout);
+      onlineTimeout = setTimeout(() => {
+        fetchStats(true);
+      }, 2000); // Aguardar 2 segundos após voltar online
     };
 
     window.addEventListener('online', handleOnline);
 
-    // Sincronizar quando página voltar a ficar visível
+    // Sincronizar quando página voltar a ficar visível (com debounce)
+    let visibilityTimeout: NodeJS.Timeout;
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        fetchStats(true);
+        clearTimeout(visibilityTimeout);
+        visibilityTimeout = setTimeout(() => {
+          const now = Date.now();
+          const lastFetchTime = lastFetch ? lastFetch.getTime() : 0;
+          if (now - lastFetchTime > 1 * 60 * 1000) { // Pelo menos 1 minuto desde última busca
+            fetchStats(true);
+          }
+        }, 1000);
       }
     };
 
@@ -294,15 +364,21 @@ export function useCustomerStats() {
 
     return () => {
       clearInterval(syncInterval);
+      clearTimeout(onlineTimeout);
+      clearTimeout(visibilityTimeout);
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, fetchStats]);
+  }, [user?.id, user?.email, lastFetch]); // Removido fetchStats das dependências
 
-  // Escutar atualizações de outros componentes
+  // Escutar atualizações de outros componentes (com debounce)
   useEffect(() => {
+    let updateTimeout: NodeJS.Timeout;
     const handleDataUpdate = () => {
-      fetchStats(true);
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        fetchStats(true);
+      }, 2000); // Debounce de 2 segundos
     };
 
     window.addEventListener('user-data-updated', handleDataUpdate);
@@ -310,11 +386,12 @@ export function useCustomerStats() {
     window.addEventListener('favorites-updated', handleDataUpdate);
 
     return () => {
+      clearTimeout(updateTimeout);
       window.removeEventListener('user-data-updated', handleDataUpdate);
       window.removeEventListener('order-updated', handleDataUpdate);
       window.removeEventListener('favorites-updated', handleDataUpdate);
     };
-  }, [fetchStats]);
+  }, []); // Sem dependências para evitar re-criação
 
   return {
     stats,

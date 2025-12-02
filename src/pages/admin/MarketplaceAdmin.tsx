@@ -41,6 +41,7 @@ import {
 import { toast } from 'sonner';
 import { uploadApi } from '@/services/upload-api';
 import { onImageError } from '@/utils/resolveImage';
+import { fetchAdmin } from '@/utils/adminFetch';
 
 interface MarketplaceSeller {
   id: string;
@@ -142,14 +143,24 @@ const MarketplaceAdmin = () => {
       if (filterAtivo !== 'todos') params.append('ativo', filterAtivo);
       if (searchTerm) params.append('busca', searchTerm);
       
-      const response = await fetch(`/api/admin/marketplace/sellers?${params}`);
-      if (!response.ok) throw new Error('Erro ao carregar vendedores');
+      const response = await fetchAdmin(`/api/admin/marketplace/sellers?${params}`);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Sessão expirada. Faça login novamente.');
+          // Redirecionar para login se não estiver autenticado
+          window.location.href = '/admin/login';
+          return;
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao carregar vendedores');
+      }
       
       const data = await response.json();
       setSellers(data);
     } catch (error) {
       console.error('Erro ao carregar vendedores:', error);
-      toast.error('Erro ao carregar vendedores');
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar vendedores');
     } finally {
       setLoading(false);
     }
@@ -247,7 +258,7 @@ const MarketplaceAdmin = () => {
 
   const handleEdit = async (seller: MarketplaceSeller) => {
     try {
-      const response = await fetch(`/api/admin/marketplace/sellers/${seller.id}`);
+      const response = await fetchAdmin(`/api/admin/marketplace/sellers/${seller.id}`);
       if (!response.ok) throw new Error('Erro ao carregar vendedor');
       
       const fullSeller = await response.json();
@@ -300,11 +311,8 @@ const MarketplaceAdmin = () => {
       
       const method = editingSeller ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await fetchAdmin(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formData)
       });
 
@@ -326,7 +334,7 @@ const MarketplaceAdmin = () => {
     if (!sellerToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/marketplace/sellers/${sellerToDelete.id}`, {
+      const response = await fetchAdmin(`/api/admin/marketplace/sellers/${sellerToDelete.id}`, {
         method: 'DELETE'
       });
 
@@ -344,11 +352,8 @@ const MarketplaceAdmin = () => {
 
   const handleToggle = async (seller: MarketplaceSeller, field: 'ativo' | 'destaque' | 'verificado', value: boolean) => {
     try {
-      const response = await fetch(`/api/admin/marketplace/sellers/${seller.id}/toggle`, {
+      const response = await fetchAdmin(`/api/admin/marketplace/sellers/${seller.id}/toggle`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ field, value })
       });
 
@@ -660,6 +665,11 @@ const MarketplaceAdmin = () => {
             <DialogTitle>
               {editingSeller ? 'Editar Vendedor' : 'Novo Vendedor'}
             </DialogTitle>
+            <DialogDescription>
+              {editingSeller
+                ? 'Atualize as informações do vendedor do marketplace'
+                : 'Preencha os dados para criar um novo vendedor no marketplace'}
+            </DialogDescription>
           </DialogHeader>
           
           <Tabs value={activeTab} onValueChange={setActiveTab}>

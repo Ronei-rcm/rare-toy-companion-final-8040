@@ -145,6 +145,33 @@
 
 | Correção | Problema Resolvido | Link |
 |----------|-------------------|------|
+| **🔒 Segurança e Acessibilidade** | Autenticação endpoints + DialogDescription | [CORRECOES_SEGURANCA_ACESSIBILIDADE.md](docs/CORRECOES_SEGURANCA_ACESSIBILIDADE.md) |
+| **📊 Resumo Executivo Jan 2025** | Resumo completo das correções | [RESUMO_EXECUTIVO_CORRECOES_JAN_2025.md](docs/RESUMO_EXECUTIVO_CORRECOES_JAN_2025.md) |
+| **🔧 Correção 401 Marketplace** | Erro 401 no endpoint marketplace | [CORRECAO_401_MARKETPLACE.md](docs/CORRECAO_401_MARKETPLACE.md) |
+| **🚀 Guia Rebuild Rápido** | Como fazer rebuild após correções | [GUIA_RAPIDO_REBUILD.md](docs/GUIA_RAPIDO_REBUILD.md) |
+| **🔧 Correção QR Code Pix** | QR Code não aparece no checkout | [CORRECAO_QR_CODE_PIX.md](docs/CORRECAO_QR_CODE_PIX.md) |
+| **📊 Análise Completa e Evoluções** | Análise completa do projeto e sugestões | [ANALISE_COMPLETA_E_EVOLUCOES.md](docs/ANALISE_COMPLETA_E_EVOLUCOES.md) |
+| **📋 Resumo Análise Projeto** | Resumo executivo da análise | [RESUMO_ANALISE_PROJETO.md](docs/RESUMO_ANALISE_PROJETO.md) |
+| **🔐 Evolução de Segurança** | JWT, Bcrypt e Cookies Seguros implementados | [EVOLUCAO_SEGURANCA_IMPLEMENTADA.md](docs/EVOLUCAO_SEGURANCA_IMPLEMENTADA.md) |
+| **📋 Sistema de Auditoria** | Logs de auditoria para rastreabilidade | [SISTEMA_AUDITORIA_IMPLEMENTADO.md](docs/SISTEMA_AUDITORIA_IMPLEMENTADO.md) |
+| **⚡ Otimização Banco de Dados** | Índices e queries otimizadas | [OTIMIZACAO_BANCO_DADOS.md](docs/OTIMIZACAO_BANCO_DADOS.md) |
+| **⚡ Cache Redis** | Cache em endpoints críticos | [CACHE_REDIS_IMPLEMENTADO.md](docs/CACHE_REDIS_IMPLEMENTADO.md) |
+| **🎉 Resumo Evoluções Jan 2025** | Resumo completo das melhorias | [RESUMO_EVOLUCOES_JAN_2025.md](docs/RESUMO_EVOLUCOES_JAN_2025.md) |
+| **✅ Checklist Deploy** | Checklist rápido de deploy | [CHECKLIST_DEPLOY.md](docs/CHECKLIST_DEPLOY.md) |
+| **⚡ Ações Rápidas** | 3 passos essenciais para deploy | [ACOES_RAPIDAS.md](docs/ACOES_RAPIDAS.md) |
+| **🎉 Resumo Final** | Resumo executivo das evoluções | [RESUMO_FINAL_JAN_2025.md](docs/RESUMO_FINAL_JAN_2025.md) |
+| **👤 Evolução Área Cliente** | Melhorias na área do cliente | [EVOLUCAO_AREA_CLIENTE.md](docs/EVOLUCAO_AREA_CLIENTE.md) |
+| **👤 Melhorias Área Cliente (Continuação)** | Histórico de atividades e mais | [MELHORIAS_AREA_CLIENTE_CONTINUACAO.md](docs/MELHORIAS_AREA_CLIENTE_CONTINUACAO.md) |
+| **🛍️ Melhorias Loja e Produtos** | Quick View e Comparação de produtos | [MELHORIAS_LOJA_PRODUTOS.md](docs/MELHORIAS_LOJA_PRODUTOS.md) |
+| **✅ Integração Quick View e Comparação** | Integração completa no sistema | [INTEGRACAO_QUICKVIEW_COMPARACAO.md](docs/INTEGRACAO_QUICKVIEW_COMPARACAO.md) |
+| **🎉 Resumo Completo Evoluções Jan 2025** | Resumo completo de todas as evoluções | [RESUMO_COMPLETO_EVOLUCOES_JAN_2025.md](docs/RESUMO_COMPLETO_EVOLUCOES_JAN_2025.md) |
+| **🎨 Melhorias Página Produto** | Detalhes aprimorados do produto | [MELHORIAS_PAGINA_PRODUTO.md](docs/MELHORIAS_PAGINA_PRODUTO.md) |
+| **🛒 Melhorias Carrinho de Compras** | Salvar para depois, cupons e frete | [MELHORIAS_CARRINHO_COMPRAS.md](docs/MELHORIAS_CARRINHO_COMPRAS.md) |
+| **🔍 Melhorias Busca e Filtros** | Busca avançada e filtros inteligentes | [MELHORIAS_BUSCA_FILTROS.md](docs/MELHORIAS_BUSCA_FILTROS.md) |
+| **🎛️ Melhorias Painel Admin** | Dashboard moderno e notificações | [MELHORIAS_PAINEL_ADMIN.md](docs/MELHORIAS_PAINEL_ADMIN.md) |
+| **📊 Melhorias Sistema Relatórios** | Construtor e templates de relatórios | [MELHORIAS_SISTEMA_RELATORIOS.md](docs/MELHORIAS_SISTEMA_RELATORIOS.md) |
+| **🚀 Sistema de Automações** | Automações para pedidos e workflows | [MELHORIAS_SISTEMA_AUTOMACOES.md](docs/MELHORIAS_SISTEMA_AUTOMACOES.md) |
+| **🎉 Resumo Final Evoluções Completas** | Resumo consolidado de todas as evoluções | [RESUMO_FINAL_EVOLUCOES_COMPLETAS.md](docs/RESUMO_FINAL_EVOLUCOES_COMPLETAS.md) |
 | **Dashboard Cliente Simplificado** | Remoção de elementos redundantes | [MELHORIAS_DASHBOARD_E_FORMULARIO.md](docs/MELHORIAS_DASHBOARD_E_FORMULARIO.md) |
 | **Botão Salvar Equipe** | Botão não aparecia no formulário | [MELHORIAS_DASHBOARD_E_FORMULARIO.md](docs/MELHORIAS_DASHBOARD_E_FORMULARIO.md) |
 | **Changelog 11 Jan** | Registro de todas melhorias | [CHANGELOG_2025_01_11.md](docs/CHANGELOG_2025_01_11.md) |

@@ -35,6 +35,7 @@ const PedidosEvolved = React.lazy(() => import("./pages/admin/PedidosEvolved"));
 const PedidosAdvanced = React.lazy(() => import("./pages/admin/PedidosAdvanced"));
 const WhatsAppGrupos = React.lazy(() => import("./pages/admin/WhatsAppGrupos"));
 const HomeConfig = React.lazy(() => import("./pages/admin/HomeConfig"));
+const VideoGalleryAdmin = React.lazy(() => import("./pages/admin/VideoGalleryAdmin"));
 const Fornecedores = React.lazy(() => import("./pages/admin/Fornecedores"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const Colecoes = React.lazy(() => import("./pages/Colecoes"));
@@ -57,6 +58,7 @@ const SuporteAdmin = React.lazy(() => import("./pages/admin/SuporteAdmin"));
 const PaginasAdmin = React.lazy(() => import("./pages/admin/PaginasAdmin"));
 const ReviewsAdmin = React.lazy(() => import("./pages/admin/ReviewsAdmin"));
 const Financeiro = React.lazy(() => import("./pages/admin/Financeiro"));
+const Relatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 const FornecedoresFinanceiro = React.lazy(() => import("./pages/admin/FornecedoresFinanceiro"));
 const Lancamentos = React.lazy(() => import("./pages/admin/Lancamentos"));
 const MetasFinanceiras = React.lazy(() => import("./pages/admin/MetasFinanceiras"));
@@ -68,8 +70,10 @@ const AdminReset = React.lazy(() => import("./pages/admin/ResetPassword"));
 const BlogAdmin = React.lazy(() => import("./pages/admin/BlogAdmin"));
 const Blog = React.lazy(() => import("./pages/Blog"));
 const BlogPost = React.lazy(() => import("./pages/BlogPost"));
+const Videos = React.lazy(() => import("./pages/Videos"));
 const MarketplaceAdmin = React.lazy(() => import("./pages/admin/MarketplaceAdmin"));
 const CategoriasAdmin = React.lazy(() => import("./pages/admin/CategoriasAdmin"));
+const Automacoes = React.lazy(() => import("./pages/admin/Automacoes"));
 
 const queryClient = new QueryClient();
 
@@ -106,6 +110,7 @@ function App() {
               <Route path="/marketplace" element={<Mercado />} />
               <Route path="/about" element={<Sobre />} />
               <Route path="/eventos" element={<Eventos />} />
+              <Route path="/videos" element={<Videos />} />
               <Route path="/suporte" element={<Suporte />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
@@ -141,13 +146,16 @@ function App() {
                 <Route path="pedidos" element={<Pedidos />} />
                 <Route path="pedidos-evolved" element={<PedidosEvolved />} />
                 <Route path="pedidos-advanced" element={<PedidosAdvanced />} />
+                <Route path="automacoes" element={<Automacoes />} />
                 <Route path="home-config" element={<HomeConfig />} />
+                <Route path="video-gallery" element={<VideoGalleryAdmin />} />
                 <Route path="whatsapp-grupos" element={<WhatsAppGrupos />} />
                 <Route path="fornecedores" element={<Fornecedores />} />
                 <Route path="configuracoes" element={<ConfiguracoesAdmin />} />
                 <Route path="recuperacao" element={<RecuperacaoAdmin />} />
                 <Route path="eventos" element={<EventosAdmin />} />
                   <Route path="financeiro" element={<Financeiro />} />
+                  <Route path="relatorios" element={<Relatorios />} />
                   <Route path="fornecedores-financeiro" element={<FornecedoresFinanceiro />} />
                   <Route path="lancamentos" element={<Lancamentos />} />
                   <Route path="metas-financeiras" element={<MetasFinanceiras />} />

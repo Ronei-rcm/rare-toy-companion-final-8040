@@ -93,52 +93,136 @@ export const productsService = {
     return data.map(transformProduct);
   },
 
-  // Get featured products
+  // Get featured products (via REST API)
   async getFeaturedProducts(): Promise<Produto[]> {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('destaque', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/produtos?featured=true`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      // Se retornar array, usar diretamente; se retornar objeto com items, usar items
+      const products = Array.isArray(data) ? data : (data.items || []);
+      return products.map((p: any) => ({
+        id: p.id,
+        nome: p.nome,
+        descricao: p.descricao,
+        preco: Number(p.preco),
+        imagemUrl: p.imagemUrl || p.imagem_url || '',
+        categoria: p.categoria,
+        estoque: p.estoque,
+        status: p.status,
+        destaque: p.destaque || false,
+        promocao: p.promocao || false,
+        lancamento: p.lancamento || false,
+        avaliacao: p.avaliacao ? Number(p.avaliacao) : undefined,
+        totalAvaliacoes: p.totalAvaliacoes || p.total_avaliacoes,
+        faixaEtaria: p.faixaEtaria || p.faixa_etaria,
+        peso: p.peso,
+        dimensoes: p.dimensoes,
+        material: p.material,
+        marca: p.marca,
+        origem: p.origem,
+        fornecedor: p.fornecedor,
+        codigoBarras: p.codigoBarras || p.codigo_barras,
+        dataLancamento: p.dataLancamento || p.data_lancamento,
+        emEstoque: (p.estoque || 0) > 0,
+      }));
+    } catch (error) {
       console.error('Error fetching featured products:', error);
       return [];
     }
-
-    return data.map(transformProduct);
   },
 
-  // Get products on sale
+  // Get products on sale (via REST API)
   async getPromotionProducts(): Promise<Produto[]> {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('promocao', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/produtos?onSale=true`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      // Se retornar array, usar diretamente; se retornar objeto com items, usar items
+      const products = Array.isArray(data) ? data : (data.items || []);
+      return products.map((p: any) => ({
+        id: p.id,
+        nome: p.nome,
+        descricao: p.descricao,
+        preco: Number(p.preco),
+        imagemUrl: p.imagemUrl || p.imagem_url || '',
+        categoria: p.categoria,
+        estoque: p.estoque,
+        status: p.status,
+        destaque: p.destaque || false,
+        promocao: p.promocao || false,
+        lancamento: p.lancamento || false,
+        avaliacao: p.avaliacao ? Number(p.avaliacao) : undefined,
+        totalAvaliacoes: p.totalAvaliacoes || p.total_avaliacoes,
+        faixaEtaria: p.faixaEtaria || p.faixa_etaria,
+        peso: p.peso,
+        dimensoes: p.dimensoes,
+        material: p.material,
+        marca: p.marca,
+        origem: p.origem,
+        fornecedor: p.fornecedor,
+        codigoBarras: p.codigoBarras || p.codigo_barras,
+        dataLancamento: p.dataLancamento || p.data_lancamento,
+        emEstoque: (p.estoque || 0) > 0,
+      }));
+    } catch (error) {
       console.error('Error fetching promotion products:', error);
       return [];
     }
-
-    return data.map(transformProduct);
   },
 
-  // Get new products
+  // Get new products (via REST API)
   async getNewProducts(): Promise<Produto[]> {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('lancamento', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/produtos?novo=true`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      // Se retornar array, usar diretamente; se retornar objeto com items, usar items
+      const products = Array.isArray(data) ? data : (data.items || []);
+      return products.map((p: any) => ({
+        id: p.id,
+        nome: p.nome,
+        descricao: p.descricao,
+        preco: Number(p.preco),
+        imagemUrl: p.imagemUrl || p.imagem_url || '',
+        categoria: p.categoria,
+        estoque: p.estoque,
+        status: p.status,
+        destaque: p.destaque || false,
+        promocao: p.promocao || false,
+        lancamento: p.lancamento || false,
+        avaliacao: p.avaliacao ? Number(p.avaliacao) : undefined,
+        totalAvaliacoes: p.totalAvaliacoes || p.total_avaliacoes,
+        faixaEtaria: p.faixaEtaria || p.faixa_etaria,
+        peso: p.peso,
+        dimensoes: p.dimensoes,
+        material: p.material,
+        marca: p.marca,
+        origem: p.origem,
+        fornecedor: p.fornecedor,
+        codigoBarras: p.codigoBarras || p.codigo_barras,
+        dataLancamento: p.dataLancamento || p.data_lancamento,
+        emEstoque: (p.estoque || 0) > 0,
+      }));
+    } catch (error) {
       console.error('Error fetching new products:', error);
       return [];
     }
-
-    return data.map(transformProduct);
   },
 
   // Get product by ID

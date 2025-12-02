@@ -20,7 +20,8 @@ import {
   Clock,
   Gift,
   User,
-  Shield
+  Shield,
+  Video
 } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import CarrinhoDrawer from '@/components/loja/CarrinhoDrawer';
@@ -353,7 +354,16 @@ const NavLinks = ({ className, onClick, isAdmin, isLogged }: { className?: strin
     </Link>
     
     <Link 
-      to="/about" 
+      to="/videos" 
+      className={cn("group flex items-center gap-2 px-3 py-2 rounded-md font-medium text-foreground hover:bg-orange-50 hover:text-orange-600 transition-all", className)} 
+      onClick={onClick}
+    >
+      <Video className="w-4 h-4" />
+      <span>Vídeos</span>
+    </Link>
+    
+    <Link 
+      to="/about"
       className={cn("group flex items-center gap-2 px-3 py-2 rounded-md font-medium text-foreground hover:bg-orange-50 hover:text-orange-600 transition-all", className)} 
       onClick={onClick}
     >

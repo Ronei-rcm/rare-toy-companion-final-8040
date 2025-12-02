@@ -42,7 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useSocialFeatures } from '@/hooks/useSocialFeatures';
 import { toast } from 'sonner';
 
@@ -535,6 +535,9 @@ export function SocialDashboard({ userId }: SocialDashboardProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Post</DialogTitle>
+            <DialogDescription>
+              Compartilhe suas ideias, experiências ou novidades com a comunidade
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Textarea

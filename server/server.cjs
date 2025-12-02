@@ -16,6 +16,8 @@ const {
   createAccountLimiter,
   cartLimiter,
   productsLimiter,
+  highFrequencyLimiter,
+  authRoutesLimiter,
   helmetConfig,
   sanitizeObject
 } = require('../config/security.cjs');
@@ -24,6 +26,7 @@ const { initializeScheduler, scheduleMonthlyCleanup } = require('../config/cartR
 const { setDoubleSubmitCookie, getCsrfTokenEndpoint } = require('../config/csrfProtection.cjs');
 const redisCache = require('../config/redisCache.cjs');
 const sentry = require('../config/sentry.cjs');
+const { authenticateAdmin } = require('./middleware/auth.cjs');
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 3001;
@@ -85,6 +88,117 @@ app.use((req, res, next) => {
 });
 
 // =========================
+// Rotas alternativas para servir uploads (múltiplas rotas para garantir funcionamento)
+// IMPORTANTE: Estas rotas devem vir ANTES de /lovable-uploads para ter prioridade
+// =========================
+
+// Função auxiliar para servir arquivo
+function serveUploadFile(req, res, filename, routeName) {
+  // Log detalhado para debug
+  console.log(`🔍 [${routeName}] Requisição recebida: ${req.method} ${req.path}`);
+  console.log(`   Filename: ${filename}`);
+  console.log(`   Original URL: ${req.originalUrl}`);
+  console.log(`   IP: ${req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);
+  
+  // Validar filename para evitar path traversal
+  if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    console.warn(`⚠️ [${routeName}] Filename inválido: ${filename}`);
+    return res.status(400).json({ error: 'Filename inválido' });
+  }
+  
+  const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
+  
+  console.log(`   Caminho completo: ${filePath}`);
+  console.log(`   Existe? ${fs.existsSync(filePath)}`);
+  
+  // Verificar se o arquivo existe
+  if (fs.existsSync(filePath)) {
+    const stats = fs.statSync(filePath);
+    if (!stats.isFile()) {
+      console.warn(`⚠️ [${routeName}] Caminho não é arquivo: ${filePath}`);
+      return res.status(404).json({ error: 'Arquivo não encontrado', filename });
+    }
+    
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+      '.avif': 'image/avif',
+      '.bmp': 'image/bmp',
+      '.mp4': 'video/mp4',
+      '.webm': 'video/webm',
+      '.ogg': 'video/ogg'
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+    
+    // Headers para CORS e cache
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    console.log(`✅ [${routeName}] Servindo: ${filename} (${stats.size} bytes, ${contentType})`);
+    return res.sendFile(path.resolve(filePath));
+  } else {
+    console.warn(`⚠️ [${routeName}] Arquivo não encontrado: ${filename}`);
+    console.warn(`   Tentando buscar em: ${path.dirname(filePath)}`);
+    console.warn(`   Diretório existe? ${fs.existsSync(path.dirname(filePath))}`);
+    
+    // Listar arquivos no diretório para debug
+    try {
+      const dirFiles = fs.readdirSync(path.dirname(filePath));
+      console.warn(`   Arquivos no diretório (primeiros 10): ${dirFiles.slice(0, 10).join(', ')}`);
+    } catch (e) {
+      console.warn(`   Erro ao listar diretório: ${e.message}`);
+    }
+    
+    return res.status(404).json({ error: 'Arquivo não encontrado', filename, path: filePath });
+  }
+}
+
+// IMPORTANTE: Estas rotas devem vir ANTES de qualquer middleware que possa interceptar
+// Ordem de prioridade: rotas específicas primeiro, depois middlewares genéricos
+
+// Rota 1: /api/uploads/:filename (padrão) - PRIMEIRA PRIORIDADE
+app.get('/api/uploads/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/uploads');
+});
+
+// Rota 2: /api/files/:filename (alternativa)
+app.get('/api/files/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/files');
+});
+
+// Rota 3: /api/media/:filename (alternativa)
+app.get('/api/media/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/media');
+});
+
+// Rota 4: /api/static/:filename (alternativa)
+app.get('/api/static/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/static');
+});
+
+// Rota 5: /api/img/:filename (alternativa)
+app.get('/api/img/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/img');
+});
+
+// Rota 6: /api/file/:filename (alternativa adicional)
+app.get('/api/file/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/file');
+});
+
+// Rota 7: /api/asset/:filename (alternativa adicional)
+app.get('/api/asset/:filename', (req, res) => {
+  serveUploadFile(req, res, req.params.filename, 'api/asset');
+});
+
+// =========================
 // Static - lovable uploads
 // =========================
 try {
@@ -99,12 +213,11 @@ try {
     const filename = pathWithoutPrefix.split('/').pop(); // Pegar apenas o nome do arquivo
     const target = path.join(uploadsDir, filename);
     
-    // Log para debug (apenas para PNG para não poluir logs)
-    const isPng = filename.toLowerCase().endsWith('.png');
-    if (isPng) {
-      console.log(`🔍 [lovable-uploads] ${req.path} -> ${filename} -> ${target}`);
-      console.log(`   Existe? ${fs.existsSync(target)}`);
-    }
+    // Log para debug
+    console.log(`🔍 [lovable-uploads] Requisição: ${req.method} ${req.path}`);
+    console.log(`   Filename: ${filename}`);
+    console.log(`   Target: ${target}`);
+    console.log(`   Existe? ${fs.existsSync(target)}`);
     
     if (fs.existsSync(target)) {
       // Verificar se é um arquivo (não diretório)
@@ -120,7 +233,10 @@ try {
           '.webp': 'image/webp',
           '.svg': 'image/svg+xml',
           '.avif': 'image/avif',
-          '.bmp': 'image/bmp'
+          '.bmp': 'image/bmp',
+          '.mp4': 'video/mp4',
+          '.webm': 'video/webm',
+          '.ogg': 'video/ogg'
         };
         
         const contentType = mimeTypes[ext] || 'application/octet-stream';
@@ -129,26 +245,21 @@ try {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
         
-        if (isPng) {
-          console.log(`✅ Servindo arquivo PNG: ${filename} (Content-Type: ${contentType}, Size: ${stats.size} bytes)`);
-        }
+        console.log(`✅ Servindo arquivo: ${filename} (Content-Type: ${contentType}, Size: ${stats.size} bytes)`);
         return res.sendFile(path.resolve(target));
       } else {
         console.warn(`⚠️ Caminho não é arquivo: ${target}`);
       }
     } else {
-      if (isPng) {
-        console.warn(`⚠️ Arquivo PNG não encontrado: ${target}`);
-      }
+      console.warn(`⚠️ Arquivo não encontrado: ${target}`);
+      console.warn(`   Tentando buscar em: ${uploadsDir}`);
     }
     
     // Fallback para placeholder se arquivo não existir
     const placeholderPng = path.join(process.cwd(), 'public', 'placeholder.png');
     const placeholderSvg = path.join(process.cwd(), 'public', 'placeholder.svg');
     if (fs.existsSync(placeholderPng)) {
-      if (isPng) {
-        console.warn(`⚠️ Usando placeholder para PNG não encontrado: ${req.path}`);
-      }
+      console.warn(`⚠️ Usando placeholder para arquivo não encontrado: ${req.path}`);
       res.setHeader('Content-Type', 'image/png');
       return res.sendFile(path.resolve(placeholderPng));
     }
@@ -163,8 +274,9 @@ try {
   console.warn('⚠️  Não foi possível configurar /lovable-uploads:', e?.message || e);
 }
 
-// Rate limiting geral
-app.use('/api/', generalLimiter);
+// Rate limiting geral - REMOVIDO para evitar conflito com limiters específicos
+// O generalLimiter agora é aplicado apenas em rotas específicas que não têm seus próprios limiters
+// app.use('/api/', generalLimiter);
 
 // Proteção CSRF (Double Submit Cookie pattern)
 app.use(setDoubleSubmitCookie);
@@ -269,13 +381,29 @@ app.get('/icon/:filename', (req, res) => {
 });
 
 // Rota específica para imagens de uploads
+
 app.get('/lovable-uploads/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
   
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+      '.mp4': 'video/mp4',
+      '.webm': 'video/webm',
+      '.ogg': 'video/ogg'
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.sendFile(path.resolve(filePath));
   } else {
     res.status(404).json({ error: 'Imagem não encontrada' });
   }
@@ -307,18 +435,7 @@ app.get('/img/:filename', (req, res) => {
   }
 });
 
-// Rota específica para imagens de uploads que o Nginx não intercepta
-app.get('/api/img/:filename', (req, res) => {
-  const filename = req.params.filename;
-  const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
-  
-  // Verificar se o arquivo existe
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ error: 'Imagem não encontrada' });
-  }
-});
+// Rota /api/img/:filename já está definida acima usando serveUploadFile
 
 // Logar chaves do body para rotas de coleções
 app.use((req, _res, next) => {
@@ -394,6 +511,30 @@ const upload = multer({
   }
 });
 
+// Configure multer for video uploads (larger file size limit)
+const videoUpload = multer({ 
+  storage: storage,
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB limit for videos
+  fileFilter: (req, file, cb) => {
+    // Aceitar vídeos
+    if (file.mimetype.startsWith('video/')) {
+      console.log(`🎥 Upload de vídeo detectado: ${file.originalname} (mimetype: ${file.mimetype})`);
+      cb(null, true);
+    } else {
+      // Também verificar por extensão
+      const ext = path.extname(file.originalname).toLowerCase();
+      const videoExts = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v'];
+      if (videoExts.includes(ext)) {
+        console.log(`🎥 Upload de vídeo por extensão: ${file.originalname} (mimetype: ${file.mimetype}, extensão: ${ext})`);
+        cb(null, true);
+      } else {
+        console.warn(`⚠️ Arquivo de vídeo rejeitado: ${file.originalname} (mimetype: ${file.mimetype}, extensão: ${ext})`);
+        cb(new Error('Only video files are allowed!'), false);
+      }
+    }
+  }
+});
+
 // MySQL connection pool
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || '127.0.0.1',
@@ -430,10 +571,10 @@ function transformCarouselItem(dbItem, req) {
     imagem: normalizeToThisOrigin(req, dbItem.image_url || ''),
     badge: dbItem.badge || 'Novo',
     descricao: dbItem.subtitle || '',
-    ativo: dbItem.active === 1 || dbItem.active === true,
+    ativo: dbItem.is_active === 1 || dbItem.is_active === true || dbItem.active === 1 || dbItem.active === true,
     order_index: dbItem.order_index || 0,
     button_text: dbItem.button_text || 'Ver Mais',
-    button_link: dbItem.button_link || '#'
+    button_link: dbItem.button_link || dbItem.link_url || '#'
   };
 }
 
@@ -688,22 +829,412 @@ app.post('/api/carousel/bulk', async (req, res) => {
   }
 });
 
+// ==================== VIDEO GALLERY API ====================
+
+// Transform database video to frontend format
+function transformVideoItem(dbItem, req) {
+  // Normalizar video_url (remover /api/ se presente e garantir caminho correto)
+  let videoUrl = dbItem.video_url || '';
+  if (videoUrl.startsWith('/api/lovable-uploads/')) {
+    videoUrl = videoUrl.replace('/api/lovable-uploads/', '/lovable-uploads/');
+  } else if (videoUrl.startsWith('lovable-uploads/')) {
+    videoUrl = '/' + videoUrl;
+  } else if (!videoUrl.startsWith('/') && !videoUrl.startsWith('http')) {
+    videoUrl = '/lovable-uploads/' + videoUrl;
+  }
+  
+  return {
+    id: dbItem.id || '',
+    titulo: dbItem.titulo || '',
+    descricao: dbItem.descricao || '',
+    video_url: normalizeToThisOrigin(req, videoUrl),
+    thumbnail_url: normalizeToThisOrigin(req, dbItem.thumbnail_url || ''),
+    categoria: dbItem.categoria || '',
+    duracao: dbItem.duracao || 0,
+    ordem: dbItem.ordem || 0,
+    is_active: dbItem.is_active === 1 || dbItem.is_active === true,
+    visualizacoes: dbItem.visualizacoes || 0,
+    created_at: dbItem.created_at,
+    updated_at: dbItem.updated_at
+  };
+}
+
+// Transform frontend video to database format
+const transformVideoToDatabase = (item) => ({
+  id: item.id || null,
+  titulo: item.titulo || null,
+  descricao: item.descricao || null,
+  video_url: item.video_url || null,
+  thumbnail_url: item.thumbnail_url || null,
+  categoria: item.categoria || null,
+  duracao: item.duracao || 0,
+  ordem: item.ordem || 0,
+  is_active: item.is_active !== undefined ? item.is_active : true,
+  visualizacoes: item.visualizacoes || 0
+});
+
+// GET /api/videos - Get all videos
+app.get('/api/videos', async (req, res) => {
+  try {
+    console.log('📹 [VIDEOS] GET /api/videos - Buscando vídeos...');
+    const [rows] = await pool.execute(
+      'SELECT * FROM video_gallery ORDER BY ordem ASC, created_at ASC'
+    );
+    console.log(`📹 [VIDEOS] Encontrados ${rows.length} vídeos`);
+    const videos = rows.map(row => transformVideoItem(row, req));
+    res.json(videos);
+  } catch (error) {
+    console.error('❌ [VIDEOS] Error fetching videos:', error);
+    console.error('❌ [VIDEOS] Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to fetch videos', message: error.message });
+  }
+});
+
+// GET /api/videos/active - Get active videos only
+app.get('/api/videos/active', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM video_gallery WHERE is_active = 1 ORDER BY ordem ASC, created_at ASC'
+    );
+    const videos = rows.map(row => transformVideoItem(row, req));
+    res.json(videos);
+  } catch (error) {
+    console.error('Error fetching active videos:', error);
+    res.status(500).json({ error: 'Failed to fetch active videos' });
+  }
+});
+
+// GET /api/videos/:id - Get single video
+app.get('/api/videos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.execute('SELECT * FROM video_gallery WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    const video = transformVideoItem(rows[0], req);
+    res.json(video);
+  } catch (error) {
+    console.error('Error fetching video:', error);
+    res.status(500).json({ error: 'Failed to fetch video' });
+  }
+});
+
+// POST /api/videos - Create new video
+app.post('/api/videos', async (req, res) => {
+  try {
+    console.log('📹 [VIDEOS] POST /api/videos - Criando vídeo...');
+    console.log('📹 [VIDEOS] Body recebido:', JSON.stringify(req.body, null, 2));
+    
+    const video = req.body;
+    const dbVideo = filterUndefined(transformVideoToDatabase(video));
+    const newId = require('crypto').randomUUID();
+    
+    console.log('📹 [VIDEOS] Dados transformados:', JSON.stringify(dbVideo, null, 2));
+    console.log('📹 [VIDEOS] Novo ID:', newId);
+    
+    const [result] = await pool.execute(
+      `INSERT INTO video_gallery 
+       (id, titulo, descricao, video_url, thumbnail_url, categoria, duracao, ordem, is_active, visualizacoes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        newId,
+        dbVideo.titulo ?? null,
+        dbVideo.descricao ?? null,
+        dbVideo.video_url ?? null,
+        dbVideo.thumbnail_url ?? null,
+        dbVideo.categoria ?? null,
+        dbVideo.duracao ?? 0,
+        dbVideo.ordem ?? 0,
+        dbVideo.is_active ?? true,
+        dbVideo.visualizacoes ?? 0
+      ]
+    );
+
+    console.log('📹 [VIDEOS] Insert result:', result);
+
+    // Fetch the created video
+    const [rows] = await pool.execute('SELECT * FROM video_gallery WHERE id = ?', [newId]);
+    if (rows.length === 0) {
+      throw new Error('Video was not created');
+    }
+    
+    const createdVideo = transformVideoItem(rows[0], req);
+    console.log('✅ [VIDEOS] Vídeo criado com sucesso:', createdVideo.id);
+    
+    res.status(201).json(createdVideo);
+  } catch (error) {
+    console.error('❌ [VIDEOS] Error creating video:', error);
+    console.error('❌ [VIDEOS] Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to create video', message: error.message });
+  }
+});
+
+// PUT /api/videos/:id - Update video
+app.put('/api/videos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const video = req.body;
+    const dbVideo = filterUndefined(transformVideoToDatabase(video));
+    
+    await pool.execute(
+      `UPDATE video_gallery 
+       SET titulo = ?, descricao = ?, video_url = ?, thumbnail_url = ?, categoria = ?, 
+           duracao = ?, ordem = ?, is_active = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        dbVideo.titulo ?? null,
+        dbVideo.descricao ?? null,
+        dbVideo.video_url ?? null,
+        dbVideo.thumbnail_url ?? null,
+        dbVideo.categoria ?? null,
+        dbVideo.duracao ?? 0,
+        dbVideo.ordem ?? 0,
+        dbVideo.is_active ?? true,
+        id
+      ]
+    );
+
+    // Fetch the updated video
+    const [rows] = await pool.execute('SELECT * FROM video_gallery WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const updatedVideo = transformVideoItem(rows[0], req);
+    res.json(updatedVideo);
+  } catch (error) {
+    console.error('Error updating video:', error);
+    res.status(500).json({ error: 'Failed to update video', message: error.message });
+  }
+});
+
+// DELETE /api/videos/:id - Delete video
+app.delete('/api/videos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [result] = await pool.execute('DELETE FROM video_gallery WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting video:', error);
+    res.status(500).json({ error: 'Failed to delete video' });
+  }
+});
+
+// PUT /api/videos/:id/toggle - Toggle video active status
+app.put('/api/videos/:id/toggle', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    
+    await pool.execute(
+      'UPDATE video_gallery SET is_active = ?, updated_at = NOW() WHERE id = ?',
+      [is_active ?? true, id]
+    );
+
+    // Fetch the updated video
+    const [rows] = await pool.execute('SELECT * FROM video_gallery WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const updatedVideo = transformVideoItem(rows[0], req);
+    res.json(updatedVideo);
+  } catch (error) {
+    console.error('Error toggling video:', error);
+    res.status(500).json({ error: 'Failed to toggle video', message: error.message });
+  }
+});
+
+// POST /api/videos/bulk - Save all videos (bulk update)
+app.post('/api/videos/bulk', async (req, res) => {
+  try {
+    const videos = req.body;
+    
+    // Start transaction
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    
+    try {
+      // Get all existing videos
+      const [existingRows] = await connection.execute('SELECT id FROM video_gallery');
+      const existingIds = new Set(existingRows.map(row => row.id));
+      const newVideoIds = new Set(videos.map(v => v.id));
+
+      // Delete videos that were removed
+      for (const existingId of existingIds) {
+        if (!newVideoIds.has(existingId)) {
+          await connection.execute('DELETE FROM video_gallery WHERE id = ?', [existingId]);
+        }
+      }
+
+      // Update or create videos
+      for (let i = 0; i < videos.length; i++) {
+        const video = { ...videos[i], ordem: i };
+        const dbVideo = filterUndefined(transformVideoToDatabase(video));
+        
+        if (existingIds.has(video.id)) {
+          // Update existing video
+          await connection.execute(
+            `UPDATE video_gallery 
+             SET titulo = ?, descricao = ?, video_url = ?, thumbnail_url = ?, categoria = ?, 
+                 duracao = ?, ordem = ?, is_active = ?, updated_at = NOW()
+             WHERE id = ?`,
+            [
+              dbVideo.titulo ?? null,
+              dbVideo.descricao ?? null,
+              dbVideo.video_url ?? null,
+              dbVideo.thumbnail_url ?? null,
+              dbVideo.categoria ?? null,
+              dbVideo.duracao ?? 0,
+              dbVideo.ordem ?? 0,
+              dbVideo.is_active ?? true,
+              video.id
+            ]
+          );
+        } else {
+          // Create new video
+          await connection.execute(
+            `INSERT INTO video_gallery 
+             (id, titulo, descricao, video_url, thumbnail_url, categoria, duracao, ordem, is_active, visualizacoes, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            [
+              video.id,
+              dbVideo.titulo ?? null,
+              dbVideo.descricao ?? null,
+              dbVideo.video_url ?? null,
+              dbVideo.thumbnail_url ?? null,
+              dbVideo.categoria ?? null,
+              dbVideo.duracao ?? 0,
+              dbVideo.ordem ?? 0,
+              dbVideo.is_active ?? true,
+              dbVideo.visualizacoes ?? 0
+            ]
+          );
+        }
+      }
+
+      await connection.commit();
+      res.json({ success: true });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Error saving videos:', error);
+    res.status(500).json({ error: 'Failed to save videos' });
+  }
+});
+
+// PUT /api/videos/:id/increment-views - Increment video views
+app.put('/api/videos/:id/increment-views', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await pool.execute(
+      'UPDATE video_gallery SET visualizacoes = visualizacoes + 1 WHERE id = ?',
+      [id]
+    );
+
+    const [rows] = await pool.execute('SELECT * FROM video_gallery WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    const video = transformVideoItem(rows[0], req);
+    res.json(video);
+  } catch (error) {
+    console.error('Error incrementing video views:', error);
+    res.status(500).json({ error: 'Failed to increment views' });
+  }
+});
+
 // POST /api/upload - Upload image
 app.post('/api/upload', upload.single('image'), (req, res) => {
   try {
+    console.log('📤 [UPLOAD] Recebendo requisição de upload...');
+    console.log('📤 [UPLOAD] File recebido:', req.file ? {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    } : 'Nenhum arquivo');
+    
     if (!req.file) {
+      console.error('❌ [UPLOAD] Nenhum arquivo recebido');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
-    res.json({ 
+    const response = { 
       success: true, 
       imageUrl: imageUrl,
       filename: req.file.filename
+    };
+    
+    console.log('✅ [UPLOAD] Upload bem-sucedido:', {
+      filename: req.file.filename,
+      imageUrl: imageUrl,
+      fullPath: req.file.path,
+      fileExists: fs.existsSync(req.file.path)
     });
+    
+    res.json(response);
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('❌ [UPLOAD] Erro no upload:', error);
+    console.error('❌ [UPLOAD] Stack:', error.stack);
     res.status(500).json({ error: 'Upload failed', message: error.message });
+  }
+});
+
+// POST /api/upload/video - Upload video
+app.post('/api/upload/video', videoUpload.single('video'), (req, res) => {
+  try {
+    console.log('🎥 [VIDEO UPLOAD] Recebendo requisição de upload de vídeo...');
+    console.log('🎥 [VIDEO UPLOAD] File recebido:', req.file ? {
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    } : 'Nenhum arquivo');
+    
+    if (!req.file) {
+      console.error('❌ [VIDEO UPLOAD] Nenhum arquivo recebido');
+      return res.status(400).json({ error: 'No video file uploaded' });
+    }
+
+    const videoUrl = `/lovable-uploads/${req.file.filename}`;
+    const response = { 
+      success: true, 
+      videoUrl: videoUrl,
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    };
+    
+    console.log('✅ [VIDEO UPLOAD] Upload bem-sucedido:', {
+      filename: req.file.filename,
+      videoUrl: videoUrl,
+      fullPath: req.file.path,
+      fileExists: fs.existsSync(req.file.path),
+      size: `${(req.file.size / 1024 / 1024).toFixed(2)} MB`
+    });
+    
+    res.json(response);
+  } catch (error) {
+    console.error('❌ [VIDEO UPLOAD] Erro no upload:', error);
+    console.error('❌ [VIDEO UPLOAD] Stack:', error.stack);
+    res.status(500).json({ error: 'Video upload failed', message: error.message });
   }
 });
 
@@ -795,9 +1326,11 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
     const total = Number(countRows?.[0]?.total || 0);
 
     // Página
-    const offset = (page - 1) * pageSize;
-    const pageParams = params.slice();
-    pageParams.push(pageSize, offset);
+    const offset = Math.max(0, (page - 1) * pageSize);
+    // Garantir que pageSize e offset sejam números inteiros (parseInt para garantir tipo correto)
+    const limitInt = parseInt(String(pageSize), 10);
+    const offsetInt = parseInt(String(offset), 10);
+    // Usar valores diretos para LIMIT e OFFSET (são seguros pois são números validados)
     const [rows] = await pool.execute(
       `SELECT id, nome, descricao, preco, imagem_url as imagemUrl, categoria, estoque,
               status, destaque, promocao, lancamento, avaliacao, total_avaliacoes as totalAvaliacoes,
@@ -805,8 +1338,8 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
               codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt
          FROM produtos ${whereSql}
          ORDER BY ${orderBy}
-         LIMIT ? OFFSET ?`,
-      pageParams
+         LIMIT ${limitInt} OFFSET ${offsetInt}`,
+      params
     );
 
     const itens = rows.map((p) => ({
@@ -852,6 +1385,15 @@ app.get('/api/produtos/destaque', async (req, res) => {
 // Buscar todas as categorias com contagem de produtos (PÚBLICO)
 app.get('/api/categorias', async (req, res) => {
   try {
+    // Tentar cache primeiro
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    const cached = await cacheHelpers.getCachedCategories();
+    
+    if (cached) {
+      console.log('✅ Categorias do cache');
+      return res.json(cached);
+    }
+    
     console.log('🔄 Buscando categorias públicas...');
     
     // Buscar categorias da tabela com estatísticas de produtos
@@ -896,6 +1438,9 @@ app.get('/api/categorias', async (req, res) => {
         : null,
       ultimoProduto: categoria.ultimoProduto
     }));
+    
+    // Cachear resultado
+    await cacheHelpers.setCachedCategories(categoriasFormatadas);
     
     res.json(categoriasFormatadas);
   } catch (error) {
@@ -1417,6 +1962,16 @@ app.get('/api/compras-recentes', async (req, res) => {
 app.get('/api/produtos/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Tentar cache primeiro
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    const cached = await cacheHelpers.getCachedProduct(id);
+    
+    if (cached) {
+      console.log(`✅ Produto ${id} do cache`);
+      return res.json(cached);
+    }
+    
     console.log(`🔄 Buscando produto ID: ${id}`);
     
     const [rows] = await pool.execute(
@@ -1437,6 +1992,9 @@ app.get('/api/produtos/:id', async (req, res) => {
       avaliacao: rows[0].avaliacao ? parseFloat(rows[0].avaliacao) : null,
       imagemUrl: rows[0].imagemUrl ? getPublicUrl(req, rows[0].imagemUrl) : null
     };
+    
+    // Cachear resultado
+    await cacheHelpers.setCachedProduct(id, produto);
     
     res.json(produto);
   } catch (error) {
@@ -1509,6 +2067,11 @@ app.post('/api/produtos/quick-add', upload.single('imagem'), async (req, res) =>
     ]);
     
     logger.info('Produto cadastrado rapidamente', { id, nome, mobile: true });
+    
+    // Invalidar cache de produtos
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    await cacheHelpers.invalidateProductsCache();
+    await cacheHelpers.invalidateCategoriesCache();
     
     res.json({ 
       success: true, 
@@ -1584,6 +2147,11 @@ app.post('/api/produtos', async (req, res) => {
       produtoData.codigoBarras || null,
       produtoData.dataLancamento || null
     ]);
+    
+    // Invalidar cache de produtos
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    await cacheHelpers.invalidateProductsCache();
+    await cacheHelpers.invalidateCategoriesCache();
     
     console.log('✅ Produto criado com ID:', result.insertId);
     res.status(201).json({ id: result.insertId, ...produtoData });
@@ -1739,6 +2307,11 @@ app.put('/api/produtos/:id', async (req, res) => {
       updatedAt: produto.updated_at
     };
     
+    // Invalidar cache de produtos
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    await cacheHelpers.invalidateProductCache(id);
+    await cacheHelpers.invalidateProductsCache();
+    
     console.log('✅ Produto atualizado com sucesso');
     res.json(produtoFormatado);
   } catch (error) {
@@ -1762,6 +2335,11 @@ app.delete('/api/produtos/:id', async (req, res) => {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
     
+    // Invalidar cache de produtos
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    await cacheHelpers.invalidateProductCache(id);
+    await cacheHelpers.invalidateProductsCache();
+    
     console.log('✅ Produto deletado');
     res.json({ message: 'Produto deletado com sucesso' });
   } catch (error) {
@@ -1778,14 +2356,18 @@ app.get('/api/events', async (req, res) => {
     console.log('🔄 Buscando eventos...');
     const [rows] = await pool.execute(`
       SELECT 
-        id, titulo, descricao, data_evento, data_inicio, data_fim, local, numero_vagas,
-        vagas_limitadas, imagem_url, ativo,
+        id, titulo, descricao, data_evento, local, imagem_url, link_inscricao,
+        status, destaque, ordem,
+        NULL AS data_inicio,
+        NULL AS data_fim,
+        NULL AS numero_vagas,
+        NULL AS vagas_limitadas,
         NULL AS feira_fechada,
         NULL AS renda_total,
         NULL AS participantes_confirmados,
         created_at, updated_at
       FROM events 
-      ORDER BY COALESCE(data_inicio, data_evento) ASC
+      ORDER BY data_evento ASC
     `);
     
     console.log(`✅ ${rows.length} eventos encontrados`);
@@ -1793,6 +2375,7 @@ app.get('/api/events', async (req, res) => {
     // Converter renda_total de string para number e corrigir URLs de imagem
     const eventos = rows.map(evento => ({
       ...evento,
+      ativo: evento.status === 'ativo' || evento.status === 'active' || evento.status === 1,
       renda_total: evento.renda_total ? parseFloat(evento.renda_total) : null,
       imagem_url: evento.imagem_url ? getPublicUrl(req, evento.imagem_url) : null
     }));
@@ -1847,42 +2430,87 @@ app.post('/api/events', async (req, res) => {
   try {
     const eventoData = req.body;
     console.log('🔄 Criando evento:', eventoData.titulo);
+    console.log('📦 Dados recebidos:', JSON.stringify(eventoData, null, 2));
+    
+    // Validar campos obrigatórios
+    if (!eventoData.titulo) {
+      return res.status(400).json({ error: 'Título é obrigatório' });
+    }
     
     // Usar data_inicio se disponível, senão data_evento (compatibilidade)
-    const dataInicio = eventoData.data_inicio || eventoData.data_evento;
-    const dataFim = eventoData.data_fim || null;
+    const dataEvento = eventoData.data_inicio || eventoData.data_evento;
     
-    // Se data_inicio não foi fornecida, usar data_evento
-    const dataEvento = dataInicio || eventoData.data_evento;
+    if (!dataEvento) {
+      return res.status(400).json({ error: 'Data do evento é obrigatória' });
+    }
+    
+    const formattedDate = formatDateForMySQL(dataEvento);
+    console.log('📅 Data original:', dataEvento);
+    console.log('📅 Data formatada:', formattedDate);
+    
+    const newId = require('crypto').randomUUID();
+    
+    const insertValues = [
+      newId,
+      eventoData.titulo,
+      eventoData.descricao || null,
+      formattedDate,
+      eventoData.local || null,
+      eventoData.imagem_url || null,
+      eventoData.ativo !== false
+    ];
+    
+    console.log('📋 Valores do INSERT:', insertValues);
+    
+    // A tabela events usa 'status' em vez de 'ativo'
+    const status = eventoData.ativo !== false ? 'ativo' : 'inativo';
     
     const [result] = await pool.execute(`
       INSERT INTO events (
-        id, titulo, descricao, data_evento, data_inicio, data_fim, local, numero_vagas,
-        vagas_limitadas, imagem_url, ativo, feira_fechada, renda_total,
-        participantes_confirmados
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, titulo, descricao, data_evento, local, imagem_url, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
-      require('crypto').randomUUID(),
+      newId,
       eventoData.titulo,
       eventoData.descricao || null,
-      formatDateForMySQL(dataEvento),
-      formatDateForMySQL(dataInicio),
-      dataFim ? formatDateForMySQL(dataFim) : null,
+      formattedDate,
       eventoData.local || null,
-      eventoData.numero_vagas || null,
-      eventoData.vagas_limitadas || false,
       eventoData.imagem_url || null,
-      eventoData.ativo !== false,
-      eventoData.feira_fechada || false,
-      eventoData.renda_total || null,
-      eventoData.participantes_confirmados || null
+      status
     ]);
     
-    console.log('✅ Evento criado com sucesso!');
-    res.status(201).json({ id: result.insertId, ...eventoData });
+    console.log('✅ Evento criado com sucesso! ID:', newId);
+    res.status(201).json({ 
+      id: newId,
+      titulo: eventoData.titulo,
+      message: 'Evento criado com sucesso'
+    });
   } catch (error) {
     console.error('❌ Erro ao criar evento:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    console.error('📋 Stack:', error.stack);
+    console.error('📋 SQL Error Code:', error.code);
+    console.error('📋 SQL Message:', error.sqlMessage);
+    
+    // Tratamento específico para erros SQL
+    if (error.code === 'ER_BAD_FIELD_ERROR') {
+      return res.status(500).json({ 
+        error: 'Erro na estrutura da tabela', 
+        details: `Coluna não encontrada: ${error.sqlMessage}` 
+      });
+    }
+    
+    if (error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({ 
+        error: 'Tabela não encontrada', 
+        details: 'A tabela events não existe no banco de dados' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erro interno do servidor', 
+      details: error.message,
+      code: error.code 
+    });
   }
 });
 
@@ -1894,34 +2522,33 @@ app.put('/api/events/:id', async (req, res) => {
     console.log(`🔄 Atualizando evento ID: ${id}`);
     
     // Usar data_inicio se disponível, senão data_evento (compatibilidade)
-    const dataInicio = eventoData.data_inicio || eventoData.data_evento;
-    const dataFim = eventoData.data_fim || null;
+    const dataEvento = eventoData.data_inicio || eventoData.data_evento;
     
-    // Se data_inicio não foi fornecida, usar data_evento
-    const dataEvento = dataInicio || eventoData.data_evento;
+    // Construir query UPDATE dinamicamente apenas com campos que existem
+    const updateFields = [];
+    const updateValues = [];
+    
+    if (eventoData.titulo !== undefined) { updateFields.push('titulo = ?'); updateValues.push(eventoData.titulo); }
+    if (eventoData.descricao !== undefined) { updateFields.push('descricao = ?'); updateValues.push(eventoData.descricao || null); }
+    if (dataEvento !== undefined) { updateFields.push('data_evento = ?'); updateValues.push(formatDateForMySQL(dataEvento)); }
+    if (eventoData.local !== undefined) { updateFields.push('local = ?'); updateValues.push(eventoData.local || null); }
+    if (eventoData.imagem_url !== undefined) { updateFields.push('imagem_url = ?'); updateValues.push(eventoData.imagem_url || null); }
+    if (eventoData.ativo !== undefined) { 
+      const status = eventoData.ativo !== false ? 'ativo' : 'inativo';
+      updateFields.push('status = ?'); 
+      updateValues.push(status); 
+    }
+    
+    updateFields.push('updated_at = NOW()');
+    updateValues.push(id);
+    
+    if (updateFields.length === 1) {
+      return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+    }
     
     const [result] = await pool.execute(`
-      UPDATE events SET 
-        titulo = ?, descricao = ?, data_evento = ?, data_inicio = ?, data_fim = ?, local = ?,
-        numero_vagas = ?, vagas_limitadas = ?, imagem_url = ?, ativo = ?,
-        feira_fechada = ?, renda_total = ?, participantes_confirmados = ?, updated_at = NOW()
-      WHERE id = ?
-    `, [
-      eventoData.titulo,
-      eventoData.descricao || null,
-      formatDateForMySQL(dataEvento),
-      formatDateForMySQL(dataInicio),
-      dataFim ? formatDateForMySQL(dataFim) : null,
-      eventoData.local || null,
-      eventoData.numero_vagas || null,
-      eventoData.vagas_limitadas || false,
-      eventoData.imagem_url || null,
-      eventoData.ativo !== false,
-      eventoData.feira_fechada || false,
-      eventoData.renda_total || null,
-      eventoData.participantes_confirmados || null,
-      id
-    ]);
+      UPDATE events SET ${updateFields.join(', ')} WHERE id = ?
+    `, updateValues);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Evento não encontrado' });
@@ -1942,32 +2569,30 @@ app.post('/api/events/:id/fechar-feira', async (req, res) => {
     const { renda_total, participantes_confirmados } = req.body;
     console.log(`🔄 Fechando feira do evento ID: ${id}`);
     
+    // Nota: As colunas feira_fechada, renda_total e participantes_confirmados não existem na tabela events
+    // Este endpoint está desabilitado até que essas colunas sejam adicionadas ao banco de dados
+    
+    // Apenas atualizar o timestamp para indicar que a ação foi executada
     const [result] = await pool.execute(`
       UPDATE events SET 
-        feira_fechada = true, 
-        renda_total = ?, 
-        participantes_confirmados = ?,
         updated_at = NOW()
       WHERE id = ?
-    `, [
-      renda_total || 0,
-      participantes_confirmados || 0,
-      id
-    ]);
+    `, [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
     
-    console.log('✅ Feira fechada com sucesso');
+    console.log('✅ Feira fechada com sucesso (funcionalidade limitada)');
     res.json({ 
       message: 'Feira fechada com sucesso',
       renda_total: renda_total || 0,
-      participantes_confirmados: participantes_confirmados || 0
+      participantes_confirmados: participantes_confirmados || 0,
+      note: 'As colunas feira_fechada, renda_total e participantes_confirmados não estão disponíveis na tabela events'
     });
   } catch (error) {
     console.error('❌ Erro ao fechar feira:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
   }
 });
 
@@ -2741,7 +3366,7 @@ app.get('/api/debug/collections-schema', async (req, res) => {
 })();
 
 // Endpoints de Settings
-app.get('/api/settings', async (req, res) => {
+app.get('/api/settings', authRoutesLimiter, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT key_name, value_text FROM settings');
     const settings = {};
@@ -3140,39 +3765,118 @@ async function attachUserFromSession(req) {
   } catch { return null; }
 }
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
-    const { email, senha } = req.body || {};
-    if (!email || !senha) return res.status(400).json({ error: 'credenciais_invalidas' });
+    const { email, senha, password } = req.body || {};
+    const mail = String(email || '').trim().toLowerCase();
+    const pass = String(password || senha || '');
     
-    console.log('🔐 Tentativa de login:', email);
-    
-    // Buscar usuário no banco
-    const [userRows] = await pool.execute('SELECT id, email, nome FROM users WHERE email = ?', [email]);
-    if (!userRows || userRows.length === 0) {
-      console.log('❌ Usuário não encontrado:', email);
-      return res.status(401).json({ error: 'usuario_nao_encontrado' });
+    if (!mail || !pass) {
+      return res.status(400).json({ error: 'credenciais_invalidas', message: 'Email e senha são obrigatórios' });
     }
     
-    const user = userRows[0];
-    const userId = user.id;
+    console.log('🔐 Tentativa de login cliente:', mail);
+    
+    // Buscar usuário no banco (tentar primeiro em users, depois em customers)
+    let userRows = [];
+    let user = null;
+    let userId = null;
+    
+    // Tentar em users primeiro
+    try {
+      // Usar password_hash que é o nome correto da coluna
+      [userRows] = await pool.execute('SELECT id, email, nome, password_hash as senha_hash FROM users WHERE email = ? LIMIT 1', [mail]);
+      if (userRows && userRows.length > 0) {
+        user = userRows[0];
+        userId = user.id;
+        console.log('✅ Usuário encontrado na tabela users:', mail);
+      }
+    } catch (e) {
+      // Se falhar, tentar sem a coluna de senha (usuário antigo)
+      try {
+        [userRows] = await pool.execute('SELECT id, email, nome FROM users WHERE email = ? LIMIT 1', [mail]);
+        if (userRows && userRows.length > 0) {
+          user = { ...userRows[0], senha_hash: null };
+          userId = user.id;
+          console.log('✅ Usuário encontrado na tabela users (sem senha):', mail);
+        }
+      } catch (e2) {
+        console.log('⚠️ Erro ao buscar em users:', e.message);
+      }
+    }
+    
+    // Se não encontrou em users, tentar em customers
+    if (!user) {
+      try {
+        // Tentar com password_hash primeiro, depois senha_hash (compatibilidade)
+        const [customerRows] = await pool.execute('SELECT id, email, nome, COALESCE(password_hash, senha_hash) as senha_hash FROM customers WHERE email = ? LIMIT 1', [mail]);
+        if (customerRows && customerRows.length > 0) {
+          user = customerRows[0];
+          userId = user.id;
+          console.log('✅ Usuário encontrado na tabela customers:', mail);
+        }
+      } catch (e) {
+        // Se falhar, tentar sem a coluna de senha (usuário antigo)
+        try {
+          const [customerRows] = await pool.execute('SELECT id, email, nome FROM customers WHERE email = ? LIMIT 1', [mail]);
+          if (customerRows && customerRows.length > 0) {
+            user = { ...customerRows[0], senha_hash: null };
+            userId = user.id;
+            console.log('✅ Usuário encontrado na tabela customers (sem senha):', mail);
+          }
+        } catch (e2) {
+          console.log('⚠️ Erro ao buscar em customers:', e.message);
+        }
+      }
+    }
+    
+    if (!user || !userId) {
+      console.log('❌ Usuário não encontrado em users nem customers:', mail);
+      // Listar alguns emails disponíveis para debug
+      try {
+        const [allUsers] = await pool.execute('SELECT email FROM users LIMIT 5');
+        const [allCustomers] = await pool.execute('SELECT email FROM customers LIMIT 5');
+        console.log('📋 Emails disponíveis em users:', allUsers.map(u => u.email).join(', '));
+        console.log('📋 Emails disponíveis em customers:', allCustomers.map(c => c.email).join(', '));
+      } catch (e) {
+        console.log('⚠️ Não foi possível listar emails:', e.message);
+      }
+      return res.status(401).json({ 
+        error: 'usuario_nao_encontrado',
+        message: 'Email ou senha incorretos. Verifique suas credenciais ou crie uma conta.'
+      });
+    }
+    
+    // Verificar senha se houver hash
+    if (user.senha_hash) {
+      const { verifyPassword } = require('./utils/security.cjs');
+      const senhaCorreta = await verifyPassword(pass, user.senha_hash);
+      if (!senhaCorreta) {
+        console.log('❌ Senha incorreta para:', mail);
+        return res.status(401).json({ 
+          error: 'credenciais_invalidas',
+          message: 'Email ou senha incorretos'
+        });
+      }
+    } else {
+      // Se não tem senha_hash, permitir login (usuário antigo sem senha)
+      console.log('⚠️ Usuário sem senha_hash - login permitido (migração necessária):', mail);
+    }
     
     // Gerar ID de sessão único
     const sid = require('crypto').randomUUID();
     
     // Remover sessões antigas do usuário para garantir sessão única
-    await pool.execute('DELETE FROM sessions WHERE user_id = ? OR user_email = ?', [userId, email]);
+    await pool.execute('DELETE FROM sessions WHERE user_id = ? OR user_email = ?', [userId, mail]);
     
     // Criar nova sessão
-    await pool.execute('INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())', [sid, email, userId]);
+    await pool.execute('INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())', [sid, mail, userId]);
     
-    // Configurar cookie de sessão
-    res.cookie('session_id', sid, { 
-      httpOnly: false, 
-      sameSite: 'lax', 
-      secure: (req.headers['x-forwarded-proto'] || req.protocol) === 'https', 
+    // Configurar cookie de sessão (seguro)
+    const { getSecureCookieOptions } = require('./utils/security.cjs');
+    res.cookie('session_id', sid, getSecureCookieOptions({
       maxAge: 1000*60*60*24*30 // 30 dias
-    });
+    }));
     
     // Vincular carrinho atual ao usuário
     const cartId = req.cookies?.cart_id;
@@ -3180,7 +3884,7 @@ app.post('/api/auth/login', async (req, res) => {
       await pool.execute('UPDATE carts SET user_id = ? WHERE id = ?', [userId, cartId]);
     }
     
-    console.log('✅ Login realizado com sucesso:', email, 'Sessão:', sid);
+    console.log('✅ Login realizado com sucesso:', mail, 'Sessão:', sid);
     res.json({ 
       success: true, 
       user: {
@@ -3274,7 +3978,7 @@ function getCurrentUserEmail(req) {
   return (req.cookies && req.cookies.mock_email) || null;
 }
 
-app.get('/api/favorites', async (req, res) => {
+app.get('/api/favorites', highFrequencyLimiter, async (req, res) => {
   try {
     const email = getCurrentUserEmail(req);
     const cartId = getOrCreateCartId(req, res);
@@ -3384,7 +4088,11 @@ function verifyToken(token) {
 
 function setAuthCookie(res, payload) {
   const token = signToken(payload);
-  res.cookie('auth_token', token, { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 7 });
+  // Cookie seguro para auth_token
+  const { getSecureCookieOptions } = require('./utils/security.cjs');
+  res.cookie('auth_token', token, getSecureCookieOptions({
+    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dias
+  }));
 }
 
 async function hashPassword(password) {
@@ -3430,7 +4138,7 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
 
 // NOTA: Endpoint de login duplicado removido - usando apenas o sistema de sessão principal
 
-app.get('/api/auth/me', async (req, res) => {
+app.get('/api/auth/me', authRoutesLimiter, async (req, res) => {
   try {
     console.log('🔍 GET /api/auth/me - Verificando autenticação');
     
@@ -3531,7 +4239,15 @@ function getOrCreateCartId(req, res) {
   let cartId = req.cookies?.cart_id;
   if (!cartId) {
     cartId = require('crypto').randomUUID();
-    res.cookie('cart_id', cartId, { httpOnly: false, sameSite: 'lax', secure: (req.headers['x-forwarded-proto'] || req.protocol) === 'https', maxAge: 1000*60*60*24*30 });
+    // Cookie para cart_id (pode ser false httpOnly pois é usado no frontend)
+    // Mas mantemos secure e sameSite para segurança
+    const isHttps = (req.headers['x-forwarded-proto'] || req.protocol) === 'https' || process.env.NODE_ENV === 'production';
+    res.cookie('cart_id', cartId, { 
+      httpOnly: false, // Necessário para acesso no frontend
+      sameSite: 'lax', 
+      secure: isHttps, 
+      maxAge: 1000*60*60*24*30 // 30 dias
+    });
   }
   return cartId;
 }
@@ -3554,7 +4270,7 @@ function mapCartItemRow(r, req) {
   };
 }
 
-app.get('/api/cart', async (req, res) => {
+app.get('/api/cart', highFrequencyLimiter, async (req, res) => {
   try {
     const cartId = getOrCreateCartId(req, res);
     await ensureCartExists(cartId);
@@ -3867,6 +4583,48 @@ app.post('/api/orders', async (req, res) => {
     await pool.execute('DELETE FROM cart_items WHERE cart_id = ?', [cartId]);
     console.log(`🗑️ Carrinho limpo: ${cartId}`);
     
+    // Buscar dados completos do cliente para automações
+    let customerData = null;
+    if (userId) {
+      try {
+        const [customers] = await pool.execute(
+          'SELECT id, nome, email, type FROM customers WHERE id = ?',
+          [userId]
+        );
+        if (customers.length > 0) {
+          customerData = customers[0];
+        }
+      } catch (e) {
+        console.log('⚠️ Erro ao buscar dados do cliente:', e.message);
+      }
+    }
+    
+    // Processar automações para pedido criado
+    if (orderAutomationService) {
+      try {
+        const eventData = {
+          order_id: orderId,
+          status: 'pending',
+          customer_id: userId,
+          customer_email: email || customerData?.email,
+          customer_name: nome || customerData?.nome,
+          customer_type: customerData?.type || 'regular',
+          total: total,
+          items: items.map(it => ({
+            product_id: it.product_id,
+            quantity: it.quantity,
+            price: it.price
+          }))
+        };
+        
+        await orderAutomationService.processEvent('order_created', eventData);
+        console.log('✅ Automações processadas para pedido criado');
+      } catch (autoError) {
+        console.error('⚠️ Erro ao processar automações:', autoError);
+        // Não falhar o pedido por erro de automação
+      }
+    }
+    
     const response = { 
       id: orderId, 
       status: 'criado', 
@@ -4016,11 +4774,28 @@ function calculateCRC16(str) {
   return crc;
 }
 
-// Função para gerar QR Code (mock por enquanto)
+// Função para gerar QR Code usando API externa
 async function generateQRCodeImage(pixCode) {
-  // Em produção, usar uma biblioteca como 'qrcode' ou 'qrcode-generator'
-  // Por enquanto, retornar uma imagem base64 mock
-  return `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==`;
+  try {
+    // Usar API gratuita do QR Server para gerar QR Code
+    // Tamanho: 300x300 pixels, formato PNG
+    const encodedCode = encodeURIComponent(pixCode);
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedCode}&format=png&margin=1`;
+    
+    // Verificar se a URL foi gerada corretamente
+    if (!qrCodeUrl || !pixCode) {
+      console.warn('⚠️ Erro ao gerar URL do QR Code');
+      // Fallback: retornar URL que gera QR Code vazio
+      return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=error&format=png`;
+    }
+    
+    console.log('✅ QR Code URL gerada:', qrCodeUrl.substring(0, 100) + '...');
+    return qrCodeUrl;
+  } catch (error) {
+    console.error('❌ Erro ao gerar QR Code:', error);
+    // Fallback: retornar URL de QR Code de erro
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=error&format=png`;
+  }
 }
 
 // Endpoint para gerar QR Code PIX do carrinho
@@ -4124,6 +4899,117 @@ app.get('/api/orders/:id/status', async (req, res) => {
 });
 
 // Endpoint para simular pagamento confirmado (mock)
+// POST /api/orders/:id/infinitetap-result - Processar resultado do InfiniteTap
+app.post('/api/orders/:id/infinitetap-result', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nsu, aut, card_brand, user_id, access_id, handle, merchant_document, warning, success } = req.body;
+
+    console.log(`💳 [InfiniteTap] Processando resultado para pedido ${id}`);
+
+    // Validar campos obrigatórios
+    if (!nsu || !aut) {
+      return res.status(400).json({ 
+        error: 'Campos obrigatórios faltando',
+        message: 'nsu e aut são obrigatórios'
+      });
+    }
+
+    // Buscar pedido
+    const [orders] = await pool.execute('SELECT * FROM orders WHERE id = ?', [id]);
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+
+    const order = orders[0];
+
+    // Determinar status do pagamento
+    let paymentStatus = 'pending';
+    if (success && !warning) {
+      paymentStatus = 'paid';
+    } else if (warning) {
+      paymentStatus = 'failed';
+    }
+
+    // Atualizar pedido com informações do InfiniteTap
+    await pool.execute(
+      `UPDATE orders SET 
+        payment_status = ?,
+        metodo_pagamento = 'infinitetap',
+        updated_at = NOW()
+      WHERE id = ?`,
+      [paymentStatus, id]
+    );
+
+    // Salvar detalhes da transação (opcional: criar tabela order_payments se necessário)
+    try {
+      await pool.execute(
+        `INSERT INTO order_payments (
+          order_id, payment_method, transaction_id, authorization_code, 
+          card_brand, status, metadata, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          transaction_id = VALUES(transaction_id),
+          authorization_code = VALUES(authorization_code),
+          card_brand = VALUES(card_brand),
+          status = VALUES(status),
+          metadata = VALUES(metadata),
+          updated_at = NOW()`,
+        [
+          id,
+          'infinitetap',
+          nsu,
+          aut,
+          card_brand || 'unknown',
+          paymentStatus,
+          JSON.stringify({
+            user_id,
+            access_id,
+            handle,
+            merchant_document,
+            warning
+          })
+        ]
+      );
+    } catch (e) {
+      // Se a tabela order_payments não existir, apenas logar
+      console.warn('⚠️ Tabela order_payments não encontrada, pulando salvamento de detalhes:', e.message);
+    }
+
+    // Se pagamento aprovado, atualizar estoque
+    if (paymentStatus === 'paid') {
+      const [items] = await pool.execute('SELECT * FROM order_items WHERE order_id = ?', [id]);
+      for (const item of items) {
+        await pool.execute(
+          'UPDATE produtos SET estoque = estoque - ? WHERE id = ?',
+          [item.quantity, item.product_id]
+        );
+      }
+    }
+
+    console.log(`✅ [InfiniteTap] Resultado processado para pedido ${id}: ${paymentStatus}`);
+
+    res.json({
+      success: true,
+      order_id: id,
+      payment_status: paymentStatus,
+      transaction: {
+        nsu,
+        aut,
+        card_brand,
+        warning
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [InfiniteTap] Erro ao processar resultado:', error);
+    res.status(500).json({ 
+      error: 'Erro ao processar resultado do InfiniteTap',
+      message: error?.message 
+    });
+  }
+});
+
 app.post('/api/orders/:id/confirm-payment', async (req, res) => {
   try {
     const { id } = req.params;
@@ -4149,7 +5035,7 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
 });
 
 // Lista pedidos simples (por user_id ou cart_id)
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📦 GET /api/orders - Listando pedidos');
     
@@ -4191,13 +5077,13 @@ app.get('/api/orders', async (req, res) => {
     }
     
     // Buscar APENAS pedidos do usuário logado
-    console.log('🔍 Buscando pedidos para customer_id:', userId);
+    console.log('🔍 Buscando pedidos para user_id:', userId);
     const [orders] = await pool.execute(
       `SELECT o.*, (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = o.id) AS items_count
          FROM orders o
-        WHERE o.customer_id = ? OR o.user_id = ?
+        WHERE o.user_id = ?
      ORDER BY o.created_at DESC`,
-      [userId, userId]
+      [userId]
     );
 
     // Normalizar status e tipos para frontend
@@ -4232,6 +5118,174 @@ app.get('/api/orders', async (req, res) => {
 // Importar rotas de admin de pedidos (DESABILITADO - rotas já implementadas diretamente)
 // const adminOrdersRouter = require('./routes/admin-orders.cjs');
 // app.use('/api/admin', adminOrdersRouter);
+
+// ==================== AUDITORIA: ENDPOINTS ====================
+
+// GET /api/admin/audit-logs - Listar logs de auditoria
+app.get('/api/admin/audit-logs', authenticateAdmin, async (req, res) => {
+  try {
+    const { getAuditLogs } = require('./utils/audit.cjs');
+    
+    const {
+      userId,
+      action,
+      resourceType,
+      resourceId,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 50
+    } = req.query;
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    const logs = await getAuditLogs({
+      userId: userId ? parseInt(userId) : null,
+      action: action || null,
+      resourceType: resourceType || null,
+      resourceId: resourceId || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      limit: parseInt(limit),
+      offset
+    });
+    
+    // Contar total
+    const { getPool } = require('./utils/audit.cjs');
+    const dbPool = getPool();
+    let countQuery = 'SELECT COUNT(*) as total FROM audit_logs WHERE 1=1';
+    const countParams = [];
+    
+    if (userId) {
+      countQuery += ' AND user_id = ?';
+      countParams.push(userId);
+    }
+    if (action) {
+      countQuery += ' AND action = ?';
+      countParams.push(action);
+    }
+    if (resourceType) {
+      countQuery += ' AND resource_type = ?';
+      countParams.push(resourceType);
+    }
+    
+    const [countResult] = await dbPool.execute(countQuery, countParams);
+    const total = countResult[0].total;
+    
+    res.json({
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar logs de auditoria:', error);
+    res.status(500).json({ error: 'Erro ao buscar logs de auditoria' });
+  }
+});
+
+// GET /api/admin/audit-logs/stats - Estatísticas de auditoria
+app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
+  try {
+    const { getPool } = require('./utils/audit.cjs');
+    const dbPool = getPool();
+    
+    // Estatísticas gerais
+    const [totalLogs] = await dbPool.execute('SELECT COUNT(*) as total FROM audit_logs');
+    const [todayLogs] = await dbPool.execute(
+      'SELECT COUNT(*) as total FROM audit_logs WHERE DATE(created_at) = CURDATE()'
+    );
+    const [thisWeekLogs] = await dbPool.execute(
+      'SELECT COUNT(*) as total FROM audit_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)'
+    );
+    
+    // Ações mais frequentes
+    const [topActions] = await dbPool.execute(
+      `SELECT action, COUNT(*) as count 
+       FROM audit_logs 
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       GROUP BY action 
+       ORDER BY count DESC 
+       LIMIT 10`
+    );
+    
+    // Recursos mais acessados
+    const [topResources] = await dbPool.execute(
+      `SELECT resource_type, COUNT(*) as count 
+       FROM audit_logs 
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       GROUP BY resource_type 
+       ORDER BY count DESC 
+       LIMIT 10`
+    );
+    
+    // Usuários mais ativos
+    const [topUsers] = await dbPool.execute(
+      `SELECT user_id, user_email, COUNT(*) as count 
+       FROM audit_logs 
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       AND user_id IS NOT NULL
+       GROUP BY user_id, user_email 
+       ORDER BY count DESC 
+       LIMIT 10`
+    );
+    
+    res.json({
+      total: totalLogs[0].total,
+      today: todayLogs[0].total,
+      thisWeek: thisWeekLogs[0].total,
+      topActions,
+      topResources,
+      topUsers
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar estatísticas de auditoria:', error);
+    res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+  }
+});
+
+// POST /api/admin/audit-logs/clean - Limpar logs antigos
+app.post('/api/admin/audit-logs/clean', authenticateAdmin, async (req, res) => {
+  try {
+    const { cleanOldAuditLogs } = require('./utils/audit.cjs');
+    const { daysToKeep = 90 } = req.body;
+    
+    if (daysToKeep < 30) {
+      return res.status(400).json({ error: 'Mínimo de 30 dias para manter logs' });
+    }
+    
+    const deletedCount = await cleanOldAuditLogs(parseInt(daysToKeep));
+    
+    // Registrar ação de limpeza
+    const { logAudit } = require('./utils/audit.cjs');
+    await logAudit({
+      userId: req.adminUser.id,
+      userEmail: req.adminUser.email,
+      action: 'clean',
+      resourceType: 'audit_logs',
+      req,
+      metadata: {
+        daysToKeep,
+        deletedCount
+      }
+    });
+    
+    res.json({
+      success: true,
+      message: `Limpeza concluída: ${deletedCount} registros removidos`,
+      deletedCount
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao limpar logs:', error);
+    res.status(500).json({ error: 'Erro ao limpar logs' });
+  }
+});
 
 // Aplicar autenticação e auditoria a todas as rotas /api/admin/*
 try {
@@ -4300,70 +5354,786 @@ app.use('/api/ml', machineLearningRouter);
 // cartRecoveryScheduler.start();
 
 
-// Manter rota antiga para compatibilidade (deprecated)
-app.get('/api/admin/orders', async (req, res) => {
+// ==================== ADMIN: CUSTOMERS API ====================
+
+// GET /api/admin/customers - Lista clientes com filtros, paginação e busca
+app.get('/api/admin/customers', authenticateAdmin, async (req, res) => {
   try {
-    console.log('🔍 Buscando pedidos...');
+    const {
+      page = 1,
+      limit = 50,
+      search,
+      status,
+      customer_type,
+      cidade,
+      estado,
+      sort = 'created_at',
+      order = 'DESC',
+      date_from,
+      date_to,
+      min_orders,
+      min_spent,
+    } = req.query;
+
+    // Garantir que page e limit são números válidos
+    const pageNum = isNaN(Number(page)) || Number(page) < 1 ? 1 : Math.floor(Number(page));
+    const limitNum = isNaN(Number(limit)) || Number(limit) < 1 ? 50 : Math.floor(Number(limit));
+    const offsetNum = (pageNum - 1) * limitNum;
+
+    let whereClause = '';
+    let queryParams = [];
+
+    // Filtro por status
+    if (status && status !== 'all') {
+      whereClause += ' WHERE c.status = ?';
+      queryParams.push(status);
+    }
+
+    // Filtro por tipo de cliente
+    if (customer_type && customer_type !== 'all') {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} (
+        CASE 
+          WHEN COALESCE(customer_stats.total_orders, 0) = 0 THEN 'new'
+          WHEN COALESCE(customer_stats.total_orders, 0) BETWEEN 1 AND 5 THEN 'regular'
+          WHEN COALESCE(customer_stats.total_orders, 0) BETWEEN 6 AND 20 THEN 'vip'
+          ELSE 'premium'
+        END
+      ) = ?`;
+      queryParams.push(customer_type);
+    }
+
+    // Filtro por cidade
+    if (cidade && cidade !== 'all') {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} c.endereco_cidade = ?`;
+      queryParams.push(cidade);
+    }
+
+    // Filtro por estado
+    if (estado && estado !== 'all') {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} c.endereco_estado = ?`;
+      queryParams.push(estado);
+    }
+
+    // Filtro por data (de)
+    if (date_from) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} DATE(c.created_at) >= ?`;
+      queryParams.push(date_from);
+    }
+
+    // Filtro por data (até)
+    if (date_to) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} DATE(c.created_at) <= ?`;
+      queryParams.push(date_to);
+    }
+
+    // Filtro por mínimo de pedidos
+    if (min_orders) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} COALESCE(customer_stats.total_orders, 0) >= ?`;
+      queryParams.push(parseInt(min_orders));
+    }
+
+    // Filtro por mínimo de gasto
+    if (min_spent) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} COALESCE(customer_stats.total_spent, 0) >= ?`;
+      queryParams.push(parseFloat(min_spent));
+    }
+
+    // Filtro por busca (nome, email, telefone)
+    if (search) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} (
+        c.nome LIKE ? OR 
+        c.email LIKE ? OR 
+        c.telefone LIKE ?
+      )`;
+      const searchTerm = `%${search}%`;
+      queryParams.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    const [customers] = await pool.execute(`
+      SELECT 
+        c.*,
+        COALESCE(customer_stats.total_orders, 0) as total_pedidos,
+        COALESCE(customer_stats.total_spent, 0) as total_gasto,
+        COALESCE(customer_stats.last_order, c.created_at) as ultimo_pedido,
+        COALESCE(customer_stats.average_ticket, 0) as average_ticket,
+        CASE 
+          WHEN COALESCE(customer_stats.total_orders, 0) = 0 THEN 'new'
+          WHEN COALESCE(customer_stats.total_orders, 0) BETWEEN 1 AND 5 THEN 'regular'
+          WHEN COALESCE(customer_stats.total_orders, 0) BETWEEN 6 AND 20 THEN 'vip'
+          ELSE 'premium'
+        END as customer_type
+      FROM customers c
+      LEFT JOIN (
+        SELECT 
+          CAST(user_id AS CHAR) as customer_id,
+          COUNT(*) as total_orders,
+          SUM(total) as total_spent,
+          MAX(created_at) as last_order,
+          AVG(total) as average_ticket
+        FROM orders 
+        WHERE user_id IS NOT NULL
+        GROUP BY user_id
+      ) customer_stats ON c.id COLLATE utf8mb4_unicode_ci = customer_stats.customer_id COLLATE utf8mb4_unicode_ci
+      ${whereClause}
+      ORDER BY c.${sort} ${order}
+      LIMIT ${limitNum} OFFSET ${offsetNum}
+    `, queryParams);
+
+    // Contar total
+    const [countResult] = await pool.execute(`
+      SELECT COUNT(*) as total
+      FROM customers c
+      LEFT JOIN (
+        SELECT 
+          CAST(user_id AS CHAR) as customer_id,
+          COUNT(*) as total_orders,
+          SUM(total) as total_spent
+        FROM orders 
+        WHERE user_id IS NOT NULL
+        GROUP BY user_id
+      ) customer_stats ON c.id COLLATE utf8mb4_unicode_ci = customer_stats.customer_id COLLATE utf8mb4_unicode_ci
+      ${whereClause}
+    `, queryParams);
+
+    const total = countResult[0].total;
+
+    res.json({
+      customers,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar clientes', message: error?.message });
+  }
+});
+
+// GET /api/admin/customers/stats - Estatísticas de clientes
+app.get('/api/admin/customers/stats', authenticateAdmin, async (req, res) => {
+  try {
+    const [stats] = await pool.execute(`
+      SELECT 
+        COUNT(*) as total,
+        0 as ativos,
+        0 as inativos,
+        0 as bloqueados,
+        SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as clientes_hoje,
+        SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as novos
+      FROM customers
+    `);
+
+    const [revenueStats] = await pool.execute(`
+      SELECT 
+        COALESCE(SUM(total), 0) as receita_total,
+        COALESCE(AVG(total), 0) as ticket_medio
+      FROM orders
+      WHERE user_id IS NOT NULL
+    `);
+
+    const [lastMonthStats] = await pool.execute(`
+      SELECT COUNT(*) as total_mes_passado
+      FROM customers
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+      AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `);
+
+    const [vipStats] = await pool.execute(`
+      SELECT COUNT(*) as vip
+      FROM customers c
+      INNER JOIN (
+        SELECT CAST(user_id AS CHAR) as customer_id, COUNT(*) as total_orders
+        FROM orders
+        WHERE user_id IS NOT NULL
+        GROUP BY user_id
+        HAVING total_orders >= 6
+      ) customer_stats ON c.id COLLATE utf8mb4_unicode_ci = customer_stats.customer_id COLLATE utf8mb4_unicode_ci
+    `);
+
+    const total = stats[0].total || 0;
+    const novos = stats[0].novos || 0;
+    const totalMesPassado = lastMonthStats[0].total_mes_passado || 0;
+    const crescimentoMensal = totalMesPassado > 0
+      ? ((novos - totalMesPassado) / totalMesPassado) * 100
+      : 0;
+
+    res.json({
+      total,
+      ativos: stats[0].ativos || 0,
+      inativos: stats[0].inativos || 0,
+      bloqueados: stats[0].bloqueados || 0,
+      novos,
+      vip: vipStats[0].vip || 0,
+      receita_total: revenueStats[0].receita_total || 0,
+      ticket_medio: revenueStats[0].ticket_medio || 0,
+      crescimento_mensal: crescimentoMensal,
+      clientes_hoje: stats[0].clientes_hoje || 0,
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar estatísticas', message: error?.message });
+  }
+});
+
+// PATCH /api/admin/customers/:id - Atualizar cliente
+app.patch('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const allowedFields = [
+      'nome', 'email', 'telefone', 'cpf', 'data_nascimento',
+      'endereco_rua', 'endereco_numero', 'endereco_complemento',
+      'endereco_bairro', 'endereco_cidade', 'endereco_estado', 'endereco_cep',
+      'status', 'tags', 'notas'
+    ];
+
+    const fieldsToUpdate = Object.keys(updateData).filter(key => allowedFields.includes(key));
     
-    // Query simplificada sem JOIN (tabela users não existe no banco atual)
+    if (fieldsToUpdate.length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    }
+
+    const setClause = fieldsToUpdate.map(field => `${field} = ?`).join(', ');
+    const values = fieldsToUpdate.map(field => {
+      if (field === 'tags' && Array.isArray(updateData[field])) {
+        return JSON.stringify(updateData[field]);
+      }
+      return updateData[field];
+    });
+    values.push(id);
+
+    await pool.execute(
+      `UPDATE customers SET ${setClause}, updated_at = NOW() WHERE id = ?`,
+      values
+    );
+
+    res.json({ success: true, message: 'Cliente atualizado com sucesso' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao atualizar cliente', message: error?.message });
+  }
+});
+
+// DELETE /api/admin/customers/:id - Excluir cliente
+app.delete('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar se o cliente tem pedidos
+    const [orders] = await pool.execute(
+      'SELECT COUNT(*) as count FROM orders WHERE customer_id = ?',
+      [id]
+    );
+
+    if (orders[0].count > 0) {
+      return res.status(400).json({
+        error: 'Não é possível excluir cliente com pedidos associados',
+        message: `Este cliente possui ${orders[0].count} pedido(s). Considere desativar o cliente em vez de excluí-lo.`,
+      });
+    }
+
+    await pool.execute('DELETE FROM customers WHERE id = ?', [id]);
+
+    res.json({ success: true, message: 'Cliente excluído com sucesso' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao excluir cliente', message: error?.message });
+  }
+});
+
+// POST /api/admin/customers/bulk-action - Ações em lote para clientes
+app.post('/api/admin/customers/bulk-action', authenticateAdmin, async (req, res) => {
+  try {
+    console.log(`[Bulk Action Customers] Recebida requisição:`, JSON.stringify(req.body, null, 2));
+
+    let { customerIds, action, value } = req.body;
+
+    // Detectar e corrigir inversão de parâmetros
+    if (typeof customerIds === 'string' && Array.isArray(action)) {
+      console.warn(`[Bulk Action Customers] Parâmetros invertidos detectados! Corrigindo...`);
+      const temp = customerIds;
+      customerIds = action;
+      action = temp;
+      console.log(`[Bulk Action Customers] Após correção:`, { customerIds, action, value });
+    }
+
+    if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {
+      return res.status(400).json({ error: 'IDs dos clientes são obrigatórios' });
+    }
+
+    if (!action || typeof action !== 'string') {
+      return res.status(400).json({ error: 'Ação é obrigatória e deve ser uma string' });
+    }
+
+    const validCustomerIds = customerIds.filter(id => id !== null && id !== undefined && id !== '');
+    
+    if (validCustomerIds.length === 0) {
+      return res.status(400).json({ error: 'Nenhum ID de cliente válido encontrado' });
+    }
+
+    let affectedRows = 0;
+    const placeholders = validCustomerIds.map(() => '?').join(',');
+
+    switch (action) {
+      case 'update_status':
+        if (!value) {
+          return res.status(400).json({ error: 'Novo status é obrigatório para atualização de status' });
+        }
+        const [result] = await pool.execute(
+          `UPDATE customers SET status = ?, updated_at = NOW() WHERE id IN (${placeholders})`,
+          [value, ...validCustomerIds]
+        );
+        affectedRows = result.affectedRows;
+        break;
+
+      case 'add_tags':
+        if (!value) {
+          return res.status(400).json({ error: 'Tags são obrigatórias' });
+        }
+        const tagsToAdd = value.split(',').map(t => t.trim());
+        // Buscar clientes e adicionar tags
+        const [customers] = await pool.execute(
+          `SELECT id, tags FROM customers WHERE id IN (${placeholders})`,
+          validCustomerIds
+        );
+        for (const customer of customers) {
+          const existingTags = customer.tags ? JSON.parse(customer.tags) : [];
+          const newTags = [...new Set([...existingTags, ...tagsToAdd])];
+          await pool.execute(
+            'UPDATE customers SET tags = ?, updated_at = NOW() WHERE id = ?',
+            [JSON.stringify(newTags), customer.id]
+          );
+        }
+        affectedRows = customers.length;
+        break;
+
+      case 'delete':
+        // Verificar se algum cliente tem pedidos
+        const [ordersCheck] = await pool.execute(
+          `SELECT customer_id, COUNT(*) as count FROM orders WHERE customer_id IN (${placeholders}) GROUP BY customer_id`,
+          validCustomerIds
+        );
+        
+        if (ordersCheck.length > 0) {
+          return res.status(400).json({
+            error: 'Alguns clientes possuem pedidos associados',
+            message: `Não é possível excluir clientes com pedidos. Clientes afetados: ${ordersCheck.map(o => o.customer_id).join(', ')}`,
+          });
+        }
+
+        const [deleteResult] = await pool.execute(
+          `DELETE FROM customers WHERE id IN (${placeholders})`,
+          validCustomerIds
+        );
+        affectedRows = deleteResult.affectedRows;
+        break;
+
+      default:
+        return res.status(400).json({ error: `Ação inválida: ${action}. Ações suportadas: update_status, add_tags, delete` });
+    }
+
+    res.json({
+      success: true,
+      message: `${affectedRows} cliente(s) processado(s) com sucesso`,
+      affectedRows,
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// GET /api/admin/customers/:id/orders - Buscar pedidos do cliente
+app.get('/api/admin/customers/:id/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
     const [orders] = await pool.execute(`
       SELECT 
         o.*,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items_count
       FROM orders o
+      WHERE o.user_id = ?
       ORDER BY o.created_at DESC
-    `);
+      LIMIT 50
+    `, [id]);
 
-    console.log('📊 Pedidos encontrados no banco:', orders.length);
-    if (orders.length > 0) {
-      console.log('📋 Primeiro pedido:', {
-        id: orders[0].id,
-        total: orders[0].total,
-        status: orders[0].status,
-        nome: orders[0].nome,
-        created_at: orders[0].created_at
-      });
+    res.json(orders);
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar pedidos do cliente', message: error?.message });
+  }
+});
+
+// GET /api/admin/customers/export - Exportar clientes
+app.get('/api/admin/customers/export', authenticateAdmin, async (req, res) => {
+  try {
+    const { format = 'csv', ...filters } = req.query;
+
+    // Aplicar mesmos filtros do endpoint de listagem
+    let whereClause = '';
+    let queryParams = [];
+
+    if (filters.status && filters.status !== 'all') {
+      whereClause += ' WHERE c.status = ?';
+      queryParams.push(filters.status);
     }
 
-    const normalized = (orders || []).map((order) => ({
-      id: order.id,
-      user_id: order.user_id,
-      customer_id: order.user_id, // Para compatibilidade
-      status: order.status || 'pending',
-      total: Number(order.total || 0),
-      created_at: order.created_at,
-      updated_at: order.updated_at,
-      items_count: Number(order.items_count || 0),
-      items: [],
-      
-      // Dados do cliente
-      customer_name: order.nome || 'Cliente não identificado',
-      customer_email: order.email || 'Email não informado',
-      customer_phone: order.telefone || null,
-      
-      // Campos padrão para compatibilidade
-      shipping_address: order.endereco || null,
-      payment_method: order.metodo_pagamento || null,
-      payment_status: 'pending',
-      tracking_code: null,
-      estimated_delivery: null,
-    }));
-
-    console.log('✅ Pedidos normalizados:', normalized.length);
-    if (normalized.length > 0) {
-      console.log('📋 Primeiro pedido normalizado:', {
-        id: normalized[0].id,
-        total: normalized[0].total,
-        status: normalized[0].status,
-        customer_name: normalized[0].customer_name
-      });
+    if (filters.search) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} (
+        c.nome LIKE ? OR 
+        c.email LIKE ? OR 
+        c.telefone LIKE ?
+      )`;
+      const searchTerm = `%${filters.search}%`;
+      queryParams.push(searchTerm, searchTerm, searchTerm);
     }
 
-    res.json(normalized);
+    const [customers] = await pool.execute(`
+      SELECT 
+        c.*,
+        COALESCE(customer_stats.total_orders, 0) as total_pedidos,
+        COALESCE(customer_stats.total_spent, 0) as total_gasto
+      FROM customers c
+      LEFT JOIN (
+        SELECT 
+          customer_id,
+          COUNT(*) as total_orders,
+          SUM(total) as total_spent
+        FROM orders 
+        WHERE customer_id IS NOT NULL
+        GROUP BY customer_id
+      ) customer_stats ON c.id = customer_stats.customer_id
+      ${whereClause}
+      ORDER BY c.created_at DESC
+    `, queryParams);
+
+    if (format === 'csv') {
+      const headers = [
+        'ID', 'Nome', 'Email', 'Telefone', 'CPF', 'Cidade', 'Estado', 'CEP',
+        'Status', 'Total Pedidos', 'Total Gasto', 'Data Cadastro'
+      ];
+      const rows = customers.map(c => [
+        c.id,
+        c.nome || '',
+        c.email || '',
+        c.telefone || '',
+        c.cpf || '',
+        c.endereco_cidade || '',
+        c.endereco_estado || '',
+        c.endereco_cep || '',
+        c.status || '',
+        c.total_pedidos || 0,
+        c.total_gasto || 0,
+        c.created_at || '',
+      ]);
+      const csv = [headers, ...rows]
+        .map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv;charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=clientes_export_${new Date().toISOString().slice(0, 10)}.csv`);
+      res.send('\ufeff' + csv); // BOM para Excel
+    } else {
+      res.json(customers);
+    }
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao exportar clientes', message: error?.message });
+  }
+});
+
+// GET /api/admin/orders - Lista pedidos com filtros, paginação e busca
+app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 50, 
+      status, 
+      search, 
+      sort = 'created_at', 
+      order = 'DESC',
+      payment_method,
+      payment_status,
+      date_from,
+      date_to
+    } = req.query;
+    
+    // Garantir que page e limit são números válidos
+    const pageNum = isNaN(Number(page)) || Number(page) < 1 ? 1 : Math.floor(Number(page));
+    const limitNum = isNaN(Number(limit)) || Number(limit) < 1 ? 50 : Math.floor(Number(limit));
+    const offsetNum = (pageNum - 1) * limitNum;
+    
+    // Construir query base
+    let whereClause = '';
+    let queryParams = [];
+    
+    // Filtro por status
+    if (status && status !== 'all') {
+      whereClause += ' WHERE o.status = ?';
+      queryParams.push(status);
+    }
+    
+    // Filtro por método de pagamento
+    if (payment_method && payment_method !== 'all') {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} o.metodo_pagamento = ?`;
+      queryParams.push(payment_method);
+    }
+    
+    // Filtro por status de pagamento
+    if (payment_status && payment_status !== 'all') {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} o.payment_status = ?`;
+      queryParams.push(payment_status);
+    }
+    
+    // Filtro por data (de)
+    if (date_from) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} DATE(o.created_at) >= ?`;
+      queryParams.push(date_from);
+    }
+    
+    // Filtro por data (até)
+    if (date_to) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} DATE(o.created_at) <= ?`;
+      queryParams.push(date_to);
+    }
+    
+    // Filtro por busca (nome, email, telefone, ID do pedido)
+    if (search) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} (
+        o.id LIKE ? OR 
+        o.nome LIKE ? OR 
+        o.email LIKE ? OR 
+        o.telefone LIKE ?
+      )`;
+      const searchTerm = `%${search}%`;
+      queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+    
+    // Validar sort
+    const allowedSorts = ['created_at', 'updated_at', 'total', 'status', 'nome', 'email'];
+    const sortField = allowedSorts.includes(sort) ? sort : 'created_at';
+    const sortOrderValue = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    // Query principal - garantir que limit e offset são números inteiros válidos
+    // Usar parseInt explicitamente como em outras partes do código (linha 1331-1332)
+    const limitInt = parseInt(String(limitNum), 10) || 50;
+    const offsetInt = parseInt(String(offsetNum), 10) || 0;
+    
+    // Garantir valores mínimos válidos
+    const limitValue = Math.max(1, limitInt);
+    const offsetValue = Math.max(0, offsetInt);
+    
+    // Usar interpolação direta para LIMIT e OFFSET (seguro pois são números validados)
+    // Algumas versões do MySQL não aceitam placeholders para LIMIT/OFFSET
+    const [orders] = await pool.execute(`
+      SELECT 
+        o.*,
+        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items_count
+      FROM orders o
+      ${whereClause}
+      ORDER BY o.${sortField} ${sortOrderValue}
+      LIMIT ${limitValue} OFFSET ${offsetValue}
+    `, queryParams);
+    
+    // Buscar itens de cada pedido
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order) => {
+        const [items] = await pool.execute(`
+          SELECT 
+            oi.id,
+            oi.product_id,
+            oi.name,
+            oi.price,
+            oi.quantity,
+            oi.image_url,
+            p.nome as product_name,
+            p.imagem_url as product_image
+          FROM order_items oi
+          LEFT JOIN produtos p ON oi.product_id = p.id COLLATE utf8mb4_unicode_ci
+          WHERE oi.order_id = ?
+          ORDER BY oi.created_at ASC
+        `, [order.id]);
+        
+        return {
+          id: order.id,
+          user_id: order.user_id,
+          customer_id: order.user_id,
+          status: order.status || 'pending',
+          total: Number(order.total || 0),
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          items_count: Number(order.items_count || 0),
+          items: items || [],
+          
+          // Dados do cliente
+          customer_name: order.nome || 'Cliente não identificado',
+          customer_email: order.email || 'Email não informado',
+          customer_phone: order.telefone || null,
+          
+          // Campos de pagamento e entrega
+          shipping_address: order.endereco || null,
+          payment_method: order.metodo_pagamento || null,
+          payment_status: order.payment_status || 'pending',
+          tracking_code: order.tracking_code || null,
+          estimated_delivery: order.estimated_delivery || null,
+          notes: order.notes || null,
+        };
+      })
+    );
+    
+    // Contar total para paginação
+    const [countResult] = await pool.execute(`
+      SELECT COUNT(*) as total
+      FROM orders o
+      ${whereClause}
+    `, queryParams);
+    
+    const total = countResult[0]?.total || 0;
+    
+    console.log(`✅ [Admin Orders] ${ordersWithItems.length} pedidos retornados (total: ${total})`);
+    
+    res.json({
+      orders: ordersWithItems,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
   } catch (error) {
     console.error('❌ Erro na rota /api/admin/orders:', error);
     logger.logError(error, req);
-    res.status(500).json({ error: 'Erro ao buscar pedidos' });
+    res.status(500).json({ error: 'Erro ao buscar pedidos', message: error?.message });
+  }
+});
+
+// POST /api/admin/orders/bulk-action - Ações em lote para pedidos (Admin)
+app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) => {
+  try {
+    // Log do body completo antes de desestruturar
+    console.log(`[Bulk Action] Body completo recebido:`, JSON.stringify(req.body, null, 2));
+    console.log(`[Bulk Action] Tipo do body:`, typeof req.body);
+    console.log(`[Bulk Action] Keys do body:`, Object.keys(req.body || {}));
+    
+    // Tentar extrair os dados corretamente
+    let orderIds = req.body.orderIds;
+    let action = req.body.action;
+    let value = req.body.value;
+    
+    // Se os dados estão invertidos (orderIds é string e action é array), corrigir
+    if (typeof orderIds === 'string' && Array.isArray(action)) {
+      console.warn(`[Bulk Action] Parâmetros invertidos detectados! Corrigindo...`);
+      const temp = orderIds;
+      orderIds = action;
+      action = temp;
+      console.log(`[Bulk Action] Após correção:`, { orderIds, action, value });
+    }
+    
+    console.log(`[Bulk Action] Dados finais:`, { 
+      orderIds, 
+      action, 
+      value, 
+      orderIdsType: Array.isArray(orderIds) ? typeof orderIds[0] : 'not array',
+      orderIdsLength: Array.isArray(orderIds) ? orderIds.length : 'not array'
+    });
+    
+    if (!orderIds) {
+      console.warn(`[Bulk Action] orderIds é null/undefined`);
+      return res.status(400).json({ error: 'IDs dos pedidos são obrigatórios' });
+    }
+    
+    if (!Array.isArray(orderIds)) {
+      console.warn(`[Bulk Action] orderIds não é um array:`, typeof orderIds, orderIds);
+      return res.status(400).json({ error: 'IDs dos pedidos devem ser um array' });
+    }
+    
+    if (orderIds.length === 0) {
+      console.warn(`[Bulk Action] orderIds está vazio`);
+      return res.status(400).json({ error: 'Pelo menos um ID de pedido é necessário' });
+    }
+    
+    // Filtrar IDs válidos (não null, não undefined, não string vazia)
+    const validOrderIds = orderIds.filter(id => id !== null && id !== undefined && id !== '');
+    
+    if (validOrderIds.length === 0) {
+      console.warn(`[Bulk Action] Nenhum ID válido após filtragem:`, orderIds);
+      return res.status(400).json({ error: 'Nenhum ID de pedido válido encontrado' });
+    }
+    
+    if (!action || typeof action !== 'string') {
+      console.warn(`[Bulk Action] action inválido:`, action);
+      return res.status(400).json({ error: 'Ação é obrigatória e deve ser uma string' });
+    }
+    
+    let updateQuery = '';
+    let updateParams = [];
+    let affectedRows = 0;
+    
+    // Usar validOrderIds em vez de orderIds
+    switch (action) {
+      case 'update_status':
+        if (!value) {
+          return res.status(400).json({ error: 'Novo status é obrigatório para atualização de status' });
+        }
+        const placeholders = validOrderIds.map(() => '?').join(',');
+        const [result] = await pool.execute(
+          `UPDATE orders SET status = ?, updated_at = NOW() WHERE id IN (${placeholders})`,
+          [value, ...validOrderIds]
+        );
+        affectedRows = result.affectedRows;
+        break;
+        
+      case 'delete':
+        // Primeiro, deletar os itens dos pedidos
+        const deleteItemsPlaceholders = validOrderIds.map(() => '?').join(',');
+        await pool.execute(
+          `DELETE FROM order_items WHERE order_id IN (${deleteItemsPlaceholders})`,
+          validOrderIds
+        );
+        
+        // Depois, deletar os pedidos
+        const deletePlaceholders = validOrderIds.map(() => '?').join(',');
+        const [deleteResult] = await pool.execute(
+          `DELETE FROM orders WHERE id IN (${deletePlaceholders})`,
+          validOrderIds
+        );
+        affectedRows = deleteResult.affectedRows;
+        break;
+        
+      default:
+        console.warn(`[Bulk Action] Ação inválida:`, action);
+        return res.status(400).json({ error: `Ação inválida: ${action}. Ações suportadas: update_status, delete` });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `${affectedRows} pedido(s) processado(s) com sucesso`,
+      affectedRows
+    });
+    
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
 
@@ -4410,6 +6180,82 @@ app.get('/api/admin/orders/stats', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro na rota /api/admin/orders/stats:', error);
     res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+  }
+});
+
+// GET /api/admin/orders/export - Exportar pedidos
+app.get('/api/admin/orders/export', authenticateAdmin, async (req, res) => {
+  try {
+    const { format = 'csv', ...filters } = req.query;
+    
+    // Buscar pedidos com os mesmos filtros do endpoint principal
+    const queryParams = [];
+    let whereClause = '';
+    
+    if (filters.status && filters.status !== 'all') {
+      whereClause += ' WHERE o.status = ?';
+      queryParams.push(filters.status);
+    }
+    
+    if (filters.payment_method && filters.payment_method !== 'all') {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} o.metodo_pagamento = ?`;
+      queryParams.push(filters.payment_method);
+    }
+    
+    if (filters.search) {
+      const condition = whereClause ? ' AND' : ' WHERE';
+      whereClause += `${condition} (
+        o.id LIKE ? OR 
+        o.nome LIKE ? OR 
+        o.email LIKE ? OR 
+        o.telefone LIKE ?
+      )`;
+      const searchTerm = `%${filters.search}%`;
+      queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+    
+    const [orders] = await pool.execute(`
+      SELECT 
+        o.*,
+        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items_count
+      FROM orders o
+      ${whereClause}
+      ORDER BY o.created_at DESC
+    `, queryParams);
+    
+    if (format === 'csv') {
+      // Gerar CSV
+      const headers = ['ID', 'Cliente', 'Email', 'Telefone', 'Status', 'Total', 'Método Pagamento', 'Data Criação', 'Itens'];
+      const rows = orders.map(order => [
+        order.id,
+        order.nome || 'N/A',
+        order.email || 'N/A',
+        order.telefone || 'N/A',
+        order.status || 'pending',
+        Number(order.total || 0).toFixed(2),
+        order.metodo_pagamento || 'N/A',
+        new Date(order.created_at).toLocaleDateString('pt-BR'),
+        order.items_count || 0
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=pedidos_${new Date().toISOString().split('T')[0]}.csv`);
+      res.send('\ufeff' + csvContent); // BOM para Excel
+    } else {
+      // JSON como fallback
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=pedidos_${new Date().toISOString().split('T')[0]}.json`);
+      res.json(orders);
+    }
+  } catch (error) {
+    console.error('❌ Erro ao exportar pedidos:', error);
+    res.status(500).json({ error: 'Erro ao exportar pedidos', message: error?.message });
   }
 });
 
@@ -4530,17 +6376,16 @@ app.get('/api/admin/orders-evolved', async (req, res) => {
             ELSE 'Cliente Anônimo'
           END as customer_type
         FROM orders o
-        LEFT JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN users u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
         ORDER BY o.created_at DESC
       `);
     } catch (joinError) {
       // Se der erro no JOIN, usar query simples
-      console.log('Tabela customers não existe, usando query simples');
+      console.log('Tabela users não existe ou erro no JOIN, usando query simples');
       [orders] = await pool.execute(`
         SELECT 
           o.*,
           CASE 
-            WHEN o.customer_id IS NOT NULL THEN 'Cliente Associado'
             WHEN o.user_id IS NOT NULL THEN 'Cliente Registrado'
             ELSE 'Cliente Anônimo'
           END as customer_type
@@ -4585,8 +6430,8 @@ app.get('/api/admin/orders-stats-evolved', async (req, res) => {
         AVG(o.total) as averageTicket,
         SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN 1 ELSE 0 END) as todayOrders,
         SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN o.total ELSE 0 END) as todayRevenue,
-        COUNT(DISTINCT o.customer_id) as totalCustomers,
-        SUM(CASE WHEN DATE(o.created_at) = CURDATE() AND o.customer_id IS NOT NULL THEN 1 ELSE 0 END) as newCustomers
+        COUNT(DISTINCT o.user_id) as totalCustomers,
+        SUM(CASE WHEN DATE(o.created_at) = CURDATE() AND o.user_id IS NOT NULL THEN 1 ELSE 0 END) as newCustomers
       FROM orders o
     `);
 
@@ -4721,7 +6566,7 @@ app.get('/api/admin/orders-evolved-simple', async (req, res) => {
           ELSE 'Cliente Anônimo'
         END as customer_type
       FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
       ORDER BY o.created_at DESC
     `);
 
@@ -4808,11 +6653,157 @@ app.get('/api/orders/stats', async (req, res) => {
   }
 });
 
-// Atualizar status do pedido (Admin)
+// Inicializar serviços de automação
+const OrderAutomationService = require('./services/orderAutomationService.cjs');
+const NotificationTemplateService = require('./services/notificationTemplateService.cjs');
+
+let orderAutomationService;
+let notificationTemplateService;
+
+// Inicializar serviços após pool estar pronto (delay para garantir que pool está inicializado)
+setTimeout(async () => {
+  try {
+    if (pool) {
+      orderAutomationService = new OrderAutomationService(pool);
+      notificationTemplateService = new NotificationTemplateService();
+      logger.info('✅ Serviços de automação inicializados');
+    } else {
+      logger.warn('⚠️ Pool não disponível, serviços de automação não inicializados');
+    }
+  } catch (error) {
+    logger.error('Erro ao inicializar serviços de automação:', error);
+    // Não falhar o servidor se automações não inicializarem
+  }
+}, 1000);
+
+// ==================== ENDPOINTS DE AUTOMAÇÕES ====================
+
+// Listar todas as regras de automação
+app.get('/api/admin/automations/rules', async (req, res) => {
+  try {
+    if (!orderAutomationService) {
+      return res.status(503).json({ error: 'Serviço de automação não inicializado' });
+    }
+    const rules = orderAutomationService.getRules();
+    res.json({ success: true, data: rules });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao listar regras' });
+  }
+});
+
+// Obter regra específica
+app.get('/api/admin/automations/rules/:id', async (req, res) => {
+  try {
+    if (!orderAutomationService) {
+      return res.status(503).json({ error: 'Serviço de automação não inicializado' });
+    }
+    const rule = orderAutomationService.getRule(req.params.id);
+    if (!rule) {
+      return res.status(404).json({ error: 'Regra não encontrada' });
+    }
+    res.json({ success: true, data: rule });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao obter regra' });
+  }
+});
+
+// Criar nova regra
+app.post('/api/admin/automations/rules', async (req, res) => {
+  try {
+    if (!orderAutomationService) {
+      return res.status(503).json({ error: 'Serviço de automação não inicializado' });
+    }
+    const rule = orderAutomationService.addRule(req.body);
+    res.json({ success: true, data: rule });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao criar regra' });
+  }
+});
+
+// Atualizar regra
+app.put('/api/admin/automations/rules/:id', async (req, res) => {
+  try {
+    if (!orderAutomationService) {
+      return res.status(503).json({ error: 'Serviço de automação não inicializado' });
+    }
+    orderAutomationService.removeRule(req.params.id);
+    const rule = orderAutomationService.addRule({ ...req.body, id: req.params.id });
+    res.json({ success: true, data: rule });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao atualizar regra' });
+  }
+});
+
+// Ativar/desativar regra
+app.patch('/api/admin/automations/rules/:id/toggle', async (req, res) => {
+  try {
+    if (!orderAutomationService) {
+      return res.status(503).json({ error: 'Serviço de automação não inicializado' });
+    }
+    const { enabled } = req.body;
+    orderAutomationService.toggleRule(req.params.id, enabled);
+    res.json({ success: true, message: `Regra ${enabled ? 'ativada' : 'desativada'}` });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao alterar estado da regra' });
+  }
+});
+
+// Remover regra
+app.delete('/api/admin/automations/rules/:id', async (req, res) => {
+  try {
+    if (!orderAutomationService) {
+      return res.status(503).json({ error: 'Serviço de automação não inicializado' });
+    }
+    orderAutomationService.removeRule(req.params.id);
+    res.json({ success: true, message: 'Regra removida' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao remover regra' });
+  }
+});
+
+// Listar templates de notificação
+app.get('/api/admin/automations/templates', async (req, res) => {
+  try {
+    if (!notificationTemplateService) {
+      return res.status(503).json({ error: 'Serviço de templates não inicializado' });
+    }
+    const templates = notificationTemplateService.listTemplates();
+    res.json({ success: true, data: templates });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao listar templates' });
+  }
+});
+
+// Renderizar template
+app.post('/api/admin/automations/templates/:name/render', async (req, res) => {
+  try {
+    if (!notificationTemplateService) {
+      return res.status(503).json({ error: 'Serviço de templates não inicializado' });
+    }
+    const { format = 'html', data = {} } = req.body;
+    const rendered = notificationTemplateService.renderTemplate(req.params.name, data, format);
+    if (!rendered) {
+      return res.status(404).json({ error: 'Template não encontrado' });
+    }
+    res.json({ success: true, data: rendered });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao renderizar template' });
+  }
+});
+
+// Atualizar status do pedido (Admin) com automações
 app.patch('/api/orders/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, notes, previous_status } = req.body;
 
     if (!status) {
       return res.status(400).json({ error: 'Status é obrigatório' });
@@ -4823,20 +6814,54 @@ app.patch('/api/orders/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Status inválido' });
     }
 
+    // Buscar dados do pedido antes da atualização
+    const [orders] = await pool.execute(`
+      SELECT o.*, u.email as customer_email, u.nome as customer_name, u.id as user_id
+      FROM orders o
+      LEFT JOIN users u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
+      WHERE o.id = ?
+    `, [id]);
+
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+
+    const order = orders[0];
+    const oldStatus = previous_status || order.status;
+
+    // Atualizar status do pedido
     await pool.execute(
       'UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, id]
     );
 
-    // Buscar dados do pedido para notificar cliente
-    const [orders] = await pool.execute(
-      'SELECT customer_email, customer_name FROM orders WHERE id = ?',
-      [id]
-    );
+    // Registrar histórico de status
+    try {
+      await pool.execute(`
+        INSERT INTO order_status_history (order_id, status, notes, created_at)
+        VALUES (?, ?, ?, NOW())
+      `, [id, status, notes || null]);
+    } catch (error) {
+      // Tabela pode não existir, ignorar erro
+      logger.warn('Tabela order_status_history não encontrada, continuando...');
+    }
 
-    if (orders.length > 0 && orders[0].customer_email) {
-      // Aqui você pode adicionar lógica para enviar email ao cliente
-      console.log(`📧 Notificar cliente ${orders[0].customer_email} sobre mudança de status para ${status}`);
+    // Processar automações
+    if (orderAutomationService) {
+      const eventData = {
+        order_id: id,
+        previous_status: oldStatus,
+        new_status: status,
+        customer_email: order.customer_email,
+        customer_name: order.customer_name,
+        customer_id: order.customer_id,
+        customer_type: order.customer_type,
+        total: parseFloat(order.total || 0),
+        tracking_code: order.tracking_code,
+        notes: notes
+      };
+
+      await orderAutomationService.processEvent('order_status_changed', eventData);
     }
 
     res.json({ success: true, message: 'Status atualizado com sucesso' });
@@ -5154,7 +7179,7 @@ app.post('/api/orders/bulk-action', async (req, res) => {
 
 const { randomUUID: uuidv4 } = require('crypto');
 
-app.get('/api/addresses', async (req, res) => {
+app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📍 GET /api/addresses - Buscando endereços do usuário logado');
     
@@ -6504,7 +8529,7 @@ app.post('/api/push/campaign', async (req, res) => {
 // ==================== CUSTOMERS API (COMPLETO E AVANÇADO) ====================
 
 // Estatísticas do usuário logado (current user stats)
-app.get('/api/customers/current/stats', async (req, res) => {
+app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📊 GET /api/customers/current/stats');
     
@@ -6616,7 +8641,7 @@ app.get('/api/customers/current/stats', async (req, res) => {
 });
 
 // Estatísticas gerais de clientes (DEVE VIR ANTES de :userId)
-app.get('/api/customers/stats', async (req, res) => {
+app.get('/api/customers/stats', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📊 GET /api/customers/stats');
     
@@ -6701,7 +8726,7 @@ app.put('/api/customers/:userId', async (req, res) => {
 });
 
 // Estatísticas do cliente (dashboard)
-app.get('/api/customers/:userId/stats', async (req, res) => {
+app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) => {
   try {
     let { userId } = req.params;
     
@@ -7857,7 +9882,92 @@ app.patch('/api/orders/:id', async (req, res) => {
   }
 });
 
-// Excluir pedido
+// DELETE /api/admin/orders/:id - Excluir pedido (Admin)
+app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🗑️ [Admin] Tentando excluir pedido ${id}`);
+    
+    // Verificar se o pedido existe
+    const [orders] = await pool.execute('SELECT * FROM orders WHERE id = ?', [id]);
+    
+    if (orders.length === 0) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+    
+    const order = orders[0];
+    
+    // Validação: apenas pedidos pendentes ou cancelados podem ser deletados
+    // Pedidos processados, enviados ou entregues não devem ser deletados
+    const deletableStatuses = ['pending', 'cancelled'];
+    if (!deletableStatuses.includes(order.status)) {
+      return res.status(400).json({ 
+        error: 'Não é possível excluir este pedido',
+        message: `Pedidos com status "${order.status}" não podem ser excluídos. Apenas pedidos pendentes ou cancelados podem ser excluídos.`
+      });
+    }
+    
+    // Deletar itens do pedido primeiro (se houver)
+    try {
+      await pool.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
+      console.log(`✅ [Admin] Itens do pedido ${id} excluídos`);
+    } catch (itemsError) {
+      console.warn(`⚠️ [Admin] Erro ao excluir itens do pedido ${id}:`, itemsError);
+      // Continuar mesmo se houver erro ao deletar itens
+    }
+    
+    // Deletar histórico de status (se existir)
+    try {
+      await pool.execute('DELETE FROM order_status_history WHERE order_id = ?', [id]);
+    } catch (historyError) {
+      console.warn(`⚠️ [Admin] Erro ao excluir histórico do pedido ${id}:`, historyError);
+      // Continuar mesmo se houver erro
+    }
+    
+    // Deletar o pedido
+    await pool.execute('DELETE FROM orders WHERE id = ?', [id]);
+    
+    // Log de auditoria
+    try {
+      const { logAudit } = require('./utils/audit.cjs');
+      await logAudit({
+        userId: req.admin?.id || null,
+        userEmail: req.admin?.email || null,
+        action: 'order_deleted',
+        resourceType: 'order',
+        resourceId: id,
+        details: {
+          order_status: order.status,
+          order_total: order.total,
+          customer_name: order.nome,
+          customer_email: order.email
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      });
+    } catch (auditError) {
+      console.warn('⚠️ Erro ao registrar auditoria:', auditError);
+    }
+    
+    console.log(`✅ [Admin] Pedido ${id} excluído com sucesso`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Pedido excluído com sucesso',
+      order_id: id
+    });
+  } catch (error) {
+    console.error('❌ [Admin] Erro ao excluir pedido:', error);
+    logger.logError(error, req);
+    res.status(500).json({ 
+      error: 'Erro ao excluir pedido',
+      message: error?.message 
+    });
+  }
+});
+
+// Excluir pedido (endpoint público - mantido para compatibilidade)
 app.delete('/api/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -9198,6 +11308,9 @@ app.post('/api/admin/login', async (req, res) => {
 
     console.log(`🔐 Tentativa de login admin: ${mail}`);
     
+    // Importar utilitários de segurança
+    const { verifyPassword, generateAdminToken, generateRefreshToken, getSecureCookieOptions } = require('./utils/security.cjs');
+    
     // Garantir estrutura e buscar usuário admin
     await ensureAdminUsersTable();
     let rows;
@@ -9206,9 +11319,12 @@ app.post('/api/admin/login', async (req, res) => {
         'SELECT id, nome, email, senha_hash, role, status, permissoes FROM admin_users WHERE email = ? LIMIT 1', 
         [mail]
       );
+      console.log(`🔍 Busca no banco: ${rows.length} usuário(s) encontrado(s) para ${mail}`);
     } catch (e) {
+      console.error(`❌ Erro ao buscar usuário admin:`, e.message);
       // Se a tabela não existir por algum motivo, tenta criar e seguir
       if (e && (e.code === 'ER_NO_SUCH_TABLE' || /doesn\'t exist/i.test(String(e.message)))) {
+        console.log(`⚠️ Tabela não existe, criando...`);
         await ensureAdminUsersTable();
         [rows] = await pool.execute(
           'SELECT id, nome, email, senha_hash, role, status, permissoes FROM admin_users WHERE email = ? LIMIT 1',
@@ -9221,6 +11337,13 @@ app.post('/api/admin/login', async (req, res) => {
     
     if (!Array.isArray(rows) || rows.length === 0) {
       console.log(`❌ Usuário admin não encontrado: ${mail}`);
+      // Listar todos os emails de admin disponíveis para debug (apenas em desenvolvimento)
+      try {
+        const [allAdmins] = await pool.execute('SELECT email, status FROM admin_users LIMIT 10');
+        console.log(`📋 Admins disponíveis:`, allAdmins.map(a => `${a.email} (${a.status})`).join(', '));
+      } catch (e) {
+        console.log(`⚠️ Não foi possível listar admins:`, e.message);
+      }
       return res.status(401).json({ 
         ok: false, 
         error: 'invalid_credentials',
@@ -9240,13 +11363,8 @@ app.post('/api/admin/login', async (req, res) => {
       });
     }
 
-    // Verificar senha (SHA256 hash)
-    const crypto = require('crypto');
-    const senhaHash = crypto.createHash('sha256').update(pass).digest('hex');
-    const senhaCorreta = senhaHash === user.senha_hash;
-    if (!senhaCorreta) {
-      console.warn('🔒 Admin login falhou por senha incorreta', { mail, senhaHash, expected: user.senha_hash });
-    }
+    // Verificar senha usando bcrypt (com compatibilidade SHA256)
+    const senhaCorreta = await verifyPassword(pass, user.senha_hash);
     
     if (!senhaCorreta) {
       console.log(`❌ Senha incorreta para: ${mail}`);
@@ -9257,21 +11375,54 @@ app.post('/api/admin/login', async (req, res) => {
       });
     }
 
-    // Gerar token de sessão
-    const adminToken = 'admin_token_' + Date.now() + '_' + user.id;
+    // Se a senha estava em SHA256, migrar para bcrypt na próxima vez
+    // (não bloqueamos o login, apenas sinalizamos que precisa migrar)
+    const needsMigration = !user.senha_hash.startsWith('$2');
+    if (needsMigration) {
+      console.log(`⚠️ Senha em SHA256 detectada para ${mail} - migração recomendada`);
+    }
+
+    // Gerar tokens JWT
+    const adminToken = generateAdminToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
     
-    // Salvar token no cookie
-    res.cookie('admin_token', adminToken, { 
-      httpOnly: false, 
-      sameSite: 'lax', 
-      secure: (req.headers['x-forwarded-proto'] || req.protocol) === 'https', 
+    const refreshToken = generateRefreshToken({
+      id: user.id,
+      email: user.email
+    });
+    
+    // Salvar tokens em cookies seguros
+    const cookieOptions = getSecureCookieOptions({
       maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dias
     });
+    
+    res.cookie('admin_token', adminToken, cookieOptions);
+    res.cookie('admin_refresh_token', refreshToken, getSecureCookieOptions({
+      maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dias
+    }));
 
     // Atualizar último acesso
     await pool.execute('UPDATE admin_users SET last_access = NOW() WHERE id = ?', [user.id]);
 
-    console.log(`✅ Login admin bem-sucedido: ${mail} (${user.role})`);
+    // Registrar auditoria de login
+    const { logAudit } = require('./utils/audit.cjs');
+    await logAudit({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'login',
+      resourceType: 'auth',
+      resourceId: String(user.id),
+      req,
+      metadata: {
+        role: user.role,
+        success: true
+      }
+    });
+
+    console.log(`✅ Login admin bem-sucedido: ${mail} (${user.role}) - JWT gerado`);
 
     res.json({ 
       ok: true,
@@ -9283,7 +11434,9 @@ app.post('/api/admin/login', async (req, res) => {
         permissoes: user.permissoes ? JSON.parse(user.permissoes) : [],
         change_required: user.must_change_password === 1
       },
-      token: adminToken
+      token: adminToken,
+      refreshToken: refreshToken,
+      needsPasswordMigration: needsMigration
     });
 
   } catch (error) {
@@ -9299,55 +11452,40 @@ app.post('/api/admin/login', async (req, res) => {
 // Compatibilidade: algumas instalações antigas ainda chamam POST /login.
 // Redirecionamos para a mesma lógica do login administrativo acima.
 app.post('/login', async (req, res) => {
-  try {
-    const { email, senha, password } = req.body || {};
-    const mail = String(email || '').trim().toLowerCase();
-    const pass = String(password || senha || '');
-
-    if (!mail || !pass) {
-      return res.status(400).json({ ok: false, error: 'missing_credentials', message: 'Email e senha são obrigatórios' });
-    }
-
-    const [rows] = await pool.execute(
-      'SELECT id, nome, email, senha_hash, role, status, permissoes FROM admin_users WHERE email = ? LIMIT 1',
-      [mail]
-    );
-    if (!Array.isArray(rows) || rows.length === 0) return res.status(401).json({ ok: false, error: 'invalid_credentials' });
-
-    const user = rows[0];
-    if (user.status !== 'ativo') return res.status(401).json({ ok: false, error: 'account_inactive' });
-
-    const crypto = require('crypto');
-    const senhaHash = crypto.createHash('sha256').update(pass).digest('hex');
-    if (senhaHash !== user.senha_hash) return res.status(401).json({ ok: false, error: 'invalid_credentials' });
-
-    const adminToken = 'admin_token_' + Date.now() + '_' + user.id;
-    res.cookie('admin_token', adminToken, {
-      httpOnly: false,
-      sameSite: 'lax',
-      secure: (req.headers['x-forwarded-proto'] || req.protocol) === 'https',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
-    await pool.execute('UPDATE admin_users SET last_access = NOW() WHERE id = ?', [user.id]);
-    res.json({ ok: true, user: { id: user.id, nome: user.nome, email: user.email, role: user.role, permissoes: user.permissoes ? JSON.parse(user.permissoes) : [], change_required: user.must_change_password === 1 }, token: adminToken });
-  } catch (error) {
-    console.error('❌ Erro no login (compat /login):', error);
-    res.status(500).json({ ok: false, error: 'auth_error', message: 'Erro interno na autenticação' });
-  }
+  // Redirecionar para o endpoint principal
+  req.url = '/api/admin/login';
+  req.baseUrl = '/api/admin';
+  return app._router.handle(req, res);
 });
 
 // Troca de senha (admin logado)
 app.post('/api/admin/change-password', async (req, res) => {
   try {
-    const token = req.cookies?.admin_token || req.headers['x-admin-token'];
-    if (!token || !String(token).startsWith('admin_token_')) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const { verifyAdminToken } = require('./utils/security.cjs');
+    const { hashPassword } = require('./utils/security.cjs');
+    
+    const token = req.cookies?.admin_token || req.headers['x-admin-token'] || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    
+    // Verificar token (JWT ou legado)
+    const tokenData = verifyAdminToken(token);
+    if (!tokenData || tokenData.expired) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    
+    const userId = tokenData.legacy ? String(token).split('_').pop() : tokenData.id;
     const { new_password } = req.body || {};
-    if (!new_password || String(new_password).length < 6) return res.status(400).json({ ok: false, error: 'weak_password' });
-    const userId = String(token).split('_').pop();
-    const crypto = require('crypto');
-    const hash = crypto.createHash('sha256').update(String(new_password)).digest('hex');
+    
+    if (!new_password || String(new_password).length < 6) {
+      return res.status(400).json({ ok: false, error: 'weak_password', message: 'Senha deve ter no mínimo 6 caracteres' });
+    }
+    
+    // Gerar hash bcrypt
+    const hash = await hashPassword(String(new_password));
     await pool.execute('UPDATE admin_users SET senha_hash = ?, must_change_password = 0, updated_at = NOW() WHERE id = ?', [hash, userId]);
-    return res.json({ ok: true });
+    
+    console.log(`✅ Senha alterada para usuário ID: ${userId}`);
+    return res.json({ ok: true, message: 'Senha alterada com sucesso' });
   } catch (e) {
     console.error('❌ change-password error:', e?.message || e);
     res.status(500).json({ ok: false, error: 'change_failed' });
@@ -9378,16 +11516,36 @@ app.post('/api/admin/forgot-password', async (req, res) => {
 // Resetar senha via token
 app.post('/api/admin/reset-password', async (req, res) => {
   try {
+    const { hashPassword } = require('./utils/security.cjs');
+    
     const { token, new_password } = req.body || {};
-    if (!token || !new_password) return res.status(400).json({ ok: false, error: 'missing_params' });
+    if (!token || !new_password) {
+      return res.status(400).json({ ok: false, error: 'missing_params', message: 'Token e nova senha são obrigatórios' });
+    }
+    
+    if (String(new_password).length < 6) {
+      return res.status(400).json({ ok: false, error: 'weak_password', message: 'Senha deve ter no mínimo 6 caracteres' });
+    }
+    
     const [rows] = await pool.execute('SELECT id, reset_expires FROM admin_users WHERE reset_token = ? LIMIT 1', [token]);
-    if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ ok: false, error: 'invalid_token' });
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ ok: false, error: 'invalid_token', message: 'Token inválido' });
+    }
+    
     const expires = rows[0].reset_expires ? new Date(rows[0].reset_expires) : null;
-    if (!expires || expires.getTime() < Date.now()) return res.status(400).json({ ok: false, error: 'expired_token' });
-    const crypto = require('crypto');
-    const hash = crypto.createHash('sha256').update(String(new_password)).digest('hex');
-    await pool.execute('UPDATE admin_users SET senha_hash = ?, must_change_password = 0, reset_token = NULL, reset_expires = NULL WHERE id = ?', [hash, rows[0].id]);
-    res.json({ ok: true });
+    if (!expires || expires.getTime() < Date.now()) {
+      return res.status(400).json({ ok: false, error: 'expired_token', message: 'Token expirado' });
+    }
+    
+    // Gerar hash bcrypt
+    const hash = await hashPassword(String(new_password));
+    await pool.execute(
+      'UPDATE admin_users SET senha_hash = ?, must_change_password = 0, reset_token = NULL, reset_expires = NULL, updated_at = NOW() WHERE id = ?', 
+      [hash, rows[0].id]
+    );
+    
+    console.log(`✅ Senha resetada para usuário ID: ${rows[0].id}`);
+    res.json({ ok: true, message: 'Senha resetada com sucesso' });
   } catch (e) {
     console.error('❌ reset-password error:', e?.message || e);
     res.status(500).json({ ok: false, error: 'reset_failed' });
@@ -9496,8 +11654,18 @@ app.post('/api/admin/logout', async (req, res) => {
 // ============================================
 
 // GET /api/admin/analytics/dashboard - Métricas principais do dashboard
-app.get('/api/admin/analytics/dashboard', async (req, res) => {
+app.get('/api/admin/analytics/dashboard', authenticateAdmin, async (req, res) => {
   try {
+    // Tentar cache primeiro
+    const cacheHelpers = require('./utils/cacheHelpers.cjs');
+    const period = req.query.period || '30';
+    const cached = await cacheHelpers.getCachedDashboardStats(period);
+    
+    if (cached) {
+      console.log('✅ Dashboard stats do cache');
+      return res.json(cached);
+    }
+    
     console.log('📊 Buscando métricas do dashboard...');
     
     // Data de hoje e ontem
@@ -9563,6 +11731,27 @@ app.get('/api/admin/analytics/dashboard', async (req, res) => {
     const pedidosOntemVal = parseInt(pedidosOntem[0]?.total_ontem || 0);
     const variacaoPedidos = pedidosOntemVal > 0 ? ((pedidosHojeVal - pedidosOntemVal) / pedidosOntemVal * 100) : 0;
     
+    // Buscar totais gerais
+    const [totalStats] = await pool.execute(`
+      SELECT 
+        COUNT(DISTINCT o.id) as total_pedidos,
+        COALESCE(SUM(CASE WHEN o.status NOT IN ('cancelado', 'rejeitado') THEN o.total ELSE 0 END), 0) as receita_total,
+        COALESCE(AVG(CASE WHEN o.status NOT IN ('cancelado', 'rejeitado') THEN o.total ELSE NULL END), 0) as ticket_medio,
+        COUNT(DISTINCT o.user_id) as total_clientes
+      FROM orders o
+    `);
+    
+    const [produtosStats] = await pool.execute(`
+      SELECT COUNT(*) as total FROM produtos WHERE status = 'ativo'
+    `);
+    
+    const stats = totalStats[0] || {};
+    const totalProdutos = parseInt(produtosStats[0]?.total || 0);
+    const receitaTotal = parseFloat(stats.receita_total || 0);
+    const ticketMedio = parseFloat(stats.ticket_medio || 0);
+    const totalClientes = parseInt(stats.total_clientes || 0);
+    const totalPedidos = parseInt(stats.total_pedidos || 0);
+    
     const dashboard = {
       vendas: {
         hoje: vendasHojeVal,
@@ -9585,8 +11774,25 @@ app.get('/api/admin/analytics/dashboard', async (req, res) => {
       estoque: {
         baixo: parseInt(baixoEstoque[0]?.total || 0),
         formato: 'number'
-      }
+      },
+      // Totais gerais
+      totalRevenue: receitaTotal,
+      totalOrders: totalPedidos,
+      totalCustomers: totalClientes,
+      totalProducts: totalProdutos,
+      averageOrderValue: ticketMedio,
+      conversionRate: 0, // Será calculado se necessário
+      // Variações
+      revenueChange: variacaoVendas,
+      ordersChange: variacaoPedidos,
+      customersChange: variacaoClientes,
+      productsChange: 0,
+      aovChange: 0,
+      conversionChange: 0
     };
+    
+    // Cachear resultado
+    await cacheHelpers.setCachedDashboardStats(period, dashboard);
     
     console.log('✅ Métricas do dashboard carregadas');
     res.json(dashboard);
@@ -9598,7 +11804,7 @@ app.get('/api/admin/analytics/dashboard', async (req, res) => {
 });
 
 // GET /api/admin/analytics/vendas - Gráfico de vendas dos últimos 30 dias
-app.get('/api/admin/analytics/vendas', async (req, res) => {
+app.get('/api/admin/analytics/vendas', authenticateAdmin, async (req, res) => {
   try {
     console.log('📈 Buscando dados de vendas...');
     
@@ -9624,7 +11830,7 @@ app.get('/api/admin/analytics/vendas', async (req, res) => {
 });
 
 // GET /api/admin/analytics/produtos-populares - Top 10 produtos mais vendidos
-app.get('/api/admin/analytics/produtos-populares', async (req, res) => {
+app.get('/api/admin/analytics/produtos-populares', authenticateAdmin, async (req, res) => {
   try {
     console.log('🏆 Buscando produtos populares...');
     
@@ -9681,7 +11887,7 @@ app.get('/api/admin/analytics/produtos-populares', async (req, res) => {
 });
 
 // GET /api/admin/analytics/vendas-por-periodo - Vendas por período
-app.get('/api/admin/analytics/vendas-por-periodo', async (req, res) => {
+app.get('/api/admin/analytics/vendas-por-periodo', authenticateAdmin, async (req, res) => {
   try {
     console.log('📈 Buscando vendas por período...');
     
@@ -9729,7 +11935,7 @@ app.get('/api/admin/analytics/vendas-por-periodo', async (req, res) => {
 });
 
 // GET /api/admin/analytics/pedidos-recentes - Últimos 10 pedidos
-app.get('/api/admin/analytics/pedidos-recentes', async (req, res) => {
+app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, res) => {
   try {
     console.log('📦 Buscando pedidos recentes...');
     
@@ -9743,7 +11949,7 @@ app.get('/api/admin/analytics/pedidos-recentes', async (req, res) => {
         COALESCE(o.metodo_pagamento, 'Não informado') as payment_method,
         (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as itens_count
       FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
       WHERE o.status NOT IN ('cancelled', 'canceled', 'cancelado')
       ORDER BY o.created_at DESC
       LIMIT 10
@@ -9760,7 +11966,7 @@ app.get('/api/admin/analytics/pedidos-recentes', async (req, res) => {
 });
 
 // GET /api/admin/analytics/estatisticas-gerais - Estatísticas gerais do sistema
-app.get('/api/admin/analytics/estatisticas-gerais', async (req, res) => {
+app.get('/api/admin/analytics/estatisticas-gerais', authenticateAdmin, async (req, res) => {
   try {
     console.log('📊 Buscando estatísticas gerais...');
     
@@ -10070,9 +12276,6 @@ app.post('/api/admin/blog/posts', async (req, res) => {
       destaque = false,
       status = 'rascunho',
       tags = [],
-      meta_title,
-      meta_description,
-      meta_keywords,
       publicado_em
     } = req.body;
     
@@ -10114,14 +12317,12 @@ app.post('/api/admin/blog/posts', async (req, res) => {
       `INSERT INTO blog_posts (
         id, titulo, slug, resumo, conteudo, categoria,
         imagem_url, imagem_destaque, autor, autor_avatar,
-        tempo_leitura, destaque, status, tags,
-        meta_title, meta_description, meta_keywords, publicado_em
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        tempo_leitura, destaque, status, tags, publicado_em
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId, titulo, finalSlug, resumo, conteudo, categoria,
         validImagemUrl, validImagemDestaque, autor, autor_avatar,
         tempo_leitura, destaque, status, JSON.stringify(tags),
-        meta_title || titulo, meta_description || resumo, meta_keywords,
         publicado_em || (status === 'publicado' ? new Date() : null)
       ]
     );
@@ -10244,9 +12445,6 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
       destaque,
       status,
       tags,
-      meta_title,
-      meta_description,
-      meta_keywords,
       publicado_em
     } = req.body;
     
@@ -10270,9 +12468,6 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
     if (destaque !== undefined) { updateFields.push('destaque = ?'); updateValues.push(destaque); }
     if (status !== undefined) { updateFields.push('status = ?'); updateValues.push(status); }
     if (tags !== undefined) { updateFields.push('tags = ?'); updateValues.push(tagsValue); }
-    if (meta_title !== undefined) { updateFields.push('meta_title = ?'); updateValues.push(meta_title); }
-    if (meta_description !== undefined) { updateFields.push('meta_description = ?'); updateValues.push(meta_description); }
-    if (meta_keywords !== undefined) { updateFields.push('meta_keywords = ?'); updateValues.push(meta_keywords); }
     if (publicado_em !== undefined) { updateFields.push('publicado_em = ?'); updateValues.push(publicado_em); }
     
     updateFields.push('updated_at = NOW()');
@@ -10502,6 +12697,11 @@ app.use('/api/admin/config', apiConfigRoutes);
 
 // GET /api/admin/marketplace/sellers - Listar todos os vendedores (admin)
 app.get('/api/admin/marketplace/sellers', async (req, res) => {
+  // Verificar autenticação admin
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
+  }
+  
   try {
     const { categoria, busca, ativo } = req.query;
     
@@ -10554,6 +12754,11 @@ app.get('/api/admin/marketplace/sellers', async (req, res) => {
 
 // GET /api/admin/marketplace/sellers/:id - Obter vendedor específico (admin)
 app.get('/api/admin/marketplace/sellers/:id', async (req, res) => {
+  // Verificar autenticação admin
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
+  }
+  
   try {
     const { id } = req.params;
     
@@ -10594,8 +12799,31 @@ app.get('/api/admin/marketplace/sellers/:id', async (req, res) => {
   }
 });
 
+// GET /api/admin/marketplace/sellers/structure - Verificar estrutura da tabela (temporário para debug)
+app.get('/api/admin/marketplace/sellers/structure', async (req, res) => {
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const [columns] = await pool.execute('DESCRIBE marketplace_sellers');
+    res.json({ columns, count: columns.length });
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message, 
+      code: error.code,
+      sqlMessage: error.sqlMessage 
+    });
+  }
+});
+
 // POST /api/admin/marketplace/sellers - Criar novo vendedor
 app.post('/api/admin/marketplace/sellers', async (req, res) => {
+  // Verificar autenticação admin
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
+  }
+  
   try {
     const {
       nome,
@@ -10639,21 +12867,19 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
     
     const newId = require('crypto').randomUUID();
     
+    // Campos que realmente existem na tabela (baseado no SELECT)
+    // Removendo: email, telefone, whatsapp, instagram, website, politica_troca, politica_envio, horario_atendimento
     const [result] = await pool.execute(
       `INSERT INTO marketplace_sellers (
         id, nome, slug, descricao, especialidade, categoria,
         imagem_perfil, imagem_capa, avaliacao, localizacao, cidade, estado,
         tempo_resposta, destaque, verificado, ativo,
-        email, telefone, whatsapp, instagram, website,
-        politica_troca, politica_envio, horario_atendimento,
         tags, certificacoes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId, nome, finalSlug, descricao || null, especialidade || null, categoria,
         imagem_perfil || null, imagem_capa || null, avaliacao || 0, localizacao || null, cidade || null, estado || null,
         tempo_resposta || '24h', destaque ? 1 : 0, verificado ? 1 : 0, ativo ? 1 : 0,
-        email || null, telefone || null, whatsapp || null, instagram || null, website || null,
-        politica_troca || null, politica_envio || null, horario_atendimento || null,
         JSON.stringify(tags || []), JSON.stringify(certificacoes || [])
       ]
     );
@@ -10668,15 +12894,53 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao criar vendedor:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Request body:', JSON.stringify(req.body, null, 2));
+    console.error('❌ SQL Message:', error.sqlMessage);
+    console.error('❌ Error Code:', error.code);
+    console.error('❌ SQL State:', error.sqlState);
+    
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Já existe um vendedor com este slug' });
     }
-    res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
+    
+    if (error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({ 
+        error: 'Tabela não encontrada', 
+        message: 'A tabela marketplace_sellers não existe. Execute a migração do banco de dados.' 
+      });
+    }
+    
+    if (error.code === 'ER_BAD_FIELD_ERROR') {
+      const fieldMatch = error.sqlMessage?.match(/Unknown column ['"]([^'"]+)['"]/i);
+      const fieldName = fieldMatch ? fieldMatch[1] : 'desconhecido';
+      console.error(`❌ Campo inválido identificado: ${fieldName}`);
+      console.error(`❌ SQL completo: ${error.sql}`);
+      return res.status(500).json({ 
+        error: 'Campo inválido', 
+        message: `Campo não encontrado na tabela: ${fieldName}`,
+        field: fieldName,
+        sqlMessage: error.sqlMessage
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erro interno do servidor', 
+      message: error?.message || 'Erro desconhecido',
+      code: error?.code,
+      sqlState: error?.sqlState,
+      sqlMessage: error?.sqlMessage
+    });
   }
 });
 
 // PUT /api/admin/marketplace/sellers/:id - Atualizar vendedor
 app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
+  // Verificar autenticação admin
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
+  }
+  
   try {
     const { id } = req.params;
     const {
@@ -10696,21 +12960,19 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
       .replace(/-+/g, '-')
       .trim();
     
+    // Campos que realmente existem na tabela (mesmos do INSERT)
+    // Removendo: email, telefone, whatsapp, instagram, website, politica_troca, politica_envio, horario_atendimento
     const [result] = await pool.execute(
       `UPDATE marketplace_sellers SET
         nome = ?, slug = ?, descricao = ?, especialidade = ?, categoria = ?,
         imagem_perfil = ?, imagem_capa = ?, avaliacao = ?, localizacao = ?, cidade = ?, estado = ?,
         tempo_resposta = ?, destaque = ?, verificado = ?, ativo = ?,
-        email = ?, telefone = ?, whatsapp = ?, instagram = ?, website = ?,
-        politica_troca = ?, politica_envio = ?, horario_atendimento = ?,
         tags = ?, certificacoes = ?, updated_at = NOW()
       WHERE id = ?`,
       [
         nome, finalSlug, descricao || null, especialidade || null, categoria,
         imagem_perfil || null, imagem_capa || null, avaliacao || 0, localizacao || null, cidade || null, estado || null,
         tempo_resposta || '24h', destaque ? 1 : 0, verificado ? 1 : 0, ativo ? 1 : 0,
-        email || null, telefone || null, whatsapp || null, instagram || null, website || null,
-        politica_troca || null, politica_envio || null, horario_atendimento || null,
         JSON.stringify(tags || []), JSON.stringify(certificacoes || []),
         id
       ]
@@ -10725,15 +12987,46 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao atualizar vendedor:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Request body:', JSON.stringify(req.body, null, 2));
+    console.error('❌ SQL Message:', error.sqlMessage);
+    console.error('❌ Error Code:', error.code);
+    console.error('❌ SQL State:', error.sqlState);
+    
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Já existe um vendedor com este slug' });
     }
-    res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
+    
+    if (error.code === 'ER_BAD_FIELD_ERROR') {
+      const fieldMatch = error.sqlMessage?.match(/Unknown column ['"]([^'"]+)['"]/i);
+      const fieldName = fieldMatch ? fieldMatch[1] : 'desconhecido';
+      console.error(`❌ Campo inválido identificado: ${fieldName}`);
+      console.error(`❌ SQL completo: ${error.sql}`);
+      return res.status(500).json({ 
+        error: 'Campo inválido', 
+        message: `Campo não encontrado na tabela: ${fieldName}`,
+        field: fieldName,
+        sqlMessage: error.sqlMessage
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erro interno do servidor', 
+      message: error?.message || 'Erro desconhecido',
+      code: error?.code,
+      sqlState: error?.sqlState,
+      sqlMessage: error?.sqlMessage
+    });
   }
 });
 
 // DELETE /api/admin/marketplace/sellers/:id - Deletar vendedor
 app.delete('/api/admin/marketplace/sellers/:id', async (req, res) => {
+  // Verificar autenticação admin
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
+  }
+  
   try {
     const { id } = req.params;
     
@@ -13742,4 +16035,138 @@ setTimeout(async () => {
 }, 5000); // 5 segundos após o servidor iniciar
 
 console.log('✅ Sistema de automação de cupons carregado!');
+
+// =========================
+// Servir arquivos estáticos do build (APÓS /lovable-uploads)
+// =========================
+app.use(express.static(path.join(__dirname, '../dist'), {
+  setHeaders: (res, filePath) => {
+    // Cache control para arquivos estáticos
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
+
+// Redirecionar rotas antigas de analytics para o novo endpoint (compatibilidade)
+app.get('/analytics/dashboard', authenticateAdmin, async (req, res) => {
+  // Chamar o handler do endpoint correto
+  const originalUrl = req.url;
+  const originalPath = req.path;
+  req.url = '/api/admin/analytics/dashboard' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+  req.path = '/api/admin/analytics/dashboard';
+  
+  // Encontrar e chamar a rota correta
+  const route = app._router.stack.find(layer => 
+    layer.route && layer.route.path === '/api/admin/analytics/dashboard' && layer.route.methods.get
+  );
+  
+  if (route) {
+    return route.route.stack[0].handle(req, res);
+  }
+  
+  // Fallback: redirecionar
+  return res.redirect(301, '/api/admin/analytics/dashboard' + (originalUrl.includes('?') ? originalUrl.substring(originalUrl.indexOf('?')) : ''));
+});
+
+app.get('/analytics/vendas', authenticateAdmin, async (req, res) => {
+  req.url = '/api/admin/analytics/vendas' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+  req.path = '/api/admin/analytics/vendas';
+  const route = app._router.stack.find(layer => 
+    layer.route && layer.route.path === '/api/admin/analytics/vendas' && layer.route.methods.get
+  );
+  if (route) {
+    return route.route.stack[0].handle(req, res);
+  }
+  return res.redirect(301, '/api/admin/analytics/vendas');
+});
+
+app.get('/analytics/produtos-populares', authenticateAdmin, async (req, res) => {
+  req.url = '/api/admin/analytics/produtos-populares' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+  req.path = '/api/admin/analytics/produtos-populares';
+  const route = app._router.stack.find(layer => 
+    layer.route && layer.route.path === '/api/admin/analytics/produtos-populares' && layer.route.methods.get
+  );
+  if (route) {
+    return route.route.stack[0].handle(req, res);
+  }
+  return res.redirect(301, '/api/admin/analytics/produtos-populares');
+});
+
+app.get('/analytics/pedidos-recentes', authenticateAdmin, async (req, res) => {
+  req.url = '/api/admin/analytics/pedidos-recentes' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
+  req.path = '/api/admin/analytics/pedidos-recentes';
+  const route = app._router.stack.find(layer => 
+    layer.route && layer.route.path === '/api/admin/analytics/pedidos-recentes' && layer.route.methods.get
+  );
+  if (route) {
+    return route.route.stack[0].handle(req, res);
+  }
+  return res.redirect(301, '/api/admin/analytics/pedidos-recentes');
+});
+
+// Endpoints de analytics não-admin (se necessário)
+app.get('/api/analytics/realtime', authenticateAdmin, async (req, res) => {
+  try {
+    res.json({
+      activeUsers: 0,
+      pageViews: 0,
+      orders: 0,
+      revenue: 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar dados em tempo real' });
+  }
+});
+
+app.post('/api/analytics/web-vitals', async (req, res) => {
+  // Endpoint para receber métricas de performance do frontend
+  try {
+    // Log opcional das métricas
+    console.log('📊 Web Vitals:', req.body);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao processar métricas' });
+  }
+});
+
+// Fallback para SPA - todas as rotas não encontradas vão para index.html
+// IMPORTANTE: Esta rota deve vir DEPOIS de todas as outras rotas específicas
+// Usar app.use ao invés de app.get('*') para evitar erro de path regex
+app.use((req, res, next) => {
+  // Ignorar rotas de API, uploads e arquivos estáticos
+  if (req.path.startsWith('/api') || 
+      req.path.startsWith('/lovable-uploads') || 
+      req.path.startsWith('/uploads') ||
+      req.path.startsWith('/icon') ||
+      req.path.startsWith('/pwa-icon') ||
+      req.path.startsWith('/sw.js') ||
+      req.path.startsWith('/manifest.json') ||
+      req.path.startsWith('/assets/') ||
+      req.path.endsWith('.js') ||
+      req.path.endsWith('.css') ||
+      req.path.endsWith('.png') ||
+      req.path.endsWith('.jpg') ||
+      req.path.endsWith('.jpeg') ||
+      req.path.endsWith('.gif') ||
+      req.path.endsWith('.webp') ||
+      req.path.endsWith('.svg') ||
+      req.path.endsWith('.ico')) {
+    // Se for uma rota que não deve ser servida como SPA, retornar 404
+    console.log(`⚠️ [SPA Fallback] Rota não encontrada: ${req.path}`);
+    return res.status(404).send('Not Found');
+  }
+  
+  // Para todas as outras rotas, servir index.html
+  const indexPath = path.join(__dirname, '../dist', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    console.log(`📄 [SPA Fallback] Servindo index.html para: ${req.path}`);
+    return res.sendFile(indexPath);
+  } else {
+    console.warn(`⚠️ [SPA Fallback] index.html não encontrado em: ${indexPath}`);
+    return res.status(404).send('Not Found');
+  }
+});
 

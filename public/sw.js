@@ -1,8 +1,8 @@
 // Service Worker para MuhlStore PWA
-const CACHE_NAME = 'muhlstore-v1.0.2';
-const STATIC_CACHE = 'muhlstore-static-v1.0.2';
-const DYNAMIC_CACHE = 'muhlstore-dynamic-v1.0.2';
-const API_CACHE = 'muhlstore-api-v1.0.2';
+const CACHE_NAME = 'muhlstore-v1.0.4';
+const STATIC_CACHE = 'muhlstore-static-v1.0.4';
+const DYNAMIC_CACHE = 'muhlstore-dynamic-v1.0.4';
+const API_CACHE = 'muhlstore-api-v1.0.4';
 
 // Arquivos estáticos para cache
 const STATIC_FILES = [
@@ -117,7 +117,8 @@ async function handleApiRequest(request) {
     // Tentar network primeiro
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
+    // Só cachear se for resposta OK (200-299) e não for Partial Content (206)
+    if (networkResponse.ok && networkResponse.status !== 206) {
       // Cachear resposta bem-sucedida
       const cache = await caches.open(API_CACHE);
       cache.put(request, networkResponse.clone());
@@ -178,15 +179,27 @@ async function handleStaticRequest(request) {
   try {
     const networkResponse = await fetch(request);
     
-    // Só cachear se for resposta OK (200-299) e não for extensão
-    if (networkResponse.ok && url.protocol.startsWith('http')) {
+    // Detectar se é vídeo ou arquivo de mídia
+    const pathname = url.pathname.toLowerCase();
+    const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv|m4v)$/i.test(pathname);
+    const isMedia = isVideo || /\.(mp3|wav|ogg|aac|flac|m4a)$/i.test(pathname);
+    
+    // Só cachear se for resposta OK (200-299), não for extensão, não for Partial Content (206)
+    // e não for arquivo de mídia (vídeos e áudios usam streaming e não devem ser cacheados)
+    // Respostas 206 são usadas para streaming de vídeos e não podem ser cacheadas
+    if (networkResponse.ok && 
+        networkResponse.status !== 206 && 
+        !isMedia &&
+        url.protocol.startsWith('http')) {
       const cache = await caches.open(STATIC_CACHE);
       cache.put(request, networkResponse.clone());
       console.log('Service Worker: Arquivo estático cacheado:', request.url);
+    } else if (networkResponse.status === 206 || isMedia) {
+      // Para vídeos e respostas 206, apenas retornar sem cachear (silenciosamente)
+      return networkResponse;
     } else if (!networkResponse.ok) {
       // Se for 404 em imagens, não logar (é esperado quando imagens não existem)
       // Detectar imagens de várias formas para garantir precisão
-      const pathname = url.pathname.toLowerCase();
       const acceptHeader = request.headers ? request.headers.get('accept') : null;
       
       // Detecção robusta de imagens
@@ -222,7 +235,8 @@ async function handlePageRequest(request) {
     // Tentar network primeiro
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
+    // Só cachear se for resposta OK (200-299) e não for Partial Content (206)
+    if (networkResponse.ok && networkResponse.status !== 206) {
       const cache = await caches.open(DYNAMIC_CACHE);
       cache.put(request, networkResponse.clone());
     }
@@ -282,7 +296,12 @@ async function cacheUrls(urls) {
   for (const url of urls) {
     try {
       const response = await fetch(url);
-      if (response.ok) {
+      // Não cachear respostas 206 (Partial Content) ou arquivos de mídia
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname.toLowerCase();
+      const isMedia = /\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv|m4v|mp3|wav|aac|flac|m4a)$/i.test(pathname);
+      
+      if (response.ok && response.status !== 206 && !isMedia) {
         await cache.put(url, response);
         console.log('Service Worker: URL cacheada:', url);
       }

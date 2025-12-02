@@ -3,6 +3,9 @@ import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import CatalogoBrinquedos from '@/components/loja/CatalogoBrinquedos';
 import CategoriasFilter from '@/components/loja/CategoriasFilter';
+import AdvancedProductFilters from '@/components/loja/AdvancedProductFilters';
+import QuickSearchBar from '@/components/loja/QuickSearchBar';
+import ComparisonManager from '@/components/loja/ComparisonManager';
 import { useScrollAnimation, getAnimationClass } from '@/lib/animation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -131,6 +134,21 @@ const Loja = () => {
           </div>
         </motion.div>
 
+        {/* Barra de Busca */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="bg-white/80 backdrop-blur-sm border-b border-orange-100"
+        >
+          <div className="container mx-auto px-4 py-6">
+            <QuickSearchBar 
+              placeholder="Buscar produtos, categorias, marcas..."
+              className="max-w-2xl mx-auto"
+            />
+          </div>
+        </motion.div>
+
         {/* Filtros e Tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -182,7 +200,14 @@ const Loja = () => {
         >
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <aside className="lg:col-span-1">
-              <CategoriasFilter />
+              <AdvancedProductFilters
+                categories={['Bonecos de Ação', 'Carrinhos', 'Bonecas', 'Jogos', 'Colecionáveis']}
+                onFiltersChange={(filters) => {
+                  // Implementar lógica de filtros
+                  console.log('Filtros aplicados:', filters);
+                }}
+                maxPrice={10000}
+              />
             </aside>
             
             <main className="lg:col-span-3">
@@ -191,6 +216,9 @@ const Loja = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Gerenciador de Comparação */}
+      <ComparisonManager />
     </Layout>
   );
 };

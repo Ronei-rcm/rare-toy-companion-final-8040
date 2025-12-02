@@ -93,9 +93,10 @@ const Analytics: React.FC = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/analytics/dashboard?period=${period}`, {
+      const response = await fetch(`/api/admin/analytics/dashboard?period=${period}`, {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'X-Admin-Token': localStorage.getItem('admin_token') || ''
         }
       });
       

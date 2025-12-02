@@ -16,6 +16,7 @@ import { useCurrentUser } from '@/contexts/CurrentUserContext';
 import { useCart } from '@/contexts/CartContext';
 import { useCustomerStats } from '@/hooks/useCustomerStats';
 import { useNavigate } from 'react-router-dom';
+import CustomerStatsChart from './CustomerStatsChart';
 
 interface StatsCardProps {
   title: string;
@@ -213,6 +214,18 @@ const EnhancedMinhaConta: React.FC = () => {
           color="secondary"
         />
       </div>
+
+      {/* Gráficos e Comparações */}
+      {stats && (
+        <CustomerStatsChart stats={{
+          totalPedidos: stats.totalPedidos || 0,
+          pedidosPendentes: stats.pedidosPendentes || 0,
+          totalGasto: stats.totalGasto || 0,
+          ticketMedio: stats.totalPedidos > 0 ? (stats.totalGasto || 0) / stats.totalPedidos : 0,
+          pedidosUltimoMes: stats.pedidosUltimoMes,
+          gastoUltimoMes: stats.gastoUltimoMes
+        }} />
+      )}
 
       {/* Ações rápidas - simplificado */}
       <Card>

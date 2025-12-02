@@ -104,11 +104,12 @@ const defaultConfig: HomeConfig = {
     { id: 'categorias', name: 'Categorias', enabled: true, order: 3 },
     { id: 'personagens-colecao', name: 'Personagens da Coleção', enabled: true, order: 4 },
     { id: 'eventos', name: 'Eventos', enabled: true, order: 5 },
-    { id: 'social-proof', name: 'Prova Social', enabled: true, order: 6 },
-    { id: 'blog', name: 'Blog/Notícias', enabled: true, order: 7 },
-    { id: 'features', name: 'Recursos', enabled: true, order: 8 },
-    { id: 'testimonials', name: 'Depoimentos', enabled: true, order: 9 },
-    { id: 'cta', name: 'Call to Action', enabled: true, order: 10 },
+    { id: 'video-gallery', name: 'Galeria de Vídeos', enabled: true, order: 6 },
+    { id: 'social-proof', name: 'Prova Social', enabled: true, order: 7 },
+    { id: 'blog', name: 'Blog/Notícias', enabled: true, order: 8 },
+    { id: 'features', name: 'Recursos', enabled: true, order: 9 },
+    { id: 'testimonials', name: 'Depoimentos', enabled: true, order: 10 },
+    { id: 'cta', name: 'Call to Action', enabled: true, order: 11 },
   ],
   theme: {
     primaryColor: '#8B5CF6',
@@ -242,6 +243,33 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
           // Salvar a configuração corrigida
           localStorage.setItem('homeConfig', JSON.stringify({ ...defaultConfig, ...parsed }));
         }
+        
+        // Garantir que a seção video-gallery exista e esteja habilitada se houver vídeos
+        const videoGallerySection = parsed.sections?.find((s: HomeSectionConfig) => s.id === 'video-gallery');
+        if (!videoGallerySection) {
+          // Adicionar seção se não existir
+          parsed.sections.push({ id: 'video-gallery', name: 'Galeria de Vídeos', enabled: true, order: 6 });
+          console.log('✅ Seção video-gallery adicionada à configuração');
+        } else {
+          // Verificar se há vídeos e habilitar automaticamente
+          fetch('/api/videos/active')
+            .then(res => res.json())
+            .then(videos => {
+              if (videos && videos.length > 0 && !videoGallerySection.enabled) {
+                videoGallerySection.enabled = true;
+                parsed.sections = parsed.sections.map((s: HomeSectionConfig) => 
+                  s.id === 'video-gallery' ? videoGallerySection : s
+                );
+                localStorage.setItem('homeConfig', JSON.stringify({ ...defaultConfig, ...parsed }));
+                console.log('✅ Seção video-gallery habilitada automaticamente (há vídeos disponíveis)');
+                setConfig({ ...defaultConfig, ...parsed });
+              }
+            })
+            .catch(() => {
+              // Se falhar, apenas usar a configuração salva
+            });
+        }
+        
         setConfig({ ...defaultConfig, ...parsed });
       } catch (error) {
         console.error('Erro ao carregar configuração da home:', error);
@@ -258,7 +286,23 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
   usePageTitle(config.theme.pageTitle);
 
   const updateConfig = (updates: Partial<HomeConfig>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+    console.log('🔄 updateConfig chamado com:', updates);
+    if (updates.theme) {
+      console.log('🎨 Atualizando tema:', {
+        heroBackground: updates.theme.heroBackground,
+        logoUrl: updates.theme.logoUrl,
+        faviconUrl: updates.theme.faviconUrl
+      });
+    }
+    setConfig(prev => {
+      const newConfig = { ...prev, ...updates };
+      console.log('📝 Nova configuração:', {
+        heroBackground: newConfig.theme?.heroBackground,
+        logoUrl: newConfig.theme?.logoUrl,
+        faviconUrl: newConfig.theme?.faviconUrl
+      });
+      return newConfig;
+    });
   };
 
   const updateSection = (sectionId: string, updates: Partial<HomeSectionConfig>) => {
@@ -304,13 +348,25 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
   const saveConfig = async () => {
     setIsLoading(true);
     try {
+      console.log('💾 Salvando configuração da home...');
+      console.log('📋 Config antes de salvar:', {
+        heroBackground: config.theme?.heroBackground,
+        logoUrl: config.theme?.logoUrl,
+        faviconUrl: config.theme?.faviconUrl
+      });
+      
       // Salvar no localStorage (em produção, salvaria na API)
       localStorage.setItem('homeConfig', JSON.stringify(config));
       
       // Simular delay da API
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      console.log('Configuração da home salva:', config);
+      console.log('✅ Configuração da home salva:', {
+        heroBackground: config.theme?.heroBackground,
+        logoUrl: config.theme?.logoUrl,
+        faviconUrl: config.theme?.faviconUrl,
+        fullConfig: config
+      });
     } catch (error) {
       console.error('Erro ao salvar configuração:', error);
       throw error;

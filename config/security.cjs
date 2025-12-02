@@ -11,22 +11,47 @@ const { body, validationResult } = require('express-validator');
  */
 
 // Rate limiter geral para toda a API
+// Aumentado significativamente para evitar bloqueios em uso normal
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 500, // Limite aumentado para 500 requests por IP
+  max: 10000, // 10000 requests por 15 minutos (aumentado drasticamente de 2000)
   message: {
     error: 'Muitas requisições vindas deste IP. Por favor, tente novamente mais tarde.',
     retryAfter: '15 minutos'
   },
   standardHeaders: true, // Retorna info no header `RateLimit-*`
   legacyHeaders: false, // Desabilita headers `X-RateLimit-*`
-  skip: (req) => req.path.startsWith('/lovable-uploads/'), // Pular imagens
+  skip: (req) => {
+    // Pular imagens e arquivos estáticos
+    if (req.path.startsWith('/lovable-uploads/')) return true;
+    // Pular health checks
+    if (req.path === '/api/health' || req.path === '/health') return true;
+    // Pular rotas de alta frequência que têm seus próprios limiters
+    const highFrequencyRoutes = [
+      '/api/cart',
+      '/api/favorites',
+      '/api/auth/me',
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/settings',
+      '/api/customers/current/stats',
+      '/api/customers/stats',
+      '/api/customers/', // Todas as rotas de customers
+      '/api/orders', // Rotas de pedidos
+      '/api/addresses', // Rotas de endereços
+    ];
+    const shouldSkip = highFrequencyRoutes.some(route => req.path.startsWith(route));
+    if (shouldSkip) {
+      console.log(`⏭️ General limiter pulado para: ${req.path}`);
+    }
+    return shouldSkip;
+  },
 });
 
 // Rate limiter específico para autenticação (mais restritivo)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // 10 tentativas (aumentado de 5)
+  max: 20, // 20 tentativas (aumentado de 10)
   skipSuccessfulRequests: true, // Não contar requests bem-sucedidos
   message: {
     error: 'Muitas tentativas de login. Por favor, aguarde 15 minutos.',
@@ -42,13 +67,14 @@ const createAccountLimiter = rateLimit({
   },
 });
 
-// Rate limiter para carrinho e checkout
+// Rate limiter para carrinho e checkout (mais permissivo)
 const cartLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: 200, // 200 requests por minuto (aumentado de 100)
+  max: 500, // 500 requests por minuto para carrinho
   message: {
     error: 'Você está atualizando o carrinho muito rapidamente. Aguarde um momento.',
   },
+  skipSuccessfulRequests: false, // Contar todas as requisições
 });
 
 // Rate limiter para API de produtos (mais permissivo)
@@ -57,6 +83,25 @@ const productsLimiter = rateLimit({
   max: 500, // 500 requests por minuto (aumentado de 200)
   message: {
     error: 'Muitas requisições para produtos. Aguarde um momento.',
+  },
+});
+
+// Rate limiter para rotas de alta frequência (dashboard, carrinho, favoritos, etc)
+const highFrequencyLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 10000, // 10000 requests por minuto (aumentado de 5000)
+  message: {
+    error: 'Muitas requisições. Aguarde um momento.',
+  },
+  skipSuccessfulRequests: false,
+});
+
+// Rate limiter para rotas de autenticação e perfil
+const authRoutesLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 5000, // 5000 requests por minuto (aumentado de 1000)
+  message: {
+    error: 'Muitas requisições. Aguarde um momento.',
   },
 });
 
@@ -180,6 +225,8 @@ module.exports = {
   createAccountLimiter,
   cartLimiter,
   productsLimiter,
+  highFrequencyLimiter,
+  authRoutesLimiter,
   
   // Helmet
   helmetConfig,

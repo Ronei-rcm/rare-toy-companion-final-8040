@@ -95,6 +95,9 @@ export const useAdminOrders = () => {
 
       const response = await fetch(`${API_BASE_URL}/admin/orders?${queryParams}`, {
         credentials: 'include',
+        headers: {
+          'X-Admin-Token': localStorage.getItem('admin_token') || ''
+        }
       });
 
       if (response.ok) {
@@ -153,6 +156,7 @@ export const useAdminOrders = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-Admin-Token': localStorage.getItem('admin_token') || ''
         },
         credentials: 'include',
         body: JSON.stringify({ status: newStatus, notes }),
@@ -195,6 +199,7 @@ export const useAdminOrders = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-Admin-Token': localStorage.getItem('admin_token') || ''
         },
         credentials: 'include',
         body: JSON.stringify({ customer_id: customerId }),
@@ -247,13 +252,43 @@ export const useAdminOrders = () => {
   // Ações em lote
   const bulkAction = async (orderIds: (string | number)[], action: string, value?: string) => {
     try {
+      // Garantir que orderIds é um array válido
+      if (!Array.isArray(orderIds) || orderIds.length === 0) {
+        throw new Error('IDs dos pedidos são obrigatórios');
+      }
+      
+      // Garantir que todos os IDs são strings ou números válidos
+      const validOrderIds = orderIds.filter(id => id !== null && id !== undefined && id !== '');
+      
+      if (validOrderIds.length === 0) {
+        throw new Error('Nenhum ID de pedido válido encontrado');
+      }
+      
+      console.log('[BulkAction] Enviando requisição:', { 
+        orderIds: validOrderIds, 
+        action, 
+        value,
+        orderIdsType: typeof validOrderIds[0],
+        orderIdsLength: validOrderIds.length
+      });
+      
+      const adminToken = localStorage.getItem('admin_token');
+      const requestBody = { 
+        orderIds: validOrderIds, 
+        action, 
+        ...(value && { value }) 
+      };
+      
+      console.log('[BulkAction] Request body:', requestBody);
+      
       const response = await fetch(`${API_BASE_URL}/admin/orders/bulk-action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(adminToken && { 'X-Admin-Token': adminToken }),
         },
         credentials: 'include',
-        body: JSON.stringify({ orderIds, action, value }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -267,13 +302,97 @@ export const useAdminOrders = () => {
         loadOrders();
         return true;
       } else {
-        throw new Error('Falha na ação em lote');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || `Erro ${response.status}: ${response.statusText}` };
+        }
+        console.error('[BulkAction] Erro na resposta do servidor:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Erro na ação em lote:', error);
+    } catch (error: any) {
+      console.error('[BulkAction] Erro completo:', error);
+      const errorMessage = error?.message || 'Não foi possível executar a ação em lote';
       toast({
         title: 'Erro na ação em lote',
-        description: 'Não foi possível executar a ação em lote',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  // Excluir pedido
+  const deleteOrder = async (orderId: string | number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Token': localStorage.getItem('admin_token') || ''
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        // Remover pedido da lista local
+        setOrders(prev => prev.filter(order => order.id !== orderId));
+        
+        toast({
+          title: 'Pedido excluído',
+          description: `Pedido #${orderId} foi excluído com sucesso`,
+        });
+        
+        // Recarregar estatísticas
+        loadStats();
+        return true;
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Falha ao excluir pedido');
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir pedido:', error);
+      toast({
+        title: 'Erro ao excluir pedido',
+        description: error.message || 'Não foi possível excluir o pedido',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  // Excluir múltiplos pedidos
+  const deleteOrders = async (orderIds: (string | number)[]) => {
+    try {
+      const results = await Promise.all(
+        orderIds.map(id => deleteOrder(id))
+      );
+      
+      const successCount = results.filter(r => r).length;
+      const failCount = results.length - successCount;
+      
+      if (successCount > 0) {
+        toast({
+          title: 'Pedidos excluídos',
+          description: `${successCount} pedido(s) excluído(s)${failCount > 0 ? `, ${failCount} falharam` : ''}`,
+        });
+        
+        // Recarregar lista
+        loadOrders();
+        loadStats();
+      }
+      
+      return successCount === orderIds.length;
+    } catch (error) {
+      console.error('Erro ao excluir pedidos em lote:', error);
+      toast({
+        title: 'Erro ao excluir pedidos',
+        description: 'Não foi possível excluir alguns pedidos',
         variant: 'destructive',
       });
       return false;
@@ -344,5 +463,7 @@ export const useAdminOrders = () => {
     searchCustomers,
     bulkAction,
     exportOrders,
+    deleteOrder,
+    deleteOrders,
   };
 };

@@ -49,7 +49,13 @@ const Login = () => {
       
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
-        throw new Error(data.error || 'Login inválido');
+        const errorMessage = data.message || 
+          (data.error === 'usuario_nao_encontrado' 
+            ? 'Email não encontrado. Verifique suas credenciais ou crie uma conta.' 
+            : data.error === 'credenciais_invalidas'
+            ? 'Email ou senha incorretos. Verifique suas credenciais.'
+            : 'Login inválido');
+        throw new Error(errorMessage);
       }
       
       const userData = await resp.json();
