@@ -21,6 +21,7 @@ Este diretório contém toda a documentação técnica do projeto.
 - **[FUNCIONALIDADE_EXCLUSAO_PEDIDOS.md](./FUNCIONALIDADE_EXCLUSAO_PEDIDOS.md)** - Funcionalidade de exclusão de pedidos
 
 ### 🔧 Correções Técnicas
+- **[CORRECOES_ENDPOINTS_JAN_2025.md](./CORRECOES_ENDPOINTS_JAN_2025.md)** - 🔥 **NOVO** - Correções de erros 500 em múltiplos endpoints admin (customers, blog, events, orders, marketplace) - Janeiro 2025
 - **[correções/CORRECOES_ERROS_LOG_NOV_2025.md](./correções/CORRECOES_ERROS_LOG_NOV_2025.md)** - Correções de erros nos logs (PathError, autenticação, Nginx, MySQL2) - Novembro 2025
 - **[CORRECAO_ERRO_502_LOGIN.md](./CORRECAO_ERRO_502_LOGIN.md)** - Correção do erro 502 no login
 - **[CORRECAO_401_MARKETPLACE.md](./CORRECAO_401_MARKETPLACE.md)** - Correção do erro 401 no marketplace
