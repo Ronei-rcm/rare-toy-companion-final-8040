@@ -36,6 +36,10 @@ const Carrinho = () => {
   const [activeTab, setActiveTab] = useState('classic');
   const { user } = useCurrentUser() as any;
   const { settings } = useSettings();
+  const showAIExperience = settings.cart_enable_ai_experience;
+  const showGamificationExperience = settings.cart_enable_gamification_experience;
+  const showARExperience = settings.cart_enable_ar_experience;
+  const showPerformanceExperience = settings.cart_enable_performance_experience;
   const navigate = useNavigate();
   
   // Scroll para o topo ao carregar a página
@@ -107,22 +111,30 @@ const Carrinho = () => {
                 <ShoppingBag className="h-4 w-4" />
                 <span className="hidden sm:inline">Clássico</span>
               </TabsTrigger>
-              <TabsTrigger value="ai" className="flex items-center space-x-2">
-                <Brain className="h-4 w-4" />
-                <span className="hidden sm:inline">IA</span>
-              </TabsTrigger>
-              <TabsTrigger value="gamification" className="flex items-center space-x-2">
-                <Trophy className="h-4 w-4" />
-                <span className="hidden sm:inline">Gamificação</span>
-              </TabsTrigger>
-              <TabsTrigger value="ar" className="flex items-center space-x-2">
-                <Camera className="h-4 w-4" />
-                <span className="hidden sm:inline">AR</span>
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="flex items-center space-x-2">
-                <Rocket className="h-4 w-4" />
-                <span className="hidden sm:inline">Performance</span>
-              </TabsTrigger>
+              {showAIExperience && (
+                <TabsTrigger value="ai" className="flex items-center space-x-2">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline">IA</span>
+                </TabsTrigger>
+              )}
+              {showGamificationExperience && (
+                <TabsTrigger value="gamification" className="flex items-center space-x-2">
+                  <Trophy className="h-4 w-4" />
+                  <span className="hidden sm:inline">Gamificação</span>
+                </TabsTrigger>
+              )}
+              {showARExperience && (
+                <TabsTrigger value="ar" className="flex items-center space-x-2">
+                  <Camera className="h-4 w-4" />
+                  <span className="hidden sm:inline">AR</span>
+                </TabsTrigger>
+              )}
+              {showPerformanceExperience && (
+                <TabsTrigger value="performance" className="flex items-center space-x-2">
+                  <Rocket className="h-4 w-4" />
+                  <span className="hidden sm:inline">Performance</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Aba Clássica */}
@@ -184,6 +196,7 @@ const Carrinho = () => {
             </TabsContent>
 
             {/* Aba IA */}
+            {showAIExperience && (
             <TabsContent value="ai">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
@@ -206,8 +219,10 @@ const Carrinho = () => {
                 </div>
               </div>
             </TabsContent>
+            )}
 
             {/* Aba Gamificação */}
+            {showGamificationExperience && (
             <TabsContent value="gamification">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
@@ -230,8 +245,10 @@ const Carrinho = () => {
                 </div>
               </div>
             </TabsContent>
+            )}
 
             {/* Aba Realidade Aumentada */}
+            {showARExperience && (
             <TabsContent value="ar">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
@@ -253,8 +270,10 @@ const Carrinho = () => {
                 </div>
               </div>
             </TabsContent>
+            )}
 
             {/* Aba Performance */}
+            {showPerformanceExperience && (
             <TabsContent value="performance">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
@@ -277,6 +296,7 @@ const Carrinho = () => {
                 </div>
               </div>
             </TabsContent>
+            )}
           </Tabs>
         )}
 

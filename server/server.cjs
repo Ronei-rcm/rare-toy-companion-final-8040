@@ -4,6 +4,7 @@ const mysql = require('mysql2/promise');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
 
 console.log('🔧 Iniciando servidor...');
@@ -536,12 +537,16 @@ const videoUpload = multer({
 });
 
 // MySQL connection pool
+// IMPORTANTE:
+//  - Nunca deixar senhas reais como valor padrão no código
+//  - Priorizar variáveis de ambiente (MYSQL_* ou DB_*)
 const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST || '127.0.0.1',
-  user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'RSM_Rg51gti66',
-  database: process.env.MYSQL_DATABASE || 'rare_toy_companion',
-  port: parseInt(process.env.MYSQL_PORT || '3306'),
+  host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+  user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+  // Não definir senha real como fallback; em desenvolvimento o .env deve preencher
+  password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+  port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -621,8 +626,9 @@ app.get('/api/carousel', async (req, res) => {
 // GET /api/carousel/active - Get active carousel items only
 app.get('/api/carousel/active', async (req, res) => {
   try {
+    // CORRIGIDO: coluna é 'active', não 'is_active'
     const [rows] = await pool.execute(
-      'SELECT * FROM carousel_items WHERE is_active = 1 ORDER BY order_index ASC, created_at ASC'
+      'SELECT * FROM carousel_items WHERE active = 1 ORDER BY order_index ASC, created_at ASC'
     );
     const items = rows.map(row => transformCarouselItem(row, req));
     res.json(items);
@@ -2006,13 +2012,108 @@ app.get('/api/produtos/:id', async (req, res) => {
 // Criar novo produto
 // ==================== QUICK ADD PRODUCT (MOBILE-FIRST) ====================
 
+// MIDDLEWARE GLOBAL PARA DEBUG - Capturar TODAS as requisições POST para /api/produtos
+app.use('/api/produtos/quick-add', (req, res, next) => {
+  console.log('🚨🚨🚨 MIDDLEWARE GLOBAL CAPTURADO: POST /api/produtos/quick-add');
+  console.log('🚨 Method:', req.method);
+  console.log('🚨 Path:', req.path);
+  console.log('🚨 Original URL:', req.originalUrl);
+  next();
+});
+
 // Cadastro rápido de produto (mobile-optimized)
-app.post('/api/produtos/quick-add', upload.single('imagem'), async (req, res) => {
+// TESTE: Versão sem middleware de upload para isolar problema
+app.post('/api/produtos/quick-add-test', async (req, res) => {
+  console.log('🔵🔵🔵 POST /api/produtos/quick-add-test - HANDLER TESTE (SEM UPLOAD)');
+  console.log('📊 Body:', req.body);
+  console.log('📊 Headers:', req.headers);
+  
+  try {
+    const { nome, preco, estoque, categoria, status } = req.body;
+    const id = crypto.randomUUID();
+    
+    console.log('⚡ Cadastro rápido (teste):', nome);
+    
+    // Buscar categoria_id
+    let categoria_id = null;
+    if (categoria) {
+      const [catRows] = await pool.execute(
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE nome = ? OR slug = ? LIMIT 1',
+        [categoria, categoria]
+      );
+      if (catRows.length > 0) {
+        categoria_id = catRows[0].id;
+      }
+    }
+    
+    if (!categoria_id) {
+      const [firstCat] = await pool.execute(
+        'SELECT id, nome FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
+      );
+      if (firstCat.length > 0) {
+        categoria_id = firstCat[0].id;
+      }
+    }
+    
+    console.log(`✅ categoria_id: ${categoria_id}`);
+    
+    // Inserir produto
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.query('USE `rare_toy_companion`');
+      
+      await connection.execute(`
+        INSERT INTO \`rare_toy_companion\`.\`produtos\` (
+          id, nome, preco, categoria, categoria_id, estoque, status,
+          destaque, promocao, lancamento
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id, nome, Number(preco || 0), categoria || 'Outros', categoria_id,
+        Number(estoque || 1), status || 'ativo', false, false, false
+      ]);
+      
+      connection.release();
+      console.log(`✅ Produto inserido (teste)! ID: ${id}`);
+      
+      res.json({ success: true, id, message: 'Produto cadastrado (teste)' });
+    } catch (insertError) {
+      if (connection) connection.release();
+      console.error('❌ Erro ao inserir (teste):', insertError);
+      throw insertError;
+    }
+  } catch (error) {
+    console.error('❌ Erro no quick-add-test:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar produto (teste)', details: error.message });
+  }
+});
+
+// Versão original com upload - multer opcional (não obrigatório ter arquivo)
+app.post('/api/produtos/quick-add', (req, res, next) => {
+  console.log('🚨🚨🚨 MIDDLEWARE ANTES DO MULTER');
+  console.log('🚨 Method:', req.method);
+  console.log('🚨 Path:', req.path);
+  console.log('🚨 Content-Type:', req.headers['content-type']);
+  next();
+}, upload.single('imagem'), (err, req, res, next) => {
+  if (err) {
+    console.error('❌❌❌ ERRO NO MULTER:', err);
+    return res.status(400).json({ error: 'Erro no upload', details: err.message });
+  }
+  next();
+}, async (req, res) => {
+  console.log('🔵🔵🔵 POST /api/produtos/quick-add - HANDLER EXECUTADO');
+  console.log('📊 Body:', req.body);
+  console.log('📊 Headers:', req.headers);
+  console.log('📊 Content-Type:', req.headers['content-type']);
+  console.log('📊 File:', req.file ? req.file.filename : 'nenhum arquivo');
+  
   try {
     const { nome, preco, estoque, categoria, status } = req.body;
     const id = crypto.randomUUID();
     
     console.log('⚡ Cadastro rápido:', nome);
+    console.log('📊 Dados recebidos:', { nome, preco, estoque, categoria, status });
     
     // URL da imagem (se enviou)
     let imagemUrl = null;
@@ -2022,10 +2123,11 @@ app.post('/api/produtos/quick-add', upload.single('imagem'), async (req, res) =>
     }
     
     // Buscar categoria_id pelo nome ou usar a primeira disponível
+    // Usar nome completo do banco para garantir
     let categoria_id = null;
     if (categoria) {
       const [catRows] = await pool.execute(
-        'SELECT id FROM categorias WHERE nome = ? OR slug = ? LIMIT 1',
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE nome = ? OR slug = ? LIMIT 1',
         [categoria, categoria]
       );
       if (catRows.length > 0) {
@@ -2035,36 +2137,104 @@ app.post('/api/produtos/quick-add', upload.single('imagem'), async (req, res) =>
     
     // Se não encontrou, usa a primeira categoria disponível
     if (!categoria_id) {
+      try {
       const [firstCat] = await pool.execute(
-        'SELECT id, nome FROM categorias WHERE ativo = 1 ORDER BY ordem LIMIT 1'
+          'SELECT id, nome FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
       );
       if (firstCat.length > 0) {
         categoria_id = firstCat[0].id;
         console.log(`📦 Usando categoria padrão: ${firstCat[0].nome} (ID: ${categoria_id})`);
       } else {
-        return res.status(400).json({ error: 'Nenhuma categoria disponível' });
+          console.log('⚠️ Nenhuma categoria ativa encontrada, tentando qualquer categoria...');
+          const [anyCat] = await pool.execute(
+            'SELECT id, nome FROM `rare_toy_companion`.`categorias` ORDER BY id LIMIT 1'
+          );
+          if (anyCat.length > 0) {
+            categoria_id = anyCat[0].id;
+            console.log(`📦 Usando primeira categoria disponível: ${anyCat[0].nome} (ID: ${categoria_id})`);
+          } else {
+            return res.status(400).json({ error: 'Nenhuma categoria disponível no banco de dados' });
+      }
+    }
+      } catch (catError) {
+        console.error('❌ Erro ao buscar categoria:', catError);
+        return res.status(500).json({ error: 'Erro ao buscar categoria', details: catError.message });
       }
     }
     
+    console.log(`✅ categoria_id final: ${categoria_id}`);
+    
     // Inserir produto com campos mínimos
-    await pool.execute(`
+    // Usar conexão explícita e garantir banco correto
+    console.log(`📝 Inserindo produto no banco rare_toy_companion...`);
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      
+      // SEMPRE forçar uso do banco correto (não confiar no banco padrão)
+      // Verificar banco atual primeiro
+      const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
+      const currentDb = dbCheck[0]?.current_db;
+      console.log(`📊 Banco atual da conexão ANTES do USE: ${currentDb}`);
+      
+      // SEMPRE executar USE para garantir o banco correto
+      await connection.query('USE `rare_toy_companion`');
+      console.log(`✅ USE rare_toy_companion executado`);
+      
+      // Verificar novamente para confirmar
+      const [dbCheck2] = await connection.query('SELECT DATABASE() as current_db');
+      const finalDb = dbCheck2[0]?.current_db;
+      console.log(`📊 Banco atual da conexão APÓS o USE: ${finalDb}`);
+      
+      if (finalDb !== 'rare_toy_companion') {
+        throw new Error(`Falha ao mudar para banco rare_toy_companion. Banco atual: ${finalDb}`);
+      }
+      
+      // Inserir produto - usar apenas nome da tabela (banco já foi definido com USE)
+      console.log(`📝 Executando INSERT na tabela produtos do banco ${finalDb}...`);
+      console.log(`📝 Valores: id=${id}, nome=${nome}, categoria_id=${categoria_id}`);
+      
+      // Tentar inserir SEM categoria_id primeiro para ver se funciona
+      // Se não funcionar, tentar COM categoria_id
+      let result;
+      try {
+        // Primeiro, tentar inserir SEM categoria_id para ver se a tabela aceita
+        console.log(`📝 Tentativa 1: INSERT sem categoria_id...`);
+        result = await connection.query(`
+          INSERT INTO produtos (
+            id, nome, preco, categoria, imagem_url, estoque, status,
+            destaque, promocao, lancamento
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id, nome, Number(preco || 0), categoria || 'Outros', imagemUrl,
+          Number(estoque || 1), status || 'ativo', false, false, false
+        ]);
+        console.log(`✅ Produto inserido SEM categoria_id! ID: ${id}`);
+      } catch (errorWithoutCat) {
+        console.log(`⚠️ Erro ao inserir sem categoria_id: ${errorWithoutCat.message}`);
+        // Se falhar, tentar COM categoria_id
+        console.log(`📝 Tentativa 2: INSERT COM categoria_id...`);
+        result = await connection.query(`
       INSERT INTO produtos (
         id, nome, preco, categoria, categoria_id, imagem_url, estoque, status,
         destaque, promocao, lancamento
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id,
-      nome,
-      Number(preco || 0),
-      categoria || 'Outros',
-      categoria_id,
-      imagemUrl,
-      Number(estoque || 1),
-      status || 'ativo',
-      false,
-      false,
-      false
+          id, nome, Number(preco || 0), categoria || 'Outros', categoria_id,
+          imagemUrl, Number(estoque || 1), status || 'ativo', false, false, false
     ]);
+        console.log(`✅ Produto inserido COM categoria_id! ID: ${id}`);
+      }
+      
+      console.log(`✅ Produto inserido com sucesso! ID: ${id}, Result:`, result);
+      connection.release();
+    } catch (insertError) {
+      if (connection) connection.release();
+      console.error('❌ Erro ao inserir produto:', insertError);
+      console.error('❌ Código do erro:', insertError.code);
+      console.error('❌ Mensagem:', insertError.message);
+      throw insertError;
+    }
     
     logger.info('Produto cadastrado rapidamente', { id, nome, mobile: true });
     
@@ -2081,6 +2251,10 @@ app.post('/api/produtos/quick-add', upload.single('imagem'), async (req, res) =>
     });
   } catch (error) {
     console.error('❌ Erro no quick-add:', error);
+    console.error('❌ Stack:', error.stack);
+    console.error('❌ Código do erro:', error.code);
+    console.error('❌ SQL State:', error.sqlState);
+    console.error('❌ SQL Message:', error.sqlMessage);
     logger.error('Erro no quick-add de produto', { error: error.message, stack: error.stack });
     res.status(500).json({ error: 'Erro ao cadastrar produto rapidamente', details: error.message });
   }
@@ -2092,10 +2266,11 @@ app.post('/api/produtos', async (req, res) => {
     console.log('🔄 Criando produto:', produtoData.nome);
     
     // Buscar categoria_id pelo nome
+    // Usar nome completo do banco para garantir
     let categoria_id = null;
     if (produtoData.categoria) {
       const [catRows] = await pool.execute(
-        'SELECT id FROM categorias WHERE nome = ? OR slug = ? LIMIT 1',
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE nome = ? OR slug = ? LIMIT 1',
         [produtoData.categoria, produtoData.categoria]
       );
       if (catRows.length > 0) {
@@ -2106,7 +2281,7 @@ app.post('/api/produtos', async (req, res) => {
     // Se não encontrou, usa a primeira categoria disponível
     if (!categoria_id) {
       const [firstCat] = await pool.execute(
-        'SELECT id FROM categorias WHERE ativo = 1 ORDER BY ordem LIMIT 1'
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
       );
       if (firstCat.length > 0) {
         categoria_id = firstCat[0].id;
@@ -2116,18 +2291,33 @@ app.post('/api/produtos', async (req, res) => {
     }
     
     // Criar produto com campos obrigatórios
-    const [result] = await pool.execute(`
+    // Usar nome completo do banco para garantir
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      
+      // Verificar banco atual
+      const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
+      const currentDb = dbCheck[0]?.current_db;
+      
+      // Forçar uso do banco correto
+      if (currentDb !== 'rare_toy_companion') {
+        await connection.query('USE `rare_toy_companion`');
+      }
+      
+      const [result] = await connection.execute(`
       INSERT INTO produtos (
-        id, nome, preco, categoria, imagem_url, descricao, estoque, status,
+          id, nome, preco, categoria, categoria_id, imagem_url, descricao, estoque, status,
         destaque, promocao, lancamento, avaliacao, total_avaliacoes,
         faixa_etaria, peso, dimensoes, material, marca, origem, fornecedor,
         codigo_barras, data_lancamento
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       require('crypto').randomUUID(),
       produtoData.nome,
       produtoData.preco,
       produtoData.categoria,
+      categoria_id,
       produtoData.imagemUrl || null,
       produtoData.descricao || null,
       produtoData.estoque || 0,
@@ -2147,6 +2337,8 @@ app.post('/api/produtos', async (req, res) => {
       produtoData.codigoBarras || null,
       produtoData.dataLancamento || null
     ]);
+      
+      connection.release();
     
     // Invalidar cache de produtos
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
@@ -2155,6 +2347,11 @@ app.post('/api/produtos', async (req, res) => {
     
     console.log('✅ Produto criado com ID:', result.insertId);
     res.status(201).json({ id: result.insertId, ...produtoData });
+    } catch (insertError) {
+      if (connection) connection.release();
+      console.error('❌ Erro ao inserir produto:', insertError);
+      throw insertError;
+    }
   } catch (error) {
     console.error('❌ Erro ao criar produto:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -2354,29 +2551,55 @@ app.delete('/api/produtos/:id', async (req, res) => {
 app.get('/api/events', async (req, res) => {
   try {
     console.log('🔄 Buscando eventos...');
-    const [rows] = await pool.execute(`
+    
+    // Buscar apenas colunas essenciais que sempre existem
+    let rows;
+    try {
+      // Tentativa 1: Buscar com todas as colunas possíveis
+      const [result] = await pool.execute(`
       SELECT 
-        id, titulo, descricao, data_evento, local, imagem_url, link_inscricao,
-        status, destaque, ordem,
-        NULL AS data_inicio,
-        NULL AS data_fim,
-        NULL AS numero_vagas,
-        NULL AS vagas_limitadas,
-        NULL AS feira_fechada,
-        NULL AS renda_total,
-        NULL AS participantes_confirmados,
+          id, titulo, descricao, data_evento, local, imagem_url,
+          status, ativo,
         created_at, updated_at
-      FROM events 
+        FROM \`rare_toy_companion\`.\`events\`
       ORDER BY data_evento ASC
     `);
+      rows = result;
+    } catch (error) {
+      console.error('❌ Erro na primeira tentativa:', error.message);
+      // Tentativa 2: Apenas colunas básicas
+      try {
+        const [result] = await pool.execute(`
+          SELECT 
+            id, titulo, descricao, data_evento, local, imagem_url,
+            created_at, updated_at
+          FROM \`rare_toy_companion\`.\`events\`
+          ORDER BY data_evento ASC
+        `);
+        rows = result.map(e => ({ ...e, status: 'ativo', ativo: 1 }));
+      } catch (error2) {
+        console.error('❌ Erro na segunda tentativa:', error2.message);
+        throw error2;
+      }
+    }
     
     console.log(`✅ ${rows.length} eventos encontrados`);
     
-    // Converter renda_total de string para number e corrigir URLs de imagem
+    // Converter e adicionar campos adicionais com valores padrão
     const eventos = rows.map(evento => ({
       ...evento,
-      ativo: evento.status === 'ativo' || evento.status === 'active' || evento.status === 1,
+      ativo: evento.ativo === 1 || evento.ativo === true || evento.status === 'ativo',
+      status: evento.status || (evento.ativo ? 'ativo' : 'inativo'),
+      destaque: evento.destaque !== undefined ? evento.destaque : false,
+      ordem: evento.ordem !== undefined ? evento.ordem : 0,
+      data_inicio: evento.data_inicio || evento.data_evento,
+      data_fim: evento.data_fim || null,
+      numero_vagas: evento.numero_vagas || null,
+      vagas_limitadas: evento.vagas_limitadas || false,
+      feira_fechada: evento.feira_fechada || false,
+      link_inscricao: evento.link_inscricao || null,
       renda_total: evento.renda_total ? parseFloat(evento.renda_total) : null,
+      participantes_confirmados: evento.participantes_confirmados || 0,
       imagem_url: evento.imagem_url ? getPublicUrl(req, evento.imagem_url) : null
     }));
     
@@ -2465,8 +2688,11 @@ app.post('/api/events', async (req, res) => {
     // A tabela events usa 'status' em vez de 'ativo'
     const status = eventoData.ativo !== false ? 'ativo' : 'inativo';
     
-    const [result] = await pool.execute(`
-      INSERT INTO events (
+    // Usar nome completo do banco e tentar inserir com status primeiro
+    let result;
+    try {
+      result = await pool.execute(`
+        INSERT INTO \`rare_toy_companion\`.\`events\` (
         id, titulo, descricao, data_evento, local, imagem_url, status
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -2478,6 +2704,60 @@ app.post('/api/events', async (req, res) => {
       eventoData.imagem_url || null,
       status
     ]);
+    } catch (statusError) {
+      // Se falhar com status, tentar com ativo
+      if (statusError.message.includes('status')) {
+        console.log('⚠️ Tentando inserir com campo ativo ao invés de status...');
+        result = await pool.execute(`
+          INSERT INTO \`rare_toy_companion\`.\`events\` (
+            id, titulo, descricao, data_evento, local, imagem_url, ativo
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [
+          newId,
+          eventoData.titulo,
+          eventoData.descricao || null,
+          formattedDate,
+          eventoData.local || null,
+          eventoData.imagem_url || null,
+          eventoData.ativo !== false ? 1 : 0
+        ]);
+      } else {
+        throw statusError;
+      }
+    }
+    
+    // Inserir campos adicionais se fornecidos (data_fim, numero_vagas, etc.)
+    if (eventoData.data_fim || eventoData.numero_vagas !== undefined || eventoData.vagas_limitadas !== undefined) {
+      try {
+        const updateFields = [];
+        const updateValues = [];
+        
+        if (eventoData.data_fim) {
+          updateFields.push('data_fim = ?');
+          updateValues.push(formatDateForMySQL(eventoData.data_fim));
+        }
+        if (eventoData.numero_vagas !== undefined) {
+          updateFields.push('numero_vagas = ?');
+          updateValues.push(eventoData.numero_vagas);
+        }
+        if (eventoData.vagas_limitadas !== undefined) {
+          updateFields.push('vagas_limitadas = ?');
+          updateValues.push(eventoData.vagas_limitadas ? 1 : 0);
+        }
+        
+        if (updateFields.length > 0) {
+          updateValues.push(newId);
+          await pool.execute(`
+            UPDATE \`rare_toy_companion\`.\`events\`
+            SET ${updateFields.join(', ')}
+            WHERE id = ?
+          `, updateValues);
+          console.log('✅ Campos adicionais atualizados');
+        }
+      } catch (updateError) {
+        console.warn('⚠️ Erro ao atualizar campos adicionais (não crítico):', updateError.message);
+      }
+    }
     
     console.log('✅ Evento criado com sucesso! ID:', newId);
     res.status(201).json({ 
@@ -3776,6 +4056,15 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     }
     
     console.log('🔐 Tentativa de login cliente:', mail);
+    console.log('🔍 Verificando banco de dados atual...');
+    
+    // Verificar banco atual
+    try {
+      const [dbCheck] = await pool.execute('SELECT DATABASE() as current_db');
+      console.log('📍 Banco atual:', dbCheck[0]?.current_db || 'não definido');
+    } catch (e) {
+      console.log('⚠️ Erro ao verificar banco:', e.message);
+    }
     
     // Buscar usuário no banco (tentar primeiro em users, depois em customers)
     let userRows = [];
@@ -3783,50 +4072,61 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     let userId = null;
     
     // Tentar em users primeiro
+    // CORRIGIDO: usar apenas password_hash (não existe senha_hash na tabela users)
     try {
-      // Usar password_hash que é o nome correto da coluna
-      [userRows] = await pool.execute('SELECT id, email, nome, password_hash as senha_hash FROM users WHERE email = ? LIMIT 1', [mail]);
+      console.log('🔍 Buscando em users...');
+      [userRows] = await pool.execute(`
+        SELECT 
+          id, email, nome, password_hash as senha_hash
+        FROM users 
+        WHERE email = ? 
+        LIMIT 1
+      `, [mail]);
+      console.log('📊 Resultado da busca em users:', userRows.length, 'registro(s)');
       if (userRows && userRows.length > 0) {
         user = userRows[0];
         userId = user.id;
-        console.log('✅ Usuário encontrado na tabela users:', mail);
+        console.log('✅ Usuário encontrado na tabela users:', mail, 'ID:', userId, 'Tem senha:', !!user.senha_hash);
+      } else {
+        console.log('⚠️ Usuário não encontrado em users para:', mail);
       }
     } catch (e) {
-      // Se falhar, tentar sem a coluna de senha (usuário antigo)
-      try {
-        [userRows] = await pool.execute('SELECT id, email, nome FROM users WHERE email = ? LIMIT 1', [mail]);
-        if (userRows && userRows.length > 0) {
-          user = { ...userRows[0], senha_hash: null };
-          userId = user.id;
-          console.log('✅ Usuário encontrado na tabela users (sem senha):', mail);
-        }
-      } catch (e2) {
-        console.log('⚠️ Erro ao buscar em users:', e.message);
-      }
+      console.error('❌ Erro ao buscar em users:', e.message);
+      console.error('❌ Stack:', e.stack);
     }
     
     // Se não encontrou em users, tentar em customers
+    // CORRIGIDO: customers não tem password_hash, apenas users tem
     if (!user) {
       try {
-        // Tentar com password_hash primeiro, depois senha_hash (compatibilidade)
-        const [customerRows] = await pool.execute('SELECT id, email, nome, COALESCE(password_hash, senha_hash) as senha_hash FROM customers WHERE email = ? LIMIT 1', [mail]);
+        console.log('🔍 Buscando em customers...');
+        const [customerRows] = await pool.execute(`
+          SELECT 
+            id, email, nome
+          FROM customers 
+          WHERE email = ? 
+          LIMIT 1
+        `, [mail]);
+        console.log('📊 Resultado da busca em customers:', customerRows.length, 'registro(s)');
         if (customerRows && customerRows.length > 0) {
-          user = customerRows[0];
+          // Se encontrou em customers, tentar buscar senha em users pelo mesmo ID
+          const customer = customerRows[0];
+          const [userWithPassword] = await pool.execute(
+            'SELECT password_hash FROM users WHERE id = ? LIMIT 1',
+            [customer.id]
+          );
+          user = {
+            ...customer,
+            senha_hash: userWithPassword[0]?.password_hash || null
+          };
           userId = user.id;
-          console.log('✅ Usuário encontrado na tabela customers:', mail);
+          console.log('✅ Usuário encontrado na tabela customers:', mail, 'ID:', userId, 'Tem senha:', !!user.senha_hash);
+        } else {
+          console.log('⚠️ Usuário não encontrado em customers para:', mail);
         }
       } catch (e) {
-        // Se falhar, tentar sem a coluna de senha (usuário antigo)
-        try {
-          const [customerRows] = await pool.execute('SELECT id, email, nome FROM customers WHERE email = ? LIMIT 1', [mail]);
-          if (customerRows && customerRows.length > 0) {
-            user = { ...customerRows[0], senha_hash: null };
-            userId = user.id;
-            console.log('✅ Usuário encontrado na tabela customers (sem senha):', mail);
-          }
-        } catch (e2) {
-          console.log('⚠️ Erro ao buscar em customers:', e.message);
-        }
+        console.error('❌ Erro ao buscar em customers:', e.message);
+        console.error('❌ Stack:', e.stack);
       }
     }
     
@@ -3849,18 +4149,42 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     
     // Verificar senha se houver hash
     if (user.senha_hash) {
+      try {
+        console.log('🔐 Verificando senha para:', mail);
       const { verifyPassword } = require('./utils/security.cjs');
       const senhaCorreta = await verifyPassword(pass, user.senha_hash);
+        console.log('🔐 Resultado da verificação de senha:', senhaCorreta ? '✅ Correta' : '❌ Incorreta');
       if (!senhaCorreta) {
         console.log('❌ Senha incorreta para:', mail);
         return res.status(401).json({ 
           error: 'credenciais_invalidas',
           message: 'Email ou senha incorretos'
+          });
+        }
+        console.log('✅ Senha verificada com sucesso para:', mail);
+      } catch (verifyError) {
+        console.error('❌ Erro ao verificar senha:', verifyError);
+        console.error('❌ Stack:', verifyError.stack);
+        // Se houver erro na verificação, não permitir login por segurança
+        return res.status(401).json({ 
+          error: 'credenciais_invalidas',
+          message: 'Erro ao verificar credenciais. Tente novamente.'
         });
       }
     } else {
-      // Se não tem senha_hash, permitir login (usuário antigo sem senha)
-      console.log('⚠️ Usuário sem senha_hash - login permitido (migração necessária):', mail);
+      // Se não tem senha_hash, verificar se senha foi fornecida
+      console.log('⚠️ Usuário sem senha_hash encontrado:', mail);
+      if (pass && pass.length > 0) {
+        console.log('⚠️ Senha fornecida mas usuário não tem hash - negando login por segurança');
+        console.log('💡 Solução: O usuário precisa redefinir a senha ou criar uma nova conta');
+        return res.status(401).json({ 
+          error: 'credenciais_invalidas',
+          message: 'Este email não possui senha cadastrada. Por favor, use a opção "Esqueci minha senha" ou crie uma nova conta.'
+        });
+      } else {
+        // Se não tem senha_hash e nenhuma senha foi fornecida, permitir login (usuário antigo)
+        console.log('⚠️ Login sem senha permitido para usuário antigo:', mail);
+      }
     }
     
     // Gerar ID de sessão único
@@ -3946,6 +4270,232 @@ app.post('/api/auth/logout', async (req, res) => {
     res.json({ success: true, ok: true });
   } catch (e) {
     res.status(500).json({ error: 'logout_failed' });
+  }
+});
+
+// ==================== ESQUECI MINHA SENHA (CLIENTES) ====================
+
+// Esqueci minha senha - Gerar token de reset
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const mail = String(email || '').trim().toLowerCase();
+    
+    if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'invalid_email',
+        message: 'Email inválido'
+      });
+    }
+    
+    console.log('🔐 Solicitação de reset de senha para:', mail);
+    
+    // Buscar usuário em users ou customers
+    let userId = null;
+    let userEmail = null;
+    
+    try {
+      const [users] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', [mail]);
+      if (users && users.length > 0) {
+        userId = users[0].id;
+        userEmail = users[0].email;
+        console.log('✅ Usuário encontrado em users:', userId);
+      } else {
+        const [customers] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', [mail]);
+        if (customers && customers.length > 0) {
+          userId = customers[0].id;
+          userEmail = customers[0].email;
+          console.log('✅ Usuário encontrado em customers:', userId);
+        }
+      }
+    } catch (e) {
+      console.error('❌ Erro ao buscar usuário:', e);
+    }
+    
+    // Sempre retornar sucesso (não revelar se email existe)
+    if (!userId) {
+      console.log('⚠️ Email não encontrado (não revelando para segurança):', mail);
+      return res.json({ 
+        ok: true, 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.'
+      });
+    }
+    
+    // Gerar token de reset
+    const token = require('crypto').randomUUID();
+    const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
+    
+    // Salvar token no banco (usar tabela users ou customers conforme encontrado)
+    try {
+      // Verificar em qual tabela o usuário foi encontrado e atualizar
+      const [checkUsers] = await pool.execute('SELECT id FROM `rare_toy_companion`.`users` WHERE id = ? LIMIT 1', [userId]);
+      if (checkUsers && checkUsers.length > 0) {
+        await pool.execute(
+          'UPDATE `rare_toy_companion`.`users` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+          [token, expires, userId]
+        );
+        console.log('✅ Token salvo em users');
+      } else {
+        await pool.execute(
+          'UPDATE `rare_toy_companion`.`customers` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+          [token, expires, userId]
+        );
+        console.log('✅ Token salvo em customers');
+      }
+      
+      console.log('✅ Token de reset gerado para:', mail);
+      
+      // TODO: Enviar email com link de reset
+      // Por enquanto, apenas logar o token (em produção, enviar por email)
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
+      console.log('🔐 Link de reset (NÃO ENVIAR EM PRODUÇÃO):', resetUrl);
+      
+      return res.json({ 
+        ok: true, 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.',
+        // Remover em produção - apenas para desenvolvimento
+        ...(process.env.NODE_ENV === 'development' && { resetUrl, token })
+      });
+    } catch (e) {
+      console.error('❌ Erro ao salvar token:', e);
+      return res.json({ 
+        ok: true, 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.'
+      });
+    }
+  } catch (e) {
+    console.error('❌ Erro em forgot-password:', e);
+    res.json({ 
+      ok: true, 
+    });
+  }
+});
+
+// Resetar senha via token
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  try {
+    const { hashPassword } = require('./utils/security.cjs');
+    
+    const { token, new_password } = req.body || {};
+    
+    if (!token || !new_password) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'missing_params',
+        message: 'Token e nova senha são obrigatórios'
+      });
+    }
+    
+    if (String(new_password).length < 6) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'weak_password',
+        message: 'Senha deve ter no mínimo 6 caracteres'
+      });
+    }
+    
+    console.log('🔐 Tentativa de reset de senha com token');
+    
+    // Buscar usuário com token válido em users
+    let userId = null;
+    let expires = null;
+    
+    try {
+      const [users] = await pool.execute(
+        'SELECT id, reset_expires FROM `rare_toy_companion`.`users` WHERE reset_token = ? LIMIT 1',
+        [token]
+      );
+      
+      if (users && users.length > 0) {
+        userId = users[0].id;
+        expires = users[0].reset_expires ? new Date(users[0].reset_expires) : null;
+        console.log('✅ Token encontrado em users:', userId);
+      } else {
+        // Tentar em customers
+        const [customers] = await pool.execute(
+          'SELECT id, reset_expires FROM `rare_toy_companion`.`customers` WHERE reset_token = ? LIMIT 1',
+          [token]
+        );
+        
+        if (customers && customers.length > 0) {
+          userId = customers[0].id;
+          expires = customers[0].reset_expires ? new Date(customers[0].reset_expires) : null;
+          console.log('✅ Token encontrado em customers:', userId);
+        }
+      }
+    } catch (e) {
+      console.error('❌ Erro ao buscar token:', e);
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'invalid_token',
+        message: 'Token inválido ou expirado'
+      });
+    }
+    
+    if (!expires || expires.getTime() < Date.now()) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'expired_token',
+        message: 'Token expirado. Solicite um novo link de redefinição.'
+      });
+    }
+    
+    // Gerar hash da nova senha
+    const hash = await hashPassword(String(new_password));
+    
+    // Atualizar senha em users ou customers
+    try {
+      // Verificar em qual tabela o usuário está e atualizar
+      const [checkUsers] = await pool.execute('SELECT id FROM `rare_toy_companion`.`users` WHERE id = ? LIMIT 1', [userId]);
+      if (checkUsers && checkUsers.length > 0) {
+        await pool.execute(
+          'UPDATE `rare_toy_companion`.`users` SET password_hash = ?, reset_token = NULL, reset_expires = NULL, updated_at = NOW() WHERE id = ?',
+          [hash, userId]
+        );
+        console.log('✅ Senha atualizada em users');
+      } else {
+        // Tentar atualizar em customers (pode ter password_hash ou senha_hash)
+        try {
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`customers` SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+            [hash, userId]
+          );
+          console.log('✅ Senha atualizada em customers (password_hash)');
+        } catch (e) {
+          // Fallback: tentar com senha_hash se password_hash não existir
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`customers` SET senha_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+            [hash, userId]
+          );
+          console.log('✅ Senha atualizada em customers (senha_hash)');
+        }
+      }
+      
+      console.log(`✅ Senha resetada com sucesso para usuário ID: ${userId}`);
+      
+      return res.json({ 
+        ok: true, 
+        message: 'Senha redefinida com sucesso! Você já pode fazer login.'
+      });
+    } catch (e) {
+      console.error('❌ Erro ao atualizar senha:', e);
+      return res.status(500).json({ 
+        ok: false, 
+        error: 'reset_failed',
+        message: 'Erro ao redefinir senha. Tente novamente.'
+      });
+    }
+  } catch (e) {
+    console.error('❌ Erro em reset-password:', e);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'reset_failed',
+      message: 'Erro ao redefinir senha. Tente novamente.'
+    });
   }
 });
 
@@ -4064,7 +4614,6 @@ app.get('/api/favorites', highFrequencyLimiter, async (req, res) => {
   }
 })();
 
-const crypto = require('crypto');
 const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
 
 function signToken(payload) {
@@ -4121,18 +4670,439 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
     const { email, senha, password, nome } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
     const pass = String(password || senha || '');
-    if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) return res.status(400).json({ ok: false, error: 'invalid_email' });
-    if (pass.length < 6) return res.status(400).json({ ok: false, error: 'weak_password' });
+    
+    console.log('📝 Tentativa de registro:', mail);
+    
+    // Validações
+    if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'invalid_email',
+        message: 'Email inválido. Por favor, verifique o formato do email.'
+      });
+    }
+    
+    if (pass.length < 6) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'weak_password',
+        message: 'A senha deve ter no mínimo 6 caracteres.'
+      });
+    }
+    
+    // Verificar se email já existe em users ou customers
+    try {
+      const [existingUsers] = await pool.execute(
+        'SELECT id, email, password_hash FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', 
+        [mail]
+      );
+      
+      if (existingUsers && existingUsers.length > 0) {
+        const existingUser = existingUsers[0];
+        
+        // Se o usuário existe mas não tem senha, permitir completar o cadastro
+        if (!existingUser.password_hash || existingUser.password_hash.trim() === '') {
+          console.log('⚠️ Usuário existe sem senha, completando cadastro:', mail);
+          
+          // Atualizar senha e nome do usuário existente
+          const pw = await hashPassword(pass);
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`users` SET password_hash = ?, nome = COALESCE(?, nome), updated_at = NOW() WHERE email = ?',
+            [pw, nome || null, mail]
+          );
+          
+          // Criar entrada em customers se não existir
+          const [existingCustomers] = await pool.execute(
+            'SELECT id FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', 
+            [mail]
+          );
+          
+          if (existingCustomers.length === 0) {
+            await pool.execute(
+              'INSERT INTO `rare_toy_companion`.`customers` (id, email, nome, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
+              [existingUser.id, mail, nome || mail]
+            );
+          }
+          
+          // Criar sessão
+          const sid = require('crypto').randomUUID();
+          await pool.execute(
+            'INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE last_seen = NOW()',
+            [sid, mail, existingUser.id]
+          );
+          
+          // Configurar cookie
+          const { getSecureCookieOptions } = require('./utils/security.cjs');
+          res.cookie('session_id', sid, getSecureCookieOptions({
+            maxAge: 1000*60*60*24*30
+          }));
+          
+          setAuthCookie(res, { id: existingUser.id, email: mail });
+          logger.info('User registration completed (existing user)', { email: mail });
+          
+          return res.json({ 
+            ok: true,
+            message: 'Conta criada com sucesso!',
+            user: {
+              id: existingUser.id,
+              email: mail,
+              nome: nome || existingUser.nome || null
+            }
+          });
+        } else {
+          // Usuário já existe E tem senha - retornar erro
+          console.log('⚠️ Email já existe com senha cadastrada:', mail);
+          return res.status(409).json({ 
+            ok: false, 
+            error: 'email_in_use',
+            message: 'Este email já está cadastrado. Tente fazer login ou use "Esqueci minha senha".'
+          });
+        }
+      }
+      
+      // Verificar em customers (se não encontrou em users)
+      const [existingCustomers] = await pool.execute(
+        'SELECT id, email FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', 
+        [mail]
+      );
+      
+      if (existingCustomers && existingCustomers.length > 0 && existingUsers.length === 0) {
+        // Existe em customers mas não em users - criar em users com senha
+        console.log('⚠️ Email existe apenas em customers, criando em users:', mail);
+        
+        const customerId = existingCustomers[0].id;
+        const pw = await hashPassword(pass);
+        
+        await pool.execute(
+          'INSERT INTO `rare_toy_companion`.`users` (id, email, password_hash, nome, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+          [customerId, mail, pw, nome || existingCustomers[0].nome || mail]
+        );
+        
+        // Criar sessão
+        const sid = require('crypto').randomUUID();
+        await pool.execute(
+          'INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())',
+          [sid, mail, customerId]
+        );
+        
+        // Configurar cookie
+        const { getSecureCookieOptions } = require('./utils/security.cjs');
+        res.cookie('session_id', sid, getSecureCookieOptions({
+          maxAge: 1000*60*60*24*30
+        }));
+        
+        setAuthCookie(res, { id: customerId, email: mail });
+        logger.info('User registration completed (existing customer)', { email: mail });
+        
+        return res.json({ 
+          ok: true,
+          message: 'Conta criada com sucesso!',
+          user: {
+            id: customerId,
+            email: mail,
+            nome: nome || existingCustomers[0].nome || null
+          }
+        });
+      }
+    } catch (checkError) {
+      console.error('❌ Erro ao verificar email existente:', checkError);
+      // Continuar mesmo se houver erro na verificação (tentar inserir e capturar ER_DUP_ENTRY)
+    }
+    
+    // Criar novo usuário
     const id = crypto.randomUUID();
     const pw = await hashPassword(pass);
-    await pool.execute('INSERT INTO users (id, email, password_hash, nome) VALUES (?,?,?,?)', [id, mail, pw, nome || null]);
-    setAuthCookie(res, { id, email: mail });
-    logger.info('New user registered', { email: mail });
-    res.json({ ok: true });
+    
+    try {
+      // 1) Inserir em users
+      await pool.execute(
+        'INSERT INTO users (id, email, password_hash, nome) VALUES (?,?,?,?)',
+        [id, mail, pw, nome || null]
+      );
+      console.log('✅ Usuário registrado com sucesso:', mail);
+
+      // 2) Garantir registro correspondente em customers (para aparecer no Admin > Clientes)
+      try {
+        await pool.execute(
+          'INSERT INTO `rare_toy_companion`.`customers` (id, email, nome, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE email = VALUES(email), nome = COALESCE(VALUES(nome), nome)',
+          [id, mail, nome || mail]
+        );
+        console.log('✅ Registro criado/atualizado em customers para o usuário:', mail);
+      } catch (customerError) {
+        console.error('⚠️ Erro ao criar registro em customers para novo usuário:', customerError.message);
+        // Não falhar o registro se apenas a criação em customers falhar
+      }
+      
+      // 3) Criar sessão automaticamente após registro
+      const sid = require('crypto').randomUUID();
+      await pool.execute(
+        'INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())',
+        [sid, mail, id]
+      );
+      
+      // 4) Configurar cookie de sessão
+      const { getSecureCookieOptions } = require('./utils/security.cjs');
+      res.cookie('session_id', sid, getSecureCookieOptions({
+        maxAge: 1000*60*60*24*30 // 30 dias
+      }));
+      
+      setAuthCookie(res, { id, email: mail });
+      logger.info('New user registered', { email: mail });
+      
+      res.json({ 
+        ok: true,
+        message: 'Conta criada com sucesso!',
+        user: {
+          id,
+          email: mail,
+          nome: nome || null
+        }
+      });
+    } catch (insertError) {
+      // Se ainda assim houver ER_DUP_ENTRY (race condition)
+      if (insertError && insertError.code === 'ER_DUP_ENTRY') {
+        console.log('⚠️ ER_DUP_ENTRY capturado (race condition):', mail);
+        return res.status(409).json({ 
+          ok: false, 
+          error: 'email_in_use',
+          message: 'Este email já está cadastrado. Tente fazer login ou use outro email.'
+        });
+      }
+      throw insertError; // Re-throw para ser capturado pelo catch externo
+    }
   } catch (e) {
-    if (e && e.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok: false, error: 'email_in_use' });
+    console.error('❌ Erro no registro:', e);
     logger.logError(e, req);
-    res.status(500).json({ ok: false, error: 'register_failed' });
+    res.status(500).json({ 
+      ok: false, 
+      error: 'register_failed',
+      message: 'Erro ao criar conta. Tente novamente mais tarde.'
+    });
+  }
+});
+
+// ==================== ESQUECI MINHA SENHA (CLIENTES) ====================
+
+// Esqueci minha senha - Gerar token de reset
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    const mail = String(email || '').trim().toLowerCase();
+    
+    if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'invalid_email',
+        message: 'Email inválido'
+      });
+    }
+    
+    console.log('🔐 Solicitação de reset de senha para:', mail);
+    
+    // Buscar usuário em users ou customers
+    let userId = null;
+    let userEmail = null;
+    
+    try {
+      const [users] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', [mail]);
+      if (users && users.length > 0) {
+        userId = users[0].id;
+        userEmail = users[0].email;
+        console.log('✅ Usuário encontrado em users:', userId);
+      } else {
+        const [customers] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', [mail]);
+        if (customers && customers.length > 0) {
+          userId = customers[0].id;
+          userEmail = customers[0].email;
+          console.log('✅ Usuário encontrado em customers:', userId);
+        }
+      }
+    } catch (e) {
+      console.error('❌ Erro ao buscar usuário:', e);
+    }
+    
+    // Sempre retornar sucesso (não revelar se email existe)
+    if (!userId) {
+      console.log('⚠️ Email não encontrado (não revelando para segurança):', mail);
+      return res.json({ 
+        ok: true, 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.'
+      });
+    }
+    
+    // Gerar token de reset
+    const token = require('crypto').randomUUID();
+    const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
+    
+    // Salvar token no banco (usar tabela users ou customers conforme encontrado)
+    try {
+      // Tentar atualizar em users primeiro
+      const [updateUsers] = await pool.execute(
+        'UPDATE `rare_toy_companion`.`users` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+        [token, expires, userId]
+      );
+      
+      // Se não atualizou em users, tentar customers
+      if (updateUsers.affectedRows === 0) {
+        await pool.execute(
+          'UPDATE `rare_toy_companion`.`customers` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+          [token, expires, userId]
+        );
+      }
+      
+      console.log('✅ Token de reset gerado para:', mail);
+      
+      // TODO: Enviar email com link de reset
+      // Por enquanto, apenas logar o token (em produção, enviar por email)
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
+      console.log('🔐 Link de reset (NÃO ENVIAR EM PRODUÇÃO):', resetUrl);
+      
+      return res.json({ 
+        ok: true, 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.',
+        // Remover em produção - apenas para desenvolvimento
+        ...(process.env.NODE_ENV === 'development' && { resetUrl, token })
+      });
+    } catch (e) {
+      console.error('❌ Erro ao salvar token:', e);
+      return res.json({ 
+        ok: true, 
+        message: 'Se o email existir, você receberá um link para redefinir sua senha.'
+      });
+    }
+  } catch (e) {
+    console.error('❌ Erro em forgot-password:', e);
+    res.json({ 
+      ok: true, 
+      message: 'Se o email existir, você receberá um link para redefinir sua senha.'
+    });
+  }
+});
+
+// Resetar senha via token
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  try {
+    const { hashPassword } = require('./utils/security.cjs');
+    
+    const { token, new_password } = req.body || {};
+    
+    if (!token || !new_password) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'missing_params',
+        message: 'Token e nova senha são obrigatórios'
+      });
+    }
+    
+    if (String(new_password).length < 6) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'weak_password',
+        message: 'Senha deve ter no mínimo 6 caracteres'
+      });
+    }
+    
+    console.log('🔐 Tentativa de reset de senha com token');
+    
+    // Buscar usuário com token válido em users
+    let userId = null;
+    let expires = null;
+    
+    try {
+      const [users] = await pool.execute(
+        'SELECT id, reset_expires FROM `rare_toy_companion`.`users` WHERE reset_token = ? LIMIT 1',
+        [token]
+      );
+      
+      if (users && users.length > 0) {
+        userId = users[0].id;
+        expires = users[0].reset_expires ? new Date(users[0].reset_expires) : null;
+        console.log('✅ Token encontrado em users:', userId);
+      } else {
+        // Tentar em customers
+        const [customers] = await pool.execute(
+          'SELECT id, reset_expires FROM `rare_toy_companion`.`customers` WHERE reset_token = ? LIMIT 1',
+          [token]
+        );
+        
+        if (customers && customers.length > 0) {
+          userId = customers[0].id;
+          expires = customers[0].reset_expires ? new Date(customers[0].reset_expires) : null;
+          console.log('✅ Token encontrado em customers:', userId);
+        }
+      }
+    } catch (e) {
+      console.error('❌ Erro ao buscar token:', e);
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'invalid_token',
+        message: 'Token inválido ou expirado'
+      });
+    }
+    
+    if (!expires || expires.getTime() < Date.now()) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'expired_token',
+        message: 'Token expirado. Solicite um novo link de redefinição.'
+      });
+    }
+    
+    // Gerar hash da nova senha
+    const hash = await hashPassword(String(new_password));
+    
+    // Atualizar senha em users ou customers
+    try {
+      // Verificar em qual tabela o usuário está e atualizar
+      const [checkUsers] = await pool.execute('SELECT id FROM `rare_toy_companion`.`users` WHERE id = ? LIMIT 1', [userId]);
+      if (checkUsers && checkUsers.length > 0) {
+        await pool.execute(
+          'UPDATE `rare_toy_companion`.`users` SET password_hash = ?, reset_token = NULL, reset_expires = NULL, updated_at = NOW() WHERE id = ?',
+          [hash, userId]
+        );
+        console.log('✅ Senha atualizada em users');
+      } else {
+        // Tentar atualizar em customers (pode ter password_hash ou senha_hash)
+        try {
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`customers` SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+            [hash, userId]
+          );
+          console.log('✅ Senha atualizada em customers (password_hash)');
+        } catch (e) {
+          // Fallback: tentar com senha_hash se password_hash não existir
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`customers` SET senha_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+            [hash, userId]
+          );
+          console.log('✅ Senha atualizada em customers (senha_hash)');
+        }
+      }
+      
+      console.log(`✅ Senha resetada com sucesso para usuário ID: ${userId}`);
+      
+      return res.json({ 
+        ok: true, 
+        message: 'Senha redefinida com sucesso! Você já pode fazer login.'
+      });
+    } catch (e) {
+      console.error('❌ Erro ao atualizar senha:', e);
+      return res.status(500).json({ 
+        ok: false, 
+        error: 'reset_failed',
+        message: 'Erro ao redefinir senha. Tente novamente.'
+      });
+    }
+  } catch (e) {
+    console.error('❌ Erro em reset-password:', e);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'reset_failed',
+      message: 'Erro ao redefinir senha. Tente novamente.'
+    });
   }
 });
 
@@ -5631,9 +6601,9 @@ app.delete('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verificar se o cliente tem pedidos
+    // Verificar se o cliente tem pedidos (usar user_id que é o nome correto da coluna)
     const [orders] = await pool.execute(
-      'SELECT COUNT(*) as count FROM orders WHERE customer_id = ?',
+      'SELECT COUNT(*) as count FROM `rare_toy_companion`.`orders` WHERE user_id = ?',
       [id]
     );
 
@@ -5720,16 +6690,16 @@ app.post('/api/admin/customers/bulk-action', authenticateAdmin, async (req, res)
         break;
 
       case 'delete':
-        // Verificar se algum cliente tem pedidos
+        // Verificar se algum cliente tem pedidos (usar user_id que é o nome correto da coluna)
         const [ordersCheck] = await pool.execute(
-          `SELECT customer_id, COUNT(*) as count FROM orders WHERE customer_id IN (${placeholders}) GROUP BY customer_id`,
+          `SELECT user_id, COUNT(*) as count FROM \`rare_toy_companion\`.\`orders\` WHERE user_id IN (${placeholders}) GROUP BY user_id`,
           validCustomerIds
         );
         
         if (ordersCheck.length > 0) {
           return res.status(400).json({
             error: 'Alguns clientes possuem pedidos associados',
-            message: `Não é possível excluir clientes com pedidos. Clientes afetados: ${ordersCheck.map(o => o.customer_id).join(', ')}`,
+            message: `Não é possível excluir clientes com pedidos. Clientes afetados: ${ordersCheck.map(o => o.user_id).join(', ')}`,
           });
         }
 
@@ -5957,14 +6927,15 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
     // Buscar itens de cada pedido
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
+        try {
         const [items] = await pool.execute(`
           SELECT 
             oi.id,
             oi.product_id,
-            oi.name,
+              COALESCE(oi.name, p.nome, 'Produto') as name,
             oi.price,
             oi.quantity,
-            oi.image_url,
+              COALESCE(oi.image_url, p.imagem_url) as image_url,
             p.nome as product_name,
             p.imagem_url as product_image
           FROM order_items oi
@@ -5997,6 +6968,29 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
           estimated_delivery: order.estimated_delivery || null,
           notes: order.notes || null,
         };
+        } catch (itemError) {
+          console.error(`❌ Erro ao buscar itens do pedido ${order.id}:`, itemError);
+          return {
+            id: order.id,
+            user_id: order.user_id,
+            customer_id: order.user_id,
+            status: order.status || 'pending',
+            total: Number(order.total || 0),
+            created_at: order.created_at,
+            updated_at: order.updated_at,
+            items_count: 0,
+            items: [],
+            customer_name: order.nome || 'Cliente não identificado',
+            customer_email: order.email || 'Email não informado',
+            customer_phone: order.telefone || null,
+            shipping_address: order.endereco || null,
+            payment_method: order.metodo_pagamento || null,
+            payment_status: order.payment_status || 'pending',
+            tracking_code: order.tracking_code || null,
+            estimated_delivery: order.estimated_delivery || null,
+            notes: order.notes || null,
+          };
+        }
       })
     );
     
@@ -6501,9 +7495,9 @@ app.patch('/api/orders/:id/associate-customer', async (req, res) => {
       return res.status(404).json({ error: 'Cliente não encontrado' });
     }
 
-    // Atualizar pedido
+    // Atualizar pedido (usar user_id que é o nome correto da coluna)
     await pool.execute(
-      'UPDATE orders SET customer_id = ?, updated_at = NOW() WHERE id = ?',
+      'UPDATE `rare_toy_companion`.`orders` SET user_id = ?, updated_at = NOW() WHERE id = ?',
       [customer_id, id]
     );
 
@@ -8537,27 +9531,29 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
     let userId = null;
     let userEmail = null;
     
-    // 1. Tentar via session_id
+    // 1. Tentar via session_id usando nome completo do banco
     const sessionId = req.cookies?.session_id;
     if (sessionId) {
       try {
-        const [sessions] = await pool.execute('SELECT * FROM sessions WHERE id = ?', [sessionId]);
+        const [sessions] = await pool.execute('SELECT * FROM `rare_toy_companion`.`sessions` WHERE id = ?', [sessionId]);
         if (sessions && sessions[0]) {
           userId = sessions[0].user_id;
+          console.log('✅ Usuário identificado via session_id:', userId);
         }
       } catch (e) {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
     
-    // 2. Tentar via cart_id
+    // 2. Tentar via cart_id usando nome completo do banco
     if (!userId) {
       const cartId = req.cookies?.cart_id;
       if (cartId) {
         try {
-          const [carts] = await pool.execute('SELECT * FROM carts WHERE id = ?', [cartId]);
+          const [carts] = await pool.execute('SELECT * FROM `rare_toy_companion`.`carts` WHERE id = ?', [cartId]);
           if (carts && carts[0] && carts[0].user_id) {
             userId = carts[0].user_id;
+            console.log('✅ Usuário identificado via cart_id:', userId);
           }
         } catch (e) {
           console.log('⚠️ Erro ao buscar usuário pelo cart_id:', e.message);
@@ -8613,7 +9609,9 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
     
     const [favorites] = await pool.execute('SELECT COUNT(*) as total FROM favorites WHERE user_email = ?', [userEmail]);
     const [addresses] = await pool.execute('SELECT COUNT(*) as total FROM customer_addresses WHERE customer_id = ?', [userId]);
-    const [coupons] = await pool.execute('SELECT COUNT(*) as total FROM customer_coupons WHERE customer_id = ? AND usado = 0 AND data_fim >= NOW()', [userId]);
+    // CORRIGIDO: customer_coupons não tem 'usado', usa 'status' ('active', 'used', 'expired')
+    // E não tem 'data_fim', usa 'expires_at'
+    const [coupons] = await pool.execute('SELECT COUNT(*) as total FROM customer_coupons WHERE customer_id = ? AND status = "active" AND expires_at >= NOW()', [userId]);
     
     const stats = {
       totalPedidos: orders[0]?.total || 0,
@@ -8675,33 +9673,132 @@ app.get('/api/customers/stats', highFrequencyLimiter, async (req, res) => {
 // Buscar dados completos do cliente
 app.get('/api/customers/:userId', async (req, res) => {
   try {
-    const { userId } = req.params;
+    let { userId } = req.params;
+    console.log(`👤 GET /api/customers/${userId}`);
     
+    let customer = null;
+    let actualUserId = userId;
+    let searchedIn = [];
+    
+    // Se userId parece ser email, buscar o ID primeiro
+    if (userId.includes('@')) {
+      console.log('🔍 Buscando ID por email:', userId);
+      try {
+        const [userRows] = await pool.execute('SELECT id FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', [userId]);
+        if (userRows && userRows.length > 0) {
+          actualUserId = userRows[0].id;
+          searchedIn.push('users (por email)');
+          console.log('✅ ID encontrado em users:', actualUserId);
+        } else {
+          const [customerRows] = await pool.execute('SELECT id FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', [userId]);
+          if (customerRows && customerRows.length > 0) {
+            actualUserId = customerRows[0].id;
+            searchedIn.push('customers (por email)');
+            console.log('✅ ID encontrado em customers:', actualUserId);
+          } else {
+            console.log('❌ Email não encontrado em users nem customers:', userId);
+            return res.status(404).json({ 
+              error: 'Cliente não encontrado',
+              message: 'Nenhum cliente encontrado com este email.',
+              searchedIn: ['users', 'customers']
+            });
+          }
+        }
+      } catch (e) {
+        console.error('⚠️ Erro ao buscar usuário por email:', e);
+        return res.status(500).json({ error: 'Erro ao buscar cliente', message: e.message });
+      }
+    }
+    
+    // Tentar buscar em users primeiro
+    try {
+      console.log('🔍 Buscando em users com ID:', actualUserId);
     const [users] = await pool.execute(`
       SELECT 
         id, nome, email, telefone, avatar_url, created_at,
-        (SELECT COUNT(*) FROM orders WHERE user_id = users.id) as total_orders,
-        (SELECT COALESCE(SUM(total), 0) FROM orders WHERE user_id = users.id AND status != 'cancelled') as total_spent
-      FROM users
+          (SELECT COUNT(*) FROM \`rare_toy_companion\`.\`orders\` WHERE user_id = users.id) as total_orders,
+          (SELECT COALESCE(SUM(total), 0) FROM \`rare_toy_companion\`.\`orders\` WHERE user_id = users.id AND status != 'cancelled') as total_spent
+        FROM \`rare_toy_companion\`.\`users\`
       WHERE id = ?
-    `, [userId]);
+      `, [actualUserId]);
 
-    if (users.length === 0) {
-      return res.status(404).json({ error: 'Cliente não encontrado' });
+      if (users && users.length > 0) {
+        customer = users[0];
+        searchedIn.push('users');
+        console.log('✅ Cliente encontrado em users:', customer.email);
+      } else {
+        console.log('⚠️ Cliente não encontrado em users com ID:', actualUserId);
+      }
+    } catch (e) {
+      console.error('⚠️ Erro ao buscar em users:', e.message);
+      console.error('⚠️ Stack:', e.stack);
+    }
+    
+    // Se não encontrou em users, tentar em customers (sem avatar_url pois não existe nessa tabela)
+    if (!customer) {
+      try {
+        console.log('🔍 Buscando em customers com ID:', actualUserId);
+        const [customers] = await pool.execute(`
+          SELECT 
+            id, nome, email, telefone, NULL as avatar_url, 
+            COALESCE((SELECT MIN(created_at) FROM \`rare_toy_companion\`.\`orders\` WHERE user_id = customers.id), NOW()) as created_at,
+            (SELECT COUNT(*) FROM \`rare_toy_companion\`.\`orders\` WHERE user_id = customers.id) as total_orders,
+            (SELECT COALESCE(SUM(total), 0) FROM \`rare_toy_companion\`.\`orders\` WHERE user_id = customers.id AND status != 'cancelled') as total_spent
+          FROM \`rare_toy_companion\`.\`customers\`
+          WHERE id = ?
+        `, [actualUserId]);
+
+        if (customers && customers.length > 0) {
+          customer = customers[0];
+          searchedIn.push('customers');
+          console.log('✅ Cliente encontrado em customers:', customer.email);
+        } else {
+          console.log('⚠️ Cliente não encontrado em customers com ID:', actualUserId);
+        }
+      } catch (e) {
+        console.error('⚠️ Erro ao buscar em customers:', e);
+        console.error('⚠️ Detalhes do erro:', e.message, e.code);
+        console.error('⚠️ Stack:', e.stack);
+    }
     }
 
-    const customer = users[0];
-    customer.loyalty_points = Math.floor(Number(customer.total_spent) / 10);
+    if (!customer) {
+      console.log('❌ Cliente não encontrado após buscar em users e customers. ID:', actualUserId);
+      // Verificar se o ID existe em alguma tabela (para debug)
+      try {
+        const [checkUsers] = await pool.execute('SELECT COUNT(*) as count FROM users WHERE id = ?', [actualUserId]);
+        const [checkCustomers] = await pool.execute('SELECT COUNT(*) as count FROM customers WHERE id = ?', [actualUserId]);
+        console.log('🔍 Verificação: users count =', checkUsers[0]?.count, ', customers count =', checkCustomers[0]?.count);
+      } catch (e) {
+        console.error('⚠️ Erro ao verificar existência:', e.message);
+      }
+      
+      return res.status(404).json({ 
+        error: 'Cliente não encontrado',
+        message: 'Nenhum cliente encontrado com este ID.',
+        searchedIn: searchedIn.length > 0 ? searchedIn : ['users', 'customers'],
+        userId: actualUserId
+      });
+    }
+
+    // Calcular pontos de fidelidade
+    customer.loyalty_points = Math.floor(Number(customer.total_spent || 0) / 10);
     
     // Adicionar campos vazios para compatibilidade
-    customer.cpf = null;
-    customer.data_nascimento = null;
-    customer.bio = null;
+    customer.cpf = customer.cpf || null;
+    customer.data_nascimento = customer.data_nascimento || null;
+    customer.bio = customer.bio || null;
 
+    console.log(`✅ Cliente encontrado: ${customer.email}`);
     res.json(customer);
   } catch (error) {
+    console.error('❌ Erro ao buscar cliente:', error);
+    console.error('❌ Stack:', error.stack);
     logger.logError(error, req);
-    res.status(500).json({ error: 'Erro ao buscar cliente' });
+    res.status(500).json({ 
+      error: 'Erro ao buscar cliente',
+      message: error.message
+    });
   }
 });
 
@@ -8729,56 +9826,117 @@ app.put('/api/customers/:userId', async (req, res) => {
 app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) => {
   try {
     let { userId } = req.params;
+    let userEmail = userId; // Preservar email original
     
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       try {
-        const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
+        // Tentar buscar em users primeiro
+        const [user] = await pool.execute('SELECT id, email FROM users WHERE email = ? LIMIT 1', [userId]);
         if (user && user[0]) {
           userId = user[0].id;
+          userEmail = user[0].email || userId;
         } else {
-          return res.status(404).json({ error: 'Usuário não encontrado' });
+          // Tentar buscar em customers
+          const [customer] = await pool.execute('SELECT id, email FROM customers WHERE email = ? LIMIT 1', [userId]);
+          if (customer && customer[0]) {
+            userId = customer[0].id;
+            userEmail = customer[0].email || userId;
+          } else {
+            // Se não encontrou, retornar zeros mas não erro
+            console.log(`⚠️ Usuário não encontrado para email: ${userId}`);
+            return res.json({
+              totalOrders: 0,
+              totalSpent: 0,
+              favoriteProducts: 0,
+              lastOrderDate: null,
+              loyaltyPoints: 0,
+              nextReward: 100
+            });
+          }
         }
       } catch (e) {
-        console.log('⚠️ Erro ao buscar usuário por email:', e.message);
-        return res.status(500).json({ error: 'Erro ao buscar usuário' });
+        console.error('⚠️ Erro ao buscar usuário por email:', e);
+        return res.status(500).json({ 
+          error: 'Erro ao buscar usuário',
+          totalOrders: 0,
+          totalSpent: 0,
+          favoriteProducts: 0,
+          lastOrderDate: null,
+          loyaltyPoints: 0,
+          nextReward: 100
+        });
+      }
+    } else {
+      // Se é ID, buscar email também
+      try {
+        const [userEmailResult] = await pool.execute('SELECT email FROM users WHERE id = ? LIMIT 1', [userId]);
+        if (userEmailResult && userEmailResult[0]) {
+          userEmail = userEmailResult[0].email || userId;
+        } else {
+          const [customerEmailResult] = await pool.execute('SELECT email FROM customers WHERE id = ? LIMIT 1', [userId]);
+          if (customerEmailResult && customerEmailResult[0]) {
+            userEmail = customerEmailResult[0].email || userId;
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Erro ao buscar email do usuário:', e.message);
+        // Continuar mesmo sem email
       }
     }
     
     // Buscar estatísticas de pedidos
+    // CORRIGIDO: orders não tem email, apenas user_id
+    // Se userId é email, já foi convertido para ID antes
     const [orderStats] = await pool.execute(`
       SELECT 
         COUNT(*) as total_orders,
         COALESCE(SUM(total), 0) as total_spent,
         MAX(created_at) as last_order_date
       FROM orders
-      WHERE customer_id = ? OR user_id = ?
-    `, [userId, userId]);
+      WHERE user_id = ?
+    `, [userId]);
 
     // Buscar favoritos (usar tabela favorites com email do usuário)
-    const [userEmail] = await pool.execute('SELECT email FROM users WHERE id = ?', [userId]);
-    const email = userEmail[0]?.email || null;
+    let favoriteCount = 0;
+    try {
     const [favStats] = await pool.execute(`
       SELECT COUNT(*) as favorite_count
       FROM favorites
       WHERE user_email = ?
-    `, [email]);
+      `, [userEmail]);
+      favoriteCount = Number(favStats[0]?.favorite_count || 0);
+    } catch (e) {
+      console.log('⚠️ Erro ao buscar favoritos:', e.message);
+      // Continuar mesmo sem favoritos
+    }
 
     // Calcular pontos de fidelidade (1 ponto a cada R$ 10 gastos)
-    const loyaltyPoints = Math.floor(Number(orderStats[0].total_spent) / 10);
+    const totalSpent = Number(orderStats[0]?.total_spent || 0);
+    const loyaltyPoints = Math.floor(totalSpent / 10);
     const nextReward = 100; // Próxima recompensa em 100 pontos
 
     res.json({
-      totalOrders: Number(orderStats[0].total_orders) || 0,
-      totalSpent: Number(orderStats[0].total_spent) || 0,
-      favoriteProducts: Number(favStats[0].favorite_count) || 0,
-      lastOrderDate: orderStats[0].last_order_date,
+      totalOrders: Number(orderStats[0]?.total_orders || 0),
+      totalSpent: totalSpent,
+      favoriteProducts: favoriteCount,
+      lastOrderDate: orderStats[0]?.last_order_date || null,
       loyaltyPoints,
       nextReward,
     });
   } catch (error) {
+    console.error('❌ Erro ao buscar estatísticas do cliente:', error);
     logger.logError(error, req);
-    res.status(500).json({ error: 'Erro ao buscar estatísticas do cliente' });
+    res.status(500).json({ 
+      error: 'Erro ao buscar estatísticas do cliente',
+      message: error.message,
+      totalOrders: 0,
+      totalSpent: 0,
+      favoriteProducts: 0,
+      lastOrderDate: null,
+      loyaltyPoints: 0,
+      nextReward: 100
+    });
   }
 });
 
@@ -8852,18 +10010,53 @@ app.get('/api/orders/:orderId/status', async (req, res) => {
 // Endpoint para estatísticas do usuário
 app.get('/api/user-stats/stats/:userId', async (req, res) => {
   try {
-    const { userId } = req.params;
+    let { userId } = req.params;
     console.log(`📊 GET /api/user-stats/stats/${userId}`);
     
+    // Se userId parece ser email, buscar o ID do usuário
+    let actualUserId = userId;
+    if (String(userId).includes('@')) {
+      try {
+        // Tentar buscar em users primeiro
+        const [users] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [userId]);
+        if (users && users[0] && users[0].id) {
+          actualUserId = users[0].id;
+        } else {
+          // Tentar buscar em customers
+          const [customers] = await pool.execute('SELECT id FROM customers WHERE email = ? LIMIT 1', [userId]);
+          if (customers && customers[0] && customers[0].id) {
+            actualUserId = customers[0].id;
+          } else {
+            // Se não encontrou, retornar zeros mas não erro
+            console.log(`⚠️ Usuário não encontrado para email: ${userId}`);
+            return res.json({
+              total_pedidos: 0,
+              total_gasto: 0,
+              ultimo_pedido: null
+            });
+          }
+        }
+      } catch (e) {
+        console.error('❌ Erro ao buscar usuário por email:', e);
+        return res.status(500).json({ 
+          error: 'Erro ao buscar usuário',
+          total_pedidos: 0,
+          total_gasto: 0,
+          ultimo_pedido: null
+        });
+      }
+    }
+    
     // Buscar estatísticas do usuário
+    // CORRIGIDO: orders não tem customer_id nem email, apenas user_id
     const [orders] = await pool.execute(`
       SELECT 
         COUNT(*) as total_pedidos,
         COALESCE(SUM(total), 0) as total_gasto,
         MAX(created_at) as ultimo_pedido
       FROM orders 
-      WHERE customer_id = ? OR user_id = ?
-    `, [userId, userId]);
+      WHERE user_id = ?
+    `, [actualUserId]);
     
     const stats = orders[0] || {
       total_pedidos: 0,
@@ -8876,7 +10069,13 @@ app.get('/api/user-stats/stats/:userId', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas:', error);
-    res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+    res.status(500).json({ 
+      error: 'Erro ao buscar estatísticas',
+      message: error.message,
+      total_pedidos: 0,
+      total_gasto: 0,
+      ultimo_pedido: null
+    });
   }
 });
 
@@ -9680,32 +10879,57 @@ app.get('/api/admin/reviews', async (req, res) => {
   try {
     const { status, product_id } = req.query;
     
-    let query = `
-      SELECT 
-        r.*,
-        u.nome as customer_name,
-        u.email as customer_email,
-        p.nome as product_name,
-        p.imagem_url as product_image
-      FROM product_reviews r
-      LEFT JOIN users u ON r.customer_id = u.id
-      LEFT JOIN products p ON r.product_id = p.id
-      WHERE 1=1
-    `;
-    
+    // Query corrigida usando nome completo do banco e tabela correta
+    // Usar subquery ou nome completo da coluna no WHERE para evitar problemas com alias
+    let whereConditions = [];
     const params = [];
     
-    if (status) {
-      query += ' AND r.status = ?';
+    // Filtrar por status usando nome completo da tabela no WHERE
+    if (status && status !== 'all') {
+      whereConditions.push('\`rare_toy_companion\`.\`product_reviews\`.\`status\` = ?');
       params.push(status);
     }
     
     if (product_id) {
-      query += ' AND r.product_id = ?';
+      whereConditions.push('r.product_id = ?');
       params.push(product_id);
     }
     
-    query += ' ORDER BY r.created_at DESC LIMIT 500';
+    const whereClause = whereConditions.length > 0 
+      ? 'WHERE ' + whereConditions.join(' AND ')
+      : '';
+    
+    let query = `
+      SELECT 
+        r.id,
+        r.product_id,
+        r.customer_id,
+        r.order_id,
+        r.rating,
+        r.title,
+        r.comment,
+        r.images,
+        r.verified_purchase,
+        r.helpful_count,
+        r.reported_count,
+        r.status,
+        r.admin_notes,
+        r.created_at,
+        r.updated_at,
+        COALESCE(u.nome, u.email, 'Cliente') as customer_name,
+        u.email as customer_email,
+        p.nome as product_name,
+        p.imagem_url as product_image
+      FROM \`rare_toy_companion\`.\`product_reviews\` r
+      LEFT JOIN \`rare_toy_companion\`.\`users\` u ON CAST(r.customer_id AS CHAR) = CAST(u.id AS CHAR)
+      LEFT JOIN \`rare_toy_companion\`.\`produtos\` p ON CAST(r.product_id AS CHAR) = CAST(p.id AS CHAR)
+      ${whereClause}
+      ORDER BY r.created_at DESC
+      LIMIT 500
+    `;
+    
+    console.log('🔍 Query reviews:', query);
+    console.log('📊 Params:', params);
     
     const [reviews] = await pool.execute(query, params);
 
@@ -9713,7 +10937,10 @@ app.get('/api/admin/reviews', async (req, res) => {
     res.json({ reviews });
   } catch (error) {
     logger.logError(error, req);
-    res.status(500).json({ error: 'Erro ao buscar reviews' });
+    console.error('❌ Erro ao buscar reviews:', error.message);
+    console.error('❌ SQL Error Code:', error.code);
+    console.error('❌ SQL State:', error.sqlState);
+    res.status(500).json({ error: 'Erro ao buscar reviews', details: error.message });
   }
 });
 
@@ -10346,8 +11573,91 @@ app.get('/api/payments/mercadopago/status/:paymentId', async (req, res) => {
   }
 });
 
-// Error handler do Sentry (deve ser depois de todas as rotas e antes de outros error handlers)
-app.use(sentry.sentryErrorHandler());
+// =============================================================================
+// ENDPOINT DE DIAGNÓSTICO (ANTES DOS ERROR HANDLERS)
+// =============================================================================
+app.get('/api/debug/database', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [db] = await connection.query('SELECT DATABASE() as db');
+    const [tables] = await connection.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = 'rare_toy_companion'
+      ORDER BY TABLE_NAME
+    `);
+    const [produtosCols] = await connection.query(`
+      SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = 'rare_toy_companion' 
+      AND TABLE_NAME = 'produtos'
+      ORDER BY ORDINAL_POSITION
+    `);
+    const [fornecedoresCols] = await connection.query(`
+      SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = 'rare_toy_companion' 
+      AND TABLE_NAME = 'fornecedores'
+      ORDER BY ORDINAL_POSITION
+    `);
+    connection.release();
+    
+    res.json({
+      success: true,
+      currentDatabase: db[0].db,
+      poolConfig: {
+        database: pool.config?.database || 'não definido',
+        host: pool.config?.host || 'não definido',
+        user: pool.config?.user || 'não definido'
+      },
+      environment: {
+        MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+        DB_NAME: process.env.DB_NAME
+      },
+      tables: tables.map(t => t.TABLE_NAME),
+      produtosColumns: produtosCols.map(c => ({ 
+        name: c.COLUMN_NAME, 
+        type: c.DATA_TYPE, 
+        nullable: c.IS_NULLABLE 
+      })),
+      fornecedoresColumns: fornecedoresCols.map(c => ({ 
+        name: c.COLUMN_NAME, 
+        type: c.DATA_TYPE, 
+        nullable: c.IS_NULLABLE 
+      })),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      code: error.code,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [db] = await connection.query('SELECT DATABASE() as db');
+    connection.release();
+    
+    res.json({ 
+      status: 'ok', 
+      database: db[0].db,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Error handler global
 app.use((err, req, res, next) => {
@@ -11946,10 +13256,10 @@ app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, 
         o.total,
         o.status,
         o.created_at,
-        COALESCE(o.metodo_pagamento, 'Não informado') as payment_method,
-        (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as itens_count
-      FROM orders o
-      LEFT JOIN users u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
+        COALESCE(o.payment_method, 'Não informado') as payment_method,
+        (SELECT COUNT(*) FROM \`rare_toy_companion\`.\`order_items\` WHERE order_id = o.id) as itens_count
+      FROM \`rare_toy_companion\`.\`orders\` o
+      LEFT JOIN \`rare_toy_companion\`.\`users\` u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
       WHERE o.status NOT IN ('cancelled', 'canceled', 'cancelado')
       ORDER BY o.created_at DESC
       LIMIT 10
@@ -11961,6 +13271,7 @@ app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, 
   } catch (error) {
     console.error('❌ Erro ao buscar pedidos recentes:', error);
     console.error('Detalhes:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
   }
 });
@@ -13671,6 +14982,1821 @@ app.get('/api/financial/transactions/:id', async (req, res) => {
   }
 });
 
+// Importar extrato bancário
+const bankStatementUpload = multer({ dest: 'uploads/' });
+app.post('/api/financial/bank-statements/import', bankStatementUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file && !req.body.transactions) {
+      return res.status(400).json({ error: 'Arquivo ou dados de transações são obrigatórios' });
+    }
+
+    let transactions = [];
+    
+    // Se vieram dados parseados do frontend
+    if (req.body.transactions) {
+      try {
+        transactions = JSON.parse(req.body.transactions);
+      } catch (e) {
+        return res.status(400).json({ error: 'Erro ao processar dados das transações' });
+      }
+    } else {
+      // Processar arquivo CSV aqui se necessário
+      // Por enquanto, usamos apenas dados parseados do frontend
+      return res.status(400).json({ error: 'Dados parseados são obrigatórios' });
+    }
+
+    if (!Array.isArray(transactions) || transactions.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma transação encontrada para importar' });
+    }
+
+    const contaId = req.body.conta_id ? parseInt(req.body.conta_id) : null;
+    let imported = 0;
+    let errors = [];
+
+    // Inserir transações no banco
+    for (const trans of transactions) {
+      try {
+        // Verificar se já existe transação similar (evitar duplicatas)
+        const [existing] = await pool.execute(`
+          SELECT id FROM financial_transactions 
+          WHERE data = ? AND descricao LIKE ? AND ABS(valor - ?) < 0.01
+          LIMIT 1
+        `, [trans.data, `%${trans.descricao.substring(0, 50)}%`, trans.valor]);
+
+        if (existing.length > 0) {
+          errors.push(`Transação duplicada ignorada: ${trans.descricao}`);
+          continue;
+        }
+
+        // Determinar tipo e status
+        const tipo = trans.tipo === 'credito' ? 'entrada' : 'saida';
+        const metodoPagamento = contaId 
+          ? `Conta: ${contaId} (Importado do extrato)`
+          : 'Importado do extrato';
+
+        // Inserir transação
+        await pool.execute(`
+          INSERT INTO financial_transactions 
+          (descricao, categoria, tipo, valor, status, data, origem, metodo_pagamento, observacoes, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'Pago', ?, 'Extrato Bancário', ?, ?, NOW(), NOW())
+        `, [
+          trans.descricao || 'Transação importada',
+          'Outros',
+          tipo,
+          trans.valor,
+          trans.data,
+          metodoPagamento,
+          `Importado automaticamente em ${new Date().toLocaleString('pt-BR')}`
+        ]);
+
+        imported++;
+      } catch (error) {
+        console.error('Erro ao importar transação:', error);
+        errors.push(`Erro ao importar: ${trans.descricao} - ${error.message}`);
+      }
+    }
+
+    // Limpar arquivo temporário se existir
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    logger.info('Extrato bancário importado', { imported, total: transactions.length, errors: errors.length });
+
+    res.json({
+      success: true,
+      imported,
+      total: transactions.length,
+      errors: errors.length > 0 ? errors.slice(0, 10) : [], // Limitar erros retornados
+      message: `${imported} transações importadas com sucesso${errors.length > 0 ? ` (${errors.length} erros)` : ''}`
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ 
+      error: 'Erro ao importar extrato bancário', 
+      details: error.message 
+    });
+  }
+});
+
+// Importar extrato bancário PDF (formato InfinitePay mensal)
+app.post('/api/financial/bank-statements/import-pdf', bankStatementUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Arquivo PDF é obrigatório' });
+    }
+
+    // Verificar se é PDF
+    if (!req.file.mimetype.includes('pdf') && !req.file.originalname.toLowerCase().endsWith('.pdf')) {
+      return res.status(400).json({ error: 'Apenas arquivos PDF são aceitos' });
+    }
+
+    const pdfParse = require('pdf-parse');
+    const pdfBuffer = fs.readFileSync(req.file.path);
+    
+    let pdfText;
+    try {
+      // pdf-parse v2+ exporta uma classe PDFParse
+      if (pdfParse.PDFParse && typeof pdfParse.PDFParse === 'function') {
+        // Usar a classe PDFParse com método getText()
+        const parser = new pdfParse.PDFParse({ data: pdfBuffer });
+        console.log('📄 Parser criado, chamando getText()...');
+        
+        // Tentar getText() com diferentes opções
+        let result = await parser.getText({ 
+          pageJoiner: '\n',  // Junta páginas com quebra de linha
+          lineEnforce: true, // Força quebras de linha
+          cellSeparator: ' ' // Separador de células
+        });
+        
+        console.log('📄 Result do getText():', typeof result, result ? Object.keys(result) : 'null');
+        
+        // getText() retorna { text: string, pages: [...] }
+        pdfText = result?.text || (typeof result === 'string' ? result : '');
+        
+        // Se ainda não tem texto suficiente, tentar sem pageJoiner ou com outras opções
+        if (!pdfText || pdfText.length < 500) {
+          console.log('⚠️ Texto muito curto, tentando sem pageJoiner...');
+          result = await parser.getText({ 
+            pageJoiner: '',  // Sem separador de página
+            lineEnforce: false
+          });
+          pdfText = result?.text || pdfText || '';
+        }
+        
+        // Se o texto está muito curto, tentar extrair das páginas individualmente
+        if ((!pdfText || pdfText.length < 500) && result && result.pages) {
+          console.log('📄 Tentando extrair texto das páginas individuais...');
+          console.log('📄 Total de páginas:', result.pages.length);
+          
+          // Extrair texto de cada página
+          const pageTexts = [];
+          for (let i = 0; i < result.pages.length; i++) {
+            const page = result.pages[i];
+            console.log(`📄 Página ${i + 1} estrutura:`, page ? Object.keys(page) : 'null');
+            
+            if (page && page.text) {
+              pageTexts.push(page.text);
+              console.log(`📄 Página ${i + 1} tem ${page.text.length} caracteres`);
+              if (i === 0) {
+                console.log(`📄 Primeiros 300 chars da página ${i + 1}:`, page.text.substring(0, 300));
+              }
+            } else if (page && typeof page === 'string') {
+              pageTexts.push(page);
+              console.log(`📄 Página ${i + 1} é string com ${page.length} caracteres`);
+            } else if (page && page.content) {
+              pageTexts.push(page.content);
+              console.log(`📄 Página ${i + 1} tem content com ${page.content.length} caracteres`);
+            } else {
+              console.log(`⚠️ Página ${i + 1} não tem texto extraível (provavelmente é imagem escaneada)`);
+            }
+          }
+          
+          if (pageTexts.length > 0) {
+            pdfText = pageTexts.join('\n');
+            console.log('📄 Texto combinado das páginas:', pdfText.length, 'caracteres');
+          }
+        }
+        
+        // Se ainda não tem texto, verificar outras propriedades
+        if (!pdfText && result) {
+          console.log('📄 Tentando propriedades alternativas...');
+          console.log('📄 result.text:', result.text ? result.text.substring(0, 200) : 'N/A');
+          console.log('📄 result.pages:', result.pages ? result.pages.length : 'N/A');
+          if (result.pages && result.pages.length > 0) {
+            console.log('📄 Primeira página:', result.pages[0] ? Object.keys(result.pages[0]) : 'N/A');
+            pdfText = result.text || result.content || (result.pages && result.pages.map(p => p.text || p.content || '').join('\n')) || '';
+          }
+        }
+        
+        // Destruir o parser
+        await parser.destroy();
+      } else if (typeof pdfParse === 'function') {
+        // Versão antiga - função direta
+        const pdfData = await pdfParse(pdfBuffer);
+        pdfText = pdfData.text;
+      } else {
+        throw new Error('Formato de exportação do pdf-parse não reconhecido');
+      }
+    } catch (parseError) {
+      console.error('❌ Erro ao fazer parse do PDF:', parseError);
+      console.error('❌ Stack:', parseError.stack);
+      return res.status(500).json({ 
+        error: 'Erro ao processar PDF', 
+        details: parseError.message 
+      });
+    }
+
+    console.log('📄 PDF processado, tamanho do texto:', pdfText ? pdfText.length : 0);
+    if (pdfText && pdfText.length > 0) {
+      console.log('📄 Primeiros 500 caracteres:', pdfText.substring(0, 500));
+    } else {
+      console.log('⚠️ AVISO: Nenhum texto extraído do PDF!');
+    }
+
+    // Parse do texto do PDF - formato InfinitePay
+    const transactions = [];
+    const lines = pdfText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    console.log('📄 Total de linhas no PDF:', lines.length);
+    console.log('📄 Primeiras 10 linhas:', lines.slice(0, 10));
+
+    // Procurar padrão de tabela: Data | Hora | Tipo | Nome | Detalhe | Valor
+    let currentDate = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Ignorar cabeçalhos e linhas de saldo
+      if (line.includes('Saldo do dia') || 
+          line.includes('Central de Ajuda') ||
+          line.includes('Relatório de movimentações') ||
+          line.toLowerCase().includes('infinitepay') ||
+          line.includes('CNPJ:') ||
+          line.match(/^Saldo final/) ||
+          line.match(/^\d{2}\/\d{2}\/\d{4} - \d{2}\/\d{2}\/\d{4}$/) || // Período
+          line.match(/^\|.*Data.*Hora.*Tipo.*Nome.*Detalhe.*Valor/i)) { // Cabeçalho de tabela
+        continue;
+      }
+
+      // Detectar data no início da linha (formato DD/MM/YYYY)
+      const dateMatch = line.match(/^(\d{2}\/\d{2}\/\d{4})/);
+      if (dateMatch) {
+        currentDate = dateMatch[1];
+        // Continuar para processar a transação na mesma linha se houver
+      }
+
+      // Processar linha de transação - pode ter ou não pipes
+      // Padrão 1: Linha com pipes (tabela estruturada)
+      if (line.includes('|')) {
+        const parts = line.split('|').map(p => p.trim()).filter(p => p.length > 0);
+        
+        if (parts.length >= 4) {
+          try {
+            // Formato: Data | Hora | Tipo | Nome | Detalhe | Valor
+            let data = currentDate || (parts[0].match(/\d{2}\/\d{2}\/\d{4}/) ? parts[0] : '');
+            let hora = '';
+            let tipo = '';
+            let nome = '';
+            let detalhe = '';
+            let valorStr = '';
+
+            // Encontrar hora (formato HH:MM)
+            let horaIndex = -1;
+            for (let j = 0; j < parts.length; j++) {
+              if (parts[j].match(/^\d{2}:\d{2}$/)) {
+                hora = parts[j];
+                horaIndex = j;
+                break;
+              }
+            }
+
+            // Encontrar valor (última coluna com +, -, R$ ou número)
+            for (let j = parts.length - 1; j >= 0; j--) {
+              const part = parts[j];
+              if (part.match(/[+\-]/) || part.includes('R$') || part.match(/^\d+[,.]?\d*$/)) {
+                valorStr = part;
+                break;
+              }
+            }
+
+            // Preencher tipo, nome, detalhe
+            if (horaIndex >= 0) {
+              tipo = parts.length > horaIndex + 1 ? parts[horaIndex + 1] : '';
+              nome = parts.length > horaIndex + 2 ? parts[horaIndex + 2] : '';
+              detalhe = parts.length > horaIndex + 3 ? parts[horaIndex + 3] : '';
+            } else {
+              // Sem hora, tentar inferir estrutura
+              if (parts.length >= 6) {
+                tipo = parts[1] || '';
+                nome = parts[2] || '';
+                detalhe = parts[3] || '';
+              }
+            }
+
+            // Parse do valor
+            let valor = 0;
+            let isCredito = false;
+            
+            if (valorStr) {
+              const cleaned = valorStr.replace(/R\$/g, '').replace(/\s/g, '').trim();
+              isCredito = cleaned.startsWith('+');
+              const signedCleaned = cleaned.replace(/^[+\-]/, '');
+              
+              if (signedCleaned.includes('.') && signedCleaned.includes(',')) {
+                valor = parseFloat(signedCleaned.replace(/\./g, '').replace(',', '.'));
+              } else if (signedCleaned.includes(',')) {
+                valor = parseFloat(signedCleaned.replace(',', '.'));
+              } else {
+                valor = parseFloat(signedCleaned);
+              }
+            }
+
+            if (valor > 0 && data && data.match(/\d{2}\/\d{2}\/\d{4}/)) {
+              const dateParts = data.split('/');
+              const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+
+              const descricao = nome 
+                ? `${nome}${detalhe ? ` - ${detalhe}` : ''}${tipo ? ` (${tipo})` : ''}`
+                : `${detalhe || tipo || 'Transação importada'}`;
+
+              transactions.push({
+                data: formattedDate,
+                hora: hora || undefined,
+                descricao: descricao.substring(0, 255),
+                valor: Math.abs(valor),
+                tipo: isCredito ? 'credito' : 'debito'
+              });
+            }
+          } catch (err) {
+            console.warn(`Erro ao processar linha ${i}:`, err.message);
+          }
+        }
+      } else if (currentDate && line.match(/\d{2}:\d{2}/)) {
+        // Padrão 2: Linha sem pipes mas com hora (formato alternativo)
+        // Exemplo: "01:37 Depósito de vendas Vendas Depósito InfinitePay +12,60"
+        try {
+          const horaMatch = line.match(/(\d{2}:\d{2})/);
+          const valorMatch = line.match(/([+\-]?\s*R?\$?\s*\d+[.,]\d+)/);
+          
+          if (horaMatch && valorMatch) {
+            const hora = horaMatch[1];
+            let valorStr = valorMatch[1];
+            const partes = line.split(/\s+/);
+            
+            // Remover hora e valor, o resto é tipo/nome/detalhe
+            const resto = line.replace(/\d{2}:\d{2}/, '').replace(/([+\-]?\s*R?\$?\s*\d+[.,]\d+)/, '').trim();
+            
+            let valor = 0;
+            let isCredito = valorStr.includes('+');
+            const cleaned = valorStr.replace(/R\$/g, '').replace(/\s/g, '').replace(/[+\-]/, '').trim();
+            
+            if (cleaned.includes('.') && cleaned.includes(',')) {
+              valor = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
+            } else if (cleaned.includes(',')) {
+              valor = parseFloat(cleaned.replace(',', '.'));
+            } else {
+              valor = parseFloat(cleaned);
+            }
+
+            if (valor > 0 && currentDate) {
+              const dateParts = currentDate.split('/');
+              const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+
+              transactions.push({
+                data: formattedDate,
+                hora: hora,
+                descricao: resto.substring(0, 255) || 'Transação importada',
+                valor: Math.abs(valor),
+                tipo: isCredito ? 'credito' : 'debito'
+              });
+            }
+          }
+        } catch (err) {
+          console.warn(`Erro ao processar linha alternativa ${i}:`, err.message);
+        }
+      }
+    }
+
+    console.log(`✅ ${transactions.length} transações extraídas do PDF`);
+
+    if (transactions.length === 0) {
+      // Limpar arquivo
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      
+      // Verificar se o PDF é escaneado (sem texto)
+      const isScanned = !pdfText || pdfText.trim().length < 100;
+      
+      if (isScanned) {
+        return res.status(400).json({ 
+          error: 'PDF escaneado detectado. Este PDF parece ser uma imagem e não contém texto extraível.',
+          suggestion: 'Por favor, exporte o relatório diretamente como CSV do InfinitePay ou use um PDF com texto selecionável.'
+        });
+      } else {
+        return res.status(400).json({ 
+          error: 'Nenhuma transação encontrada no PDF. Verifique se é um relatório válido do InfinitePay.',
+          suggestion: 'Certifique-se de que o PDF contém uma tabela com colunas: Data, Hora, Tipo, Nome, Detalhe, Valor'
+        });
+      }
+    }
+
+    const contaId = req.body.conta_id ? parseInt(req.body.conta_id) : null;
+    let imported = 0;
+    let errors = [];
+
+    // Inserir transações no banco
+    for (const trans of transactions) {
+      try {
+        // Verificar se já existe transação similar (evitar duplicatas)
+        const [existing] = await pool.execute(`
+          SELECT id FROM financial_transactions 
+          WHERE data = ? AND descricao LIKE ? AND ABS(valor - ?) < 0.01
+          LIMIT 1
+        `, [trans.data, `%${trans.descricao.substring(0, 50)}%`, trans.valor]);
+
+        if (existing.length > 0) {
+          errors.push(`Transação duplicada ignorada: ${trans.descricao}`);
+          continue;
+        }
+
+        // Determinar tipo e status
+        const tipo = trans.tipo === 'credito' ? 'entrada' : 'saida';
+        const metodoPagamento = contaId 
+          ? `Conta: ${contaId} (Importado do PDF InfinitePay)`
+          : 'Importado do PDF InfinitePay';
+
+        // Inserir transação
+        await pool.execute(`
+          INSERT INTO financial_transactions 
+          (descricao, categoria, tipo, valor, status, data, origem, metodo_pagamento, observacoes, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'Pago', ?, 'Extrato Bancário (PDF)', ?, ?, NOW(), NOW())
+        `, [
+          trans.descricao || 'Transação importada',
+          'Outros',
+          tipo,
+          trans.valor,
+          trans.data,
+          metodoPagamento,
+          `Importado automaticamente do PDF em ${new Date().toLocaleString('pt-BR')}`
+        ]);
+
+        imported++;
+      } catch (error) {
+        console.error('Erro ao importar transação:', error);
+        errors.push(`Erro ao importar: ${trans.descricao} - ${error.message}`);
+      }
+    }
+
+    // Limpar arquivo temporário
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    logger.info('Extrato bancário PDF importado', { imported, total: transactions.length, errors: errors.length });
+
+    res.json({
+      success: true,
+      imported,
+      total: transactions.length,
+      errors: errors.length > 0 ? errors.slice(0, 10) : [],
+      message: `${imported} transações importadas com sucesso do PDF${errors.length > 0 ? ` (${errors.length} erros)` : ''}`
+    });
+  } catch (error) {
+    // Limpar arquivo em caso de erro
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    logger.logError(error, req);
+    res.status(500).json({ 
+      error: 'Erro ao processar PDF', 
+      details: error.message 
+    });
+  }
+});
+
+// ==================== RECURRING TRANSACTIONS API ====================
+
+// Função auxiliar para calcular próxima ocorrência
+function calculateNextOccurrence(lastDate, frequency, dayOfMonth = null, dayOfWeek = null) {
+  const date = new Date(lastDate);
+  const next = new Date(date);
+
+  switch (frequency) {
+    case 'daily':
+      next.setDate(next.getDate() + 1);
+      break;
+    case 'weekly':
+      next.setDate(next.getDate() + 7);
+      if (dayOfWeek !== null) {
+        const diff = dayOfWeek - next.getDay();
+        if (diff !== 0) {
+          next.setDate(next.getDate() + (diff > 0 ? diff : 7 + diff));
+        }
+      }
+      break;
+    case 'biweekly':
+      next.setDate(next.getDate() + 14);
+      break;
+    case 'monthly':
+      next.setMonth(next.getMonth() + 1);
+      if (dayOfMonth !== null) {
+        next.setDate(dayOfMonth);
+      }
+      break;
+    case 'quarterly':
+      next.setMonth(next.getMonth() + 3);
+      if (dayOfMonth !== null) {
+        next.setDate(dayOfMonth);
+      }
+      break;
+    case 'semiannual':
+      next.setMonth(next.getMonth() + 6);
+      if (dayOfMonth !== null) {
+        next.setDate(dayOfMonth);
+      }
+      break;
+    case 'yearly':
+      next.setFullYear(next.getFullYear() + 1);
+      if (dayOfMonth !== null) {
+        next.setDate(dayOfMonth);
+      }
+      break;
+  }
+
+  return next.toISOString().split('T')[0];
+}
+
+// Buscar todas as transações recorrentes
+app.get('/api/financial/recurring', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Verificar qual banco está sendo usado
+    const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
+    logger.info('Banco atual da conexão:', dbCheck[0]);
+    
+    // Verificar se a tabela existe e criar se não existir
+    try {
+      const [tableCheck] = await connection.query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'recurring_transactions'
+      `);
+      
+      if (tableCheck[0].count === 0) {
+        logger.warn('Tabela recurring_transactions não encontrada, criando...');
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS recurring_transactions (
+            id VARCHAR(36) PRIMARY KEY,
+            descricao VARCHAR(255) NOT NULL,
+            categoria VARCHAR(100) NOT NULL,
+            tipo ENUM('entrada', 'saida') NOT NULL,
+            valor DECIMAL(10,2) NOT NULL,
+            status ENUM('Pago', 'Pendente', 'Atrasado') DEFAULT 'Pendente',
+            metodo_pagamento VARCHAR(50) DEFAULT 'Não informado',
+            origem VARCHAR(255),
+            observacoes TEXT,
+            frequency ENUM('daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semiannual', 'yearly') NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NULL,
+            next_occurrence DATE NOT NULL,
+            day_of_month INT NULL,
+            day_of_week INT NULL,
+            notify_days_before INT DEFAULT 0,
+            notify_email VARCHAR(255) NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            auto_create BOOLEAN DEFAULT TRUE,
+            occurrences_count INT DEFAULT 0,
+            max_occurrences INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_by VARCHAR(255) NULL,
+            INDEX idx_tipo (tipo),
+            INDEX idx_status (status),
+            INDEX idx_frequency (frequency),
+            INDEX idx_next_occurrence (next_occurrence),
+            INDEX idx_is_active (is_active)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        logger.info('Tabela recurring_transactions criada com sucesso');
+      }
+    } catch (createError) {
+      logger.logError(createError, req);
+      // Continuar mesmo se houver erro na verificação
+    }
+    
+    const { active_only } = req.query;
+    
+    let query = `
+      SELECT 
+        id, descricao, categoria, tipo, valor, status, metodo_pagamento,
+        origem, observacoes, frequency, start_date, end_date, next_occurrence,
+        day_of_month, day_of_week, notify_days_before, notify_email,
+        is_active, auto_create, occurrences_count, max_occurrences,
+        created_at, updated_at, created_by
+      FROM recurring_transactions
+    `;
+    
+    const params = [];
+    if (active_only === 'true') {
+      query += ' WHERE is_active = TRUE';
+    }
+    
+    query += ' ORDER BY next_occurrence ASC, created_at DESC';
+
+    const [rows] = await connection.execute(query, params);
+    
+    logger.info('Transações recorrentes carregadas', { count: rows.length });
+    res.json({ recurring_transactions: rows, total: rows.length });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar transações recorrentes', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Buscar transação recorrente por ID
+app.get('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Garantir que estamos usando o banco correto (com query, não execute)
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const [rows] = await connection.execute(
+      'SELECT * FROM recurring_transactions WHERE id = ?',
+      [id]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Transação recorrente não encontrada' });
+    }
+
+    res.json({ recurring_transaction: rows[0] });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar transação recorrente' });
+  } finally {
+    connection.release();
+  }
+});
+
+// Criar transação recorrente
+app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Verificar qual banco está sendo usado
+    const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
+    logger.info('Banco atual da conexão (POST):', dbCheck[0]);
+    
+    // Verificar se a tabela existe e criar se não existir
+    try {
+      const [tableCheck] = await connection.query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'recurring_transactions'
+      `);
+      
+      if (tableCheck[0].count === 0) {
+        logger.warn('Tabela recurring_transactions não encontrada, criando...');
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS recurring_transactions (
+            id VARCHAR(36) PRIMARY KEY,
+            descricao VARCHAR(255) NOT NULL,
+            categoria VARCHAR(100) NOT NULL,
+            tipo ENUM('entrada', 'saida') NOT NULL,
+            valor DECIMAL(10,2) NOT NULL,
+            status ENUM('Pago', 'Pendente', 'Atrasado') DEFAULT 'Pendente',
+            metodo_pagamento VARCHAR(50) DEFAULT 'Não informado',
+            origem VARCHAR(255),
+            observacoes TEXT,
+            frequency ENUM('daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semiannual', 'yearly') NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NULL,
+            next_occurrence DATE NOT NULL,
+            day_of_month INT NULL,
+            day_of_week INT NULL,
+            notify_days_before INT DEFAULT 0,
+            notify_email VARCHAR(255) NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            auto_create BOOLEAN DEFAULT TRUE,
+            occurrences_count INT DEFAULT 0,
+            max_occurrences INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_by VARCHAR(255) NULL,
+            INDEX idx_tipo (tipo),
+            INDEX idx_status (status),
+            INDEX idx_frequency (frequency),
+            INDEX idx_next_occurrence (next_occurrence),
+            INDEX idx_is_active (is_active)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        logger.info('Tabela recurring_transactions criada com sucesso');
+      }
+    } catch (createError) {
+      logger.logError(createError, req);
+      // Continuar mesmo se houver erro na verificação
+    }
+    
+    const {
+      descricao, categoria, tipo, valor, status, metodo_pagamento,
+      origem, observacoes, frequency, start_date, end_date,
+      day_of_month, day_of_week, notify_days_before, notify_email,
+      auto_create, max_occurrences
+    } = req.body;
+
+    // Validações básicas
+    if (!descricao || !categoria || !tipo || !valor || !frequency || !start_date) {
+      connection.release();
+      return res.status(400).json({ 
+        error: 'Campos obrigatórios: descricao, categoria, tipo, valor, frequency, start_date' 
+      });
+    }
+
+    if (valor <= 0) {
+      connection.release();
+      return res.status(400).json({ error: 'Valor deve ser maior que zero' });
+    }
+
+    const tipoNormalizado = tipo.toLowerCase();
+    if (!['entrada', 'saida'].includes(tipoNormalizado)) {
+      connection.release();
+      return res.status(400).json({ error: 'Tipo deve ser "entrada" ou "saida"' });
+    }
+
+    const frequencies = ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semiannual', 'yearly'];
+    if (!frequencies.includes(frequency)) {
+      connection.release();
+      return res.status(400).json({ error: 'Frequência inválida' });
+    }
+
+    // Calcular próxima ocorrência
+    const nextOccurrence = calculateNextOccurrence(
+      start_date, 
+      frequency, 
+      day_of_month, 
+      day_of_week
+    );
+
+    const id = crypto.randomUUID();
+    const safeStatus = status || 'Pendente';
+    const safeMetodoPagamento = metodo_pagamento || 'Não informado';
+    const safeNotifyDays = notify_days_before !== undefined ? notify_days_before : 0;
+
+    // Inserir transação recorrente
+    await connection.execute(`
+      INSERT INTO recurring_transactions (
+        id, descricao, categoria, tipo, valor, status, metodo_pagamento,
+        origem, observacoes, frequency, start_date, end_date, next_occurrence,
+        day_of_month, day_of_week, notify_days_before, notify_email,
+        is_active, auto_create, max_occurrences, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id, descricao, categoria, tipoNormalizado, valor, safeStatus, safeMetodoPagamento,
+      origem || null, observacoes || null, frequency, start_date, end_date || null, nextOccurrence,
+      day_of_month || null, day_of_week || null, safeNotifyDays, notify_email || null,
+      true, auto_create !== false, max_occurrences || null, req.user?.email || null
+    ]);
+
+    logger.info('Transação recorrente criada', { id });
+    res.json({ 
+      success: true, 
+      message: 'Transação recorrente criada com sucesso',
+      recurring_transaction: {
+        id, descricao, categoria, tipo: tipoNormalizado, valor, status: safeStatus,
+        frequency, start_date, next_occurrence: nextOccurrence, is_active: true
+      }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao criar transação recorrente', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Atualizar transação recorrente
+app.put('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Garantir que estamos usando o banco correto (com query, não execute)
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const {
+      descricao, categoria, tipo, valor, status, metodo_pagamento,
+      origem, observacoes, frequency, start_date, end_date,
+      day_of_month, day_of_week, notify_days_before, notify_email,
+      is_active, auto_create, max_occurrences
+    } = req.body;
+
+    // Verificar se existe
+    const [existing] = await connection.execute(
+      'SELECT * FROM recurring_transactions WHERE id = ?',
+      [id]
+    );
+
+    if (existing.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Transação recorrente não encontrada' });
+    }
+
+    const current = existing[0];
+    
+    // Se mudou data inicial ou frequência, recalcular próxima ocorrência
+    let nextOccurrence = current.next_occurrence;
+    if (start_date !== current.start_date || frequency !== current.frequency ||
+        day_of_month !== current.day_of_month || day_of_week !== current.day_of_week) {
+      nextOccurrence = calculateNextOccurrence(
+        start_date || current.start_date,
+        frequency || current.frequency,
+        day_of_month !== undefined ? day_of_month : current.day_of_month,
+        day_of_week !== undefined ? day_of_week : current.day_of_week
+      );
+    }
+
+    const tipoNormalizado = tipo ? tipo.toLowerCase() : current.tipo;
+
+    await connection.execute(`
+      UPDATE recurring_transactions 
+      SET descricao = COALESCE(?, descricao),
+          categoria = COALESCE(?, categoria),
+          tipo = COALESCE(?, tipo),
+          valor = COALESCE(?, valor),
+          status = COALESCE(?, status),
+          metodo_pagamento = COALESCE(?, metodo_pagamento),
+          origem = COALESCE(?, origem),
+          observacoes = COALESCE(?, observacoes),
+          frequency = COALESCE(?, frequency),
+          start_date = COALESCE(?, start_date),
+          end_date = ?,
+          next_occurrence = ?,
+          day_of_month = COALESCE(?, day_of_month),
+          day_of_week = COALESCE(?, day_of_week),
+          notify_days_before = COALESCE(?, notify_days_before),
+          notify_email = COALESCE(?, notify_email),
+          is_active = COALESCE(?, is_active),
+          auto_create = COALESCE(?, auto_create),
+          max_occurrences = COALESCE(?, max_occurrences),
+          updated_at = NOW()
+      WHERE id = ?
+    `, [
+      descricao, categoria, tipoNormalizado, valor, status, metodo_pagamento,
+      origem, observacoes, frequency, start_date, end_date, nextOccurrence,
+      day_of_month, day_of_week, notify_days_before, notify_email,
+      is_active, auto_create, max_occurrences, id
+    ]);
+
+    logger.info('Transação recorrente atualizada', { id });
+    res.json({ success: true, message: 'Transação recorrente atualizada com sucesso' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao atualizar transação recorrente', details: error.message });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// Excluir transação recorrente
+app.delete('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Garantir que estamos usando o banco correto (com query, não execute)
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+
+    const [result] = await connection.execute(
+      'DELETE FROM recurring_transactions WHERE id = ?',
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Transação recorrente não encontrada' });
+    }
+
+    logger.info('Transação recorrente excluída', { id });
+    res.json({ success: true, message: 'Transação recorrente excluída com sucesso' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao excluir transação recorrente' });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// Processar recorrências (executar transações pendentes)
+app.post('/api/financial/recurring/process', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Garantir que estamos usando o banco correto (com query, não execute)
+    await connection.query('USE `rare_toy_companion`');
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Buscar recorrências ativas com próxima ocorrência hoje ou antes
+    const [recurring] = await connection.execute(`
+      SELECT * FROM recurring_transactions
+      WHERE is_active = TRUE
+        AND auto_create = TRUE
+        AND next_occurrence <= ?
+        AND (end_date IS NULL OR next_occurrence <= end_date)
+        AND (max_occurrences IS NULL OR occurrences_count < max_occurrences)
+      ORDER BY next_occurrence ASC
+    `, [today]);
+
+    const processed = [];
+    const errors = [];
+
+    for (const rec of recurring) {
+      try {
+        // Criar transação financeira
+        const [result] = await connection.execute(`
+          INSERT INTO financial_transactions (
+            descricao, categoria, tipo, valor, status, 
+            metodo_pagamento, data, origem, observacoes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          rec.descricao, rec.categoria, rec.tipo, rec.valor, rec.status,
+          rec.metodo_pagamento, rec.next_occurrence, rec.origem, rec.observacoes
+        ]);
+
+        const transactionId = result.insertId;
+
+        // Registrar ocorrência
+        await connection.execute(`
+          INSERT INTO recurring_transaction_occurrences (
+            id, recurring_transaction_id, financial_transaction_id,
+            scheduled_date, created_at, status
+          ) VALUES (?, ?, ?, ?, NOW(), 'created')
+        `, [crypto.randomUUID(), rec.id, transactionId, rec.next_occurrence]);
+
+        // Calcular próxima ocorrência
+        const nextOccurrence = calculateNextOccurrence(
+          rec.next_occurrence,
+          rec.frequency,
+          rec.day_of_month,
+          rec.day_of_week
+        );
+
+        // Atualizar recorrência
+        await connection.execute(`
+          UPDATE recurring_transactions
+          SET next_occurrence = ?,
+              occurrences_count = occurrences_count + 1,
+              updated_at = NOW()
+          WHERE id = ?
+        `, [nextOccurrence, rec.id]);
+
+        processed.push({
+          recurring_id: rec.id,
+          transaction_id: transactionId,
+          date: rec.next_occurrence
+        });
+
+        logger.info('Transação recorrente processada', { 
+          recurring_id: rec.id, 
+          transaction_id: transactionId 
+        });
+      } catch (error) {
+        errors.push({
+          recurring_id: rec.id,
+          error: error.message
+        });
+        logger.logError(error, req);
+      }
+    }
+
+    res.json({
+      success: true,
+      processed: processed.length,
+      errors: errors.length,
+      details: { processed, errors }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao processar recorrências', details: error.message });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// Processar notificações de recorrências próximas
+app.post('/api/financial/recurring/notify', authenticateAdmin, async (req, res) => {
+  const { notifyRecurringTransactions } = require('../scripts/notify-recurring-transactions.cjs');
+  const { initializeEmailService } = require('../config/emailService.cjs');
+  
+  try {
+    // Inicializar serviço de email se necessário
+    initializeEmailService();
+    
+    // Processar notificações
+    await notifyRecurringTransactions();
+    
+    res.json({ 
+      success: true, 
+      message: 'Notificações processadas com sucesso' 
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ 
+      error: 'Erro ao processar notificações', 
+      details: error.message 
+    });
+  }
+});
+
+// Buscar ocorrências de uma recorrência
+app.get('/api/financial/recurring/:id/occurrences', authenticateAdmin, async (req, res) => {
+  // Obter conexão direta do pool (já configurada para rare_toy_companion)
+  const connection = await pool.getConnection();
+  
+  try {
+    // Garantir que estamos usando o banco correto (com query, não execute)
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const [rows] = await connection.execute(`
+      SELECT o.*, t.data as transaction_date, t.status as transaction_status
+      FROM recurring_transaction_occurrences o
+      LEFT JOIN financial_transactions t ON o.financial_transaction_id = t.id
+      WHERE o.recurring_transaction_id = ?
+      ORDER BY o.scheduled_date DESC
+      LIMIT 50
+    `, [id]);
+
+    res.json({ occurrences: rows });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar ocorrências' });
+  } finally {
+    connection.release();
+  }
+});
+
+// ==================== RELATÓRIOS EXECUTIVOS ====================
+
+// Relatório P&L (Profit & Loss)
+app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { start_date, end_date } = req.query;
+    const startDate = start_date || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+    const endDate = end_date || new Date().toISOString().split('T')[0];
+    
+    // Receitas (entradas)
+    const [receitas] = await connection.execute(`
+      SELECT 
+        categoria,
+        SUM(valor) as total,
+        COUNT(*) as quantidade
+      FROM financial_transactions
+      WHERE tipo = 'entrada'
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+      GROUP BY categoria
+      ORDER BY total DESC
+    `, [startDate, endDate]);
+    
+    // Despesas (saídas)
+    const [despesas] = await connection.execute(`
+      SELECT 
+        categoria,
+        SUM(valor) as total,
+        COUNT(*) as quantidade
+      FROM financial_transactions
+      WHERE tipo = 'saida'
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+      GROUP BY categoria
+      ORDER BY total DESC
+    `, [startDate, endDate]);
+    
+    // Totais
+    const [totais] = await connection.execute(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN tipo = 'entrada' AND status = 'Pago' THEN valor ELSE 0 END), 0) as total_receitas,
+        COALESCE(SUM(CASE WHEN tipo = 'saida' AND status = 'Pago' THEN valor ELSE 0 END), 0) as total_despesas,
+        COALESCE(SUM(CASE WHEN tipo = 'entrada' AND status = 'Pago' THEN valor ELSE 0 END), 0) - 
+        COALESCE(SUM(CASE WHEN tipo = 'saida' AND status = 'Pago' THEN valor ELSE 0 END), 0) as lucro_liquido
+      FROM financial_transactions
+      WHERE data BETWEEN ? AND ?
+    `, [startDate, endDate]);
+    
+    res.json({
+      periodo: { start_date: startDate, end_date: endDate },
+      receitas: receitas.map(r => ({ ...r, total: parseFloat(r.total) })),
+      despesas: despesas.map(d => ({ ...d, total: parseFloat(d.total) })),
+      totais: {
+        total_receitas: parseFloat(totais[0].total_receitas),
+        total_despesas: parseFloat(totais[0].total_despesas),
+        lucro_liquido: parseFloat(totais[0].lucro_liquido),
+        margem_lucro: totais[0].total_receitas > 0 
+          ? ((totais[0].lucro_liquido / totais[0].total_receitas) * 100).toFixed(2)
+          : 0
+      }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao gerar relatório P&L', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Relatório DRE (Demonstração do Resultado do Exercício)
+app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { start_date, end_date } = req.query;
+    const startDate = start_date || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+    const endDate = end_date || new Date().toISOString().split('T')[0];
+    
+    // Receita Bruta
+    const [receitaBruta] = await connection.execute(`
+      SELECT COALESCE(SUM(valor), 0) as total
+      FROM financial_transactions
+      WHERE tipo = 'entrada'
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+    `, [startDate, endDate]);
+    
+    // Deduções (impostos, devoluções, etc) - categorias específicas
+    const [deducoes] = await connection.execute(`
+      SELECT COALESCE(SUM(valor), 0) as total
+      FROM financial_transactions
+      WHERE tipo = 'saida'
+        AND categoria IN ('Impostos', 'Devoluções', 'Cancelamentos')
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+    `, [startDate, endDate]);
+    
+    // Receita Líquida
+    const receitaLiquida = parseFloat(receitaBruta[0].total) - parseFloat(deducoes[0].total);
+    
+    // CMV (Custo das Mercadorias Vendidas)
+    const [cmv] = await connection.execute(`
+      SELECT COALESCE(SUM(valor), 0) as total
+      FROM financial_transactions
+      WHERE tipo = 'saida'
+        AND categoria IN ('Custo de Mercadorias', 'Compras', 'Estoque')
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+    `, [startDate, endDate]);
+    
+    // Lucro Bruto
+    const lucroBruto = receitaLiquida - parseFloat(cmv[0].total);
+    
+    // Despesas Operacionais
+    const [despesasOperacionais] = await connection.execute(`
+      SELECT 
+        categoria,
+        COALESCE(SUM(valor), 0) as total
+      FROM financial_transactions
+      WHERE tipo = 'saida'
+        AND categoria NOT IN ('Custo de Mercadorias', 'Compras', 'Estoque', 'Impostos', 'Devoluções', 'Cancelamentos')
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+      GROUP BY categoria
+    `, [startDate, endDate]);
+    
+    const totalDespesasOperacionais = despesasOperacionais.reduce((sum, d) => sum + parseFloat(d.total), 0);
+    
+    // Lucro Operacional
+    const lucroOperacional = lucroBruto - totalDespesasOperacionais;
+    
+    // Receitas/Despesas Não Operacionais
+    const [naoOperacionais] = await connection.execute(`
+      SELECT 
+        tipo,
+        COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as receitas_nao_operacionais,
+        COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as despesas_nao_operacionais
+      FROM financial_transactions
+      WHERE categoria IN ('Juros', 'Rendimentos', 'Multas', 'Descontos Financeiros')
+        AND data BETWEEN ? AND ?
+        AND status = 'Pago'
+    `, [startDate, endDate]);
+    
+    const receitasNaoOp = parseFloat(naoOperacionais[0]?.receitas_nao_operacionais || 0);
+    const despesasNaoOp = parseFloat(naoOperacionais[0]?.despesas_nao_operacionais || 0);
+    
+    // Lucro Antes do IR
+    const lucroAntesIR = lucroOperacional + receitasNaoOp - despesasNaoOp;
+    
+    // IR e CSLL (simulado - pode ser configurável)
+    const aliquotaIR = 0.15; // 15%
+    const aliquotaCSLL = 0.09; // 9%
+    const ir = lucroAntesIR > 0 ? lucroAntesIR * aliquotaIR : 0;
+    const csll = lucroAntesIR > 0 ? lucroAntesIR * aliquotaCSLL : 0;
+    
+    // Lucro Líquido
+    const lucroLiquido = lucroAntesIR - ir - csll;
+    
+    res.json({
+      periodo: { start_date: startDate, end_date: endDate },
+      receita_bruta: parseFloat(receitaBruta[0].total),
+      deducoes: parseFloat(deducoes[0].total),
+      receita_liquida: receitaLiquida,
+      cmv: parseFloat(cmv[0].total),
+      lucro_bruto: lucroBruto,
+      despesas_operacionais: {
+        detalhado: despesasOperacionais.map(d => ({ categoria: d.categoria, total: parseFloat(d.total) })),
+        total: totalDespesasOperacionais
+      },
+      lucro_operacional: lucroOperacional,
+      resultado_nao_operacional: {
+        receitas: receitasNaoOp,
+        despesas: despesasNaoOp,
+        resultado: receitasNaoOp - despesasNaoOp
+      },
+      lucro_antes_ir: lucroAntesIR,
+      impostos: {
+        ir: ir,
+        csll: csll,
+        total: ir + csll
+      },
+      lucro_liquido: lucroLiquido,
+      indicadores: {
+        margem_bruta: receitaLiquida > 0 ? ((lucroBruto / receitaLiquida) * 100).toFixed(2) : 0,
+        margem_operacional: receitaLiquida > 0 ? ((lucroOperacional / receitaLiquida) * 100).toFixed(2) : 0,
+        margem_liquida: receitaLiquida > 0 ? ((lucroLiquido / receitaLiquida) * 100).toFixed(2) : 0
+      }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao gerar relatório DRE', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Análise de Tendências
+app.get('/api/financial/reports/trends', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { months = 12 } = req.query;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - parseInt(months));
+    
+    // Agrupar por mês
+    const [monthlyData] = await connection.execute(`
+      SELECT 
+        DATE_FORMAT(data, '%Y-%m') as mes,
+        DATE_FORMAT(data, '%b/%Y') as mes_formatado,
+        SUM(CASE WHEN tipo = 'entrada' AND status = 'Pago' THEN valor ELSE 0 END) as receitas,
+        SUM(CASE WHEN tipo = 'saida' AND status = 'Pago' THEN valor ELSE 0 END) as despesas,
+        COUNT(CASE WHEN tipo = 'entrada' THEN 1 END) as qtd_receitas,
+        COUNT(CASE WHEN tipo = 'saida' THEN 1 END) as qtd_despesas
+      FROM financial_transactions
+      WHERE data >= ? AND data <= ?
+      GROUP BY DATE_FORMAT(data, '%Y-%m')
+      ORDER BY mes ASC
+    `, [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]);
+    
+    // Calcular tendências
+    const dadosComTendencias = monthlyData.map((mes, index) => {
+      const receitas = parseFloat(mes.receitas);
+      const despesas = parseFloat(mes.despesas);
+      const saldo = receitas - despesas;
+      
+      let tendenciaReceitas = 'estavel';
+      let tendenciaDespesas = 'estavel';
+      
+      if (index > 0) {
+        const mesAnterior = monthlyData[index - 1];
+        const receitasAnterior = parseFloat(mesAnterior.receitas);
+        const despesasAnterior = parseFloat(mesAnterior.despesas);
+        
+        const variacaoReceitas = ((receitas - receitasAnterior) / receitasAnterior) * 100;
+        const variacaoDespesas = ((despesas - despesasAnterior) / despesasAnterior) * 100;
+        
+        tendenciaReceitas = variacaoReceitas > 5 ? 'alta' : variacaoReceitas < -5 ? 'baixa' : 'estavel';
+        tendenciaDespesas = variacaoDespesas > 5 ? 'alta' : variacaoDespesas < -5 ? 'baixa' : 'estavel';
+      }
+      
+      return {
+        ...mes,
+        receitas,
+        despesas,
+        saldo,
+        tendencia_receitas: tendenciaReceitas,
+        tendencia_despesas: tendenciaDespesas
+      };
+    });
+    
+    // Calcular médias e projeções
+    const receitasMedias = dadosComTendencias.map(d => d.receitas);
+    const despesasMedias = dadosComTendencias.map(d => d.despesas);
+    const mediaReceitas = receitasMedias.reduce((a, b) => a + b, 0) / receitasMedias.length;
+    const mediaDespesas = despesasMedias.reduce((a, b) => a + b, 0) / despesasMedias.length;
+    
+    res.json({
+      periodo: { meses: parseInt(months), start_date: startDate.toISOString().split('T')[0], end_date: endDate.toISOString().split('T')[0] },
+      dados_mensais: dadosComTendencias,
+      medias: {
+        receitas: mediaReceitas,
+        despesas: mediaDespesas,
+        saldo: mediaReceitas - mediaDespesas
+      },
+      crescimento: {
+        receitas: dadosComTendencias.length > 1 
+          ? ((dadosComTendencias[dadosComTendencias.length - 1].receitas - dadosComTendencias[0].receitas) / dadosComTendencias[0].receitas * 100).toFixed(2)
+          : 0,
+        despesas: dadosComTendencias.length > 1
+          ? ((dadosComTendencias[dadosComTendencias.length - 1].despesas - dadosComTendencias[0].despesas) / dadosComTendencias[0].despesas * 100).toFixed(2)
+          : 0
+      }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao gerar análise de tendências', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// ==================== ORÇAMENTOS E PLANEJAMENTO ====================
+
+// Listar todos os orçamentos
+app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    // Verificar se tabela existe e criar se necessário
+    try {
+      const [tableCheck] = await connection.query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'budgets'
+      `);
+      
+      if (tableCheck[0].count === 0) {
+        const { createBudgetsTable } = require('./scripts/create-budgets-table.cjs');
+        await createBudgetsTable();
+      }
+    } catch (createError) {
+      // Continuar mesmo se houver erro na verificação
+    }
+    
+    const { active_only, tipo, categoria } = req.query;
+    
+    let query = `
+      SELECT 
+        id, nome, descricao, tipo, categoria, valor_orcado, valor_real,
+        data_inicio, data_fim, alerta_percentual, is_active,
+        created_at, updated_at, created_by,
+        CASE 
+          WHEN valor_orcado > 0 THEN (valor_real / valor_orcado * 100)
+          ELSE 0
+        END as percentual_atingido
+      FROM budgets
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (active_only === 'true') {
+      query += ' AND is_active = TRUE';
+    }
+    
+    if (tipo) {
+      query += ' AND tipo = ?';
+      params.push(tipo);
+    }
+    
+    if (categoria) {
+      query += ' AND categoria = ?';
+      params.push(categoria);
+    }
+    
+    query += ' ORDER BY data_inicio DESC, created_at DESC';
+    
+    const [rows] = await connection.execute(query, params);
+    
+    // Atualizar valores reais baseados em transações
+    for (const budget of rows) {
+      const [realValue] = await connection.execute(`
+        SELECT COALESCE(SUM(valor), 0) as total
+        FROM financial_transactions
+        WHERE tipo = 'saida'
+          AND categoria = ?
+          AND data BETWEEN ? AND ?
+          AND status = 'Pago'
+      `, [budget.categoria, budget.data_inicio, budget.data_fim]);
+      
+      const valorReal = parseFloat(realValue[0].total);
+      
+      if (valorReal !== budget.valor_real) {
+        await connection.execute(`
+          UPDATE budgets
+          SET valor_real = ?
+          WHERE id = ?
+        `, [valorReal, budget.id]);
+        
+        budget.valor_real = valorReal;
+        budget.percentual_atingido = budget.valor_orcado > 0 
+          ? (valorReal / budget.valor_orcado * 100).toFixed(2)
+          : 0;
+      }
+    }
+    
+    res.json({ budgets: rows, total: rows.length });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar orçamentos', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Buscar orçamento por ID
+app.get('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const [rows] = await connection.execute(
+      'SELECT * FROM budgets WHERE id = ?',
+      [id]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Orçamento não encontrado' });
+    }
+    
+    res.json({ budget: rows[0] });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar orçamento', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Criar orçamento
+app.post('/api/financial/budgets', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const {
+      nome, descricao, tipo, categoria, valor_orcado,
+      data_inicio, data_fim, alerta_percentual
+    } = req.body;
+    
+    if (!nome || !tipo || !valor_orcado || !data_inicio || !data_fim) {
+      connection.release();
+      return res.status(400).json({ 
+        error: 'Campos obrigatórios: nome, tipo, valor_orcado, data_inicio, data_fim' 
+      });
+    }
+    
+    if (new Date(data_fim) < new Date(data_inicio)) {
+      connection.release();
+      return res.status(400).json({ error: 'Data fim deve ser posterior à data início' });
+    }
+    
+    const id = crypto.randomUUID();
+    const safeAlertaPercentual = alerta_percentual || 80;
+    
+    await connection.execute(`
+      INSERT INTO budgets (
+        id, nome, descricao, tipo, categoria, valor_orcado, valor_real,
+        data_inicio, data_fim, alerta_percentual, is_active, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, TRUE, ?)
+    `, [
+      id, nome, descricao || null, tipo, categoria || null, 
+      valor_orcado, data_inicio, data_fim, safeAlertaPercentual,
+      req.user?.email || null
+    ]);
+    
+    logger.info('Orçamento criado', { id, nome });
+    res.json({ 
+      success: true, 
+      message: 'Orçamento criado com sucesso',
+      budget: { id, nome, tipo, valor_orcado }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao criar orçamento', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Atualizar orçamento
+app.put('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const {
+      nome, descricao, tipo, categoria, valor_orcado, valor_real,
+      data_inicio, data_fim, alerta_percentual, is_active
+    } = req.body;
+    
+    // Verificar se existe
+    const [existing] = await connection.execute(
+      'SELECT * FROM budgets WHERE id = ?',
+      [id]
+    );
+    
+    if (existing.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Orçamento não encontrado' });
+    }
+    
+    // Registrar histórico se valor mudou
+    if (valor_orcado !== undefined && valor_orcado !== existing[0].valor_orcado) {
+      await connection.execute(`
+        INSERT INTO budget_history (
+          id, budget_id, valor_anterior, valor_novo,
+          valor_real_anterior, valor_real_novo, changed_by
+        ) VALUES (UUID(), ?, ?, ?, ?, ?, ?)
+      `, [
+        id, existing[0].valor_orcado, valor_orcado,
+        existing[0].valor_real, valor_real !== undefined ? valor_real : existing[0].valor_real,
+        req.user?.email || null
+      ]);
+    }
+    
+    // Construir query de update dinamicamente
+    const updates = [];
+    const params = [];
+    
+    if (nome !== undefined) { updates.push('nome = ?'); params.push(nome); }
+    if (descricao !== undefined) { updates.push('descricao = ?'); params.push(descricao); }
+    if (tipo !== undefined) { updates.push('tipo = ?'); params.push(tipo); }
+    if (categoria !== undefined) { updates.push('categoria = ?'); params.push(categoria); }
+    if (valor_orcado !== undefined) { updates.push('valor_orcado = ?'); params.push(valor_orcado); }
+    if (valor_real !== undefined) { updates.push('valor_real = ?'); params.push(valor_real); }
+    if (data_inicio !== undefined) { updates.push('data_inicio = ?'); params.push(data_inicio); }
+    if (data_fim !== undefined) { updates.push('data_fim = ?'); params.push(data_fim); }
+    if (alerta_percentual !== undefined) { updates.push('alerta_percentual = ?'); params.push(alerta_percentual); }
+    if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
+    
+    if (updates.length === 0) {
+      connection.release();
+      return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+    }
+    
+    updates.push('updated_at = NOW()');
+    params.push(id);
+    
+    await connection.execute(`
+      UPDATE budgets
+      SET ${updates.join(', ')}
+      WHERE id = ?
+    `, params);
+    
+    logger.info('Orçamento atualizado', { id });
+    res.json({ success: true, message: 'Orçamento atualizado com sucesso' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao atualizar orçamento', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Excluir orçamento
+app.delete('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const [result] = await connection.execute(
+      'DELETE FROM budgets WHERE id = ?',
+      [id]
+    );
+    
+    if (result.affectedRows === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Orçamento não encontrado' });
+    }
+    
+    logger.info('Orçamento excluído', { id });
+    res.json({ success: true, message: 'Orçamento excluído com sucesso' });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao excluir orçamento', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Buscar alertas de orçamento
+app.get('/api/financial/budgets/:id/alerts', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { id } = req.params;
+    const [rows] = await connection.execute(
+      'SELECT * FROM budget_alerts WHERE budget_id = ? ORDER BY created_at DESC LIMIT 50',
+      [id]
+    );
+    
+    res.json({ alerts: rows });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao buscar alertas', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Processar alertas de orçamento (verificar e criar alertas)
+app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const [budgets] = await connection.execute(`
+      SELECT * FROM budgets
+      WHERE is_active = TRUE
+        AND CURDATE() BETWEEN data_inicio AND data_fim
+    `);
+    
+    const alerts = [];
+    
+    for (const budget of budgets) {
+      // Atualizar valor real
+      const [realValue] = await connection.execute(`
+        SELECT COALESCE(SUM(valor), 0) as total
+        FROM financial_transactions
+        WHERE tipo = 'saida'
+          AND categoria = ?
+          AND data BETWEEN ? AND ?
+          AND status = 'Pago'
+      `, [budget.categoria, budget.data_inicio, budget.data_fim]);
+      
+      const valorReal = parseFloat(realValue[0].total);
+      const percentualAtingido = budget.valor_orcado > 0 
+        ? (valorReal / budget.valor_orcado) * 100 
+        : 0;
+      
+      // Atualizar valor real no orçamento
+      await connection.execute(`
+        UPDATE budgets SET valor_real = ? WHERE id = ?
+      `, [valorReal, budget.id]);
+      
+      // Verificar se precisa criar alerta
+      if (percentualAtingido >= budget.alerta_percentual) {
+        let tipoAlerta = 'alerta';
+        let mensagem = '';
+        
+        if (percentualAtingido >= 100) {
+          tipoAlerta = 'extrapolado';
+          mensagem = `Orçamento "${budget.nome}" foi extrapolado! Utilizado ${percentualAtingido.toFixed(2)}% do valor orçado.`;
+        } else if (percentualAtingido >= budget.alerta_percentual) {
+          tipoAlerta = 'alerta';
+          mensagem = `Orçamento "${budget.nome}" atingiu ${percentualAtingido.toFixed(2)}% do valor orçado.`;
+        }
+        
+        // Verificar se já existe alerta recente (últimas 24h)
+        const [existingAlert] = await connection.execute(`
+          SELECT id FROM budget_alerts
+          WHERE budget_id = ?
+            AND tipo = ?
+            AND created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+          LIMIT 1
+        `, [budget.id, tipoAlerta]);
+        
+        if (existingAlert.length === 0) {
+          await connection.execute(`
+            INSERT INTO budget_alerts (
+              id, budget_id, tipo, percentual_atingido, mensagem, foi_notificado
+            ) VALUES (UUID(), ?, ?, ?, ?, FALSE)
+          `, [budget.id, tipoAlerta, percentualAtingido.toFixed(2), mensagem]);
+          
+          alerts.push({ budget_id: budget.id, budget_nome: budget.nome, tipo: tipoAlerta, mensagem });
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      processed: budgets.length,
+      alerts_created: alerts.length,
+      alerts: alerts
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao processar alertas', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Comparativo Período a Período
+app.get('/api/financial/reports/comparative', authenticateAdmin, async (req, res) => {
+  const connection = await pool.getConnection();
+  
+  try {
+    await connection.query('USE `rare_toy_companion`');
+    
+    const { period1_start, period1_end, period2_start, period2_end } = req.query;
+    
+    if (!period1_start || !period1_end || !period2_start || !period2_end) {
+      return res.status(400).json({ error: 'Todos os períodos devem ser informados' });
+    }
+    
+    // Período 1
+    const [periodo1] = await connection.execute(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN tipo = 'entrada' AND status = 'Pago' THEN valor ELSE 0 END), 0) as receitas,
+        COALESCE(SUM(CASE WHEN tipo = 'saida' AND status = 'Pago' THEN valor ELSE 0 END), 0) as despesas,
+        COUNT(*) as total_transacoes
+      FROM financial_transactions
+      WHERE data BETWEEN ? AND ?
+    `, [period1_start, period1_end]);
+    
+    // Período 2
+    const [periodo2] = await connection.execute(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN tipo = 'entrada' AND status = 'Pago' THEN valor ELSE 0 END), 0) as receitas,
+        COALESCE(SUM(CASE WHEN tipo = 'saida' AND status = 'Pago' THEN valor ELSE 0 END), 0) as despesas,
+        COUNT(*) as total_transacoes
+      FROM financial_transactions
+      WHERE data BETWEEN ? AND ?
+    `, [period2_start, period2_end]);
+    
+    const p1 = {
+      receitas: parseFloat(periodo1[0].receitas),
+      despesas: parseFloat(periodo1[0].despesas),
+      saldo: parseFloat(periodo1[0].receitas) - parseFloat(periodo1[0].despesas),
+      total_transacoes: periodo1[0].total_transacoes
+    };
+    
+    const p2 = {
+      receitas: parseFloat(periodo2[0].receitas),
+      despesas: parseFloat(periodo2[0].despesas),
+      saldo: parseFloat(periodo2[0].receitas) - parseFloat(periodo2[0].despesas),
+      total_transacoes: periodo2[0].total_transacoes
+    };
+    
+    // Calcular variações
+    const variacaoReceitas = p1.receitas > 0 ? ((p2.receitas - p1.receitas) / p1.receitas) * 100 : 0;
+    const variacaoDespesas = p1.despesas > 0 ? ((p2.despesas - p1.despesas) / p1.despesas) * 100 : 0;
+    const variacaoSaldo = p1.saldo !== 0 ? ((p2.saldo - p1.saldo) / Math.abs(p1.saldo)) * 100 : 0;
+    
+    res.json({
+      periodo1: {
+        ...p1,
+        periodo: { start: period1_start, end: period1_end }
+      },
+      periodo2: {
+        ...p2,
+        periodo: { start: period2_start, end: period2_end }
+      },
+      variacoes: {
+        receitas: {
+          absoluta: p2.receitas - p1.receitas,
+          percentual: variacaoReceitas.toFixed(2),
+          tendencia: variacaoReceitas > 0 ? 'alta' : variacaoReceitas < 0 ? 'baixa' : 'estavel'
+        },
+        despesas: {
+          absoluta: p2.despesas - p1.despesas,
+          percentual: variacaoDespesas.toFixed(2),
+          tendencia: variacaoDespesas > 0 ? 'alta' : variacaoDespesas < 0 ? 'baixa' : 'estavel'
+        },
+        saldo: {
+          absoluta: p2.saldo - p1.saldo,
+          percentual: variacaoSaldo.toFixed(2),
+          tendencia: variacaoSaldo > 0 ? 'alta' : variacaoSaldo < 0 ? 'baixa' : 'estavel'
+        }
+      }
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ error: 'Erro ao gerar comparativo', details: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
 // ==================== TESTE DE TABELAS ====================
 
 // Teste específico para contas e cartões
@@ -13825,6 +16951,211 @@ app.delete('/api/financial/contas/:id', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao excluir conta bancária:', error);
     res.status(500).json({ error: 'Erro ao excluir conta bancária', details: error.message });
+  }
+});
+
+// ==================== ENDPOINT PAGAMENTO DE CONTA ====================
+// Processar pagamento de transação com conta bancária
+app.post('/api/financial/transactions/:id/pay', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { account_id, data_pagamento, observacoes } = req.body;
+
+    if (!account_id) {
+      return res.status(400).json({ error: 'account_id é obrigatório' });
+    }
+
+    // Buscar transação
+    const [transactions] = await pool.execute(
+      'SELECT * FROM financial_transactions WHERE id = ?',
+      [id]
+    );
+
+    if (transactions.length === 0) {
+      return res.status(404).json({ error: 'Transação não encontrada' });
+    }
+
+    const transaction = transactions[0];
+
+    // Verificar se já está paga
+    if (transaction.status === 'Pago') {
+      return res.status(400).json({ error: 'Esta transação já está paga' });
+    }
+
+    // Buscar conta bancária (tentar banco primeiro, fallback para dados simulados)
+    let account = null;
+    
+    try {
+      const [accounts] = await pool.execute(
+        'SELECT * FROM financial_accounts WHERE id = ? AND status = ?',
+        [account_id, 'ativo']
+      );
+      
+      if (accounts.length > 0) {
+        account = accounts[0];
+      }
+    } catch (dbError) {
+      // Se a tabela não existir, usar dados simulados
+      if (dbError.code === 'ER_NO_SUCH_TABLE') {
+        console.log('⚠️ Tabela financial_accounts não existe, usando dados simulados');
+      } else {
+        throw dbError;
+      }
+    }
+    
+    // Se não encontrou no banco, usar dados simulados
+    if (!account) {
+      const contasSimuladas = [
+        {
+          id: 1,
+          nome: 'Conta Principal',
+          banco: 'Nubank',
+          agencia: '0001',
+          conta: '12345-6',
+          tipo: 'corrente',
+          saldo: 15000.50,
+          limite: 5000.00,
+          status: 'ativo',
+          ultima_movimentacao: '2024-10-18',
+          observacoes: 'Conta principal da empresa',
+          created_at: '2024-01-15',
+          updated_at: '2024-10-18'
+        },
+        {
+          id: 2,
+          nome: 'Conta Poupança',
+          banco: 'Banco do Brasil',
+          agencia: '1234',
+          conta: '98765-4',
+          tipo: 'poupanca',
+          saldo: 25000.00,
+          limite: 0.00,
+          status: 'ativo',
+          ultima_movimentacao: '2024-10-17',
+          observacoes: 'Reserva de emergência',
+          created_at: '2024-02-01',
+          updated_at: '2024-10-17'
+        }
+      ];
+      
+      account = contasSimuladas.find(c => c.id === parseInt(account_id) && c.status === 'ativo');
+      
+      if (!account) {
+        return res.status(404).json({ error: 'Conta bancária não encontrada ou inativa' });
+      }
+    }
+
+    // Verificar saldo para saídas
+    if (transaction.tipo === 'saida') {
+      const saldoDisponivel = parseFloat(account.saldo) + (parseFloat(account.limite) || 0);
+      if (saldoDisponivel < parseFloat(transaction.valor)) {
+        return res.status(400).json({ 
+          error: `Saldo insuficiente. Saldo disponível: R$ ${saldoDisponivel.toFixed(2)}` 
+        });
+      }
+    }
+
+    // Iniciar transação do banco de dados
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      const dataPagamento = data_pagamento || new Date().toISOString().split('T')[0];
+      
+      // 1. Atualizar status da transação
+      const observacoesCompletas = observacoes 
+        ? `${transaction.observacoes || ''}\n\n[Pagamento realizado via ${account.nome} - ${account.banco} em ${dataPagamento}] ${observacoes}`.trim()
+        : `${transaction.observacoes || ''}\n\n[Pagamento realizado via ${account.nome} - ${account.banco} em ${dataPagamento}]`.trim();
+
+      await connection.execute(`
+        UPDATE financial_transactions 
+        SET status = 'Pago',
+            data = ?,
+            metodo_pagamento = ?,
+            observacoes = ?,
+            updated_at = NOW()
+        WHERE id = ?
+      `, [
+        dataPagamento,
+        `Conta: ${account.nome} (${account.banco})`,
+        observacoesCompletas,
+        id
+      ]);
+
+      // 2. Atualizar saldo da conta bancária (apenas se tabela existir)
+      let novoSaldo;
+      if (transaction.tipo === 'saida') {
+        novoSaldo = parseFloat(account.saldo) - parseFloat(transaction.valor);
+      } else {
+        novoSaldo = parseFloat(account.saldo) + parseFloat(transaction.valor);
+      }
+
+      // Tentar atualizar no banco, mas ignorar se tabela não existir
+      try {
+        await connection.execute(`
+          UPDATE financial_accounts 
+          SET saldo = ?,
+              ultima_movimentacao = ?,
+              updated_at = NOW()
+          WHERE id = ?
+        `, [novoSaldo, dataPagamento, account_id]);
+      } catch (updateError) {
+        if (updateError.code !== 'ER_NO_SUCH_TABLE') {
+          throw updateError;
+        }
+        console.warn('⚠️ Tabela financial_accounts não encontrada, saldo não será atualizado no banco (usando dados simulados)');
+      }
+
+      // 3. Criar registro de pagamento (se tabela existir)
+      try {
+        await connection.execute(`
+          INSERT INTO financial_payments (
+            transaction_id, account_id, valor, data_pagamento, tipo, observacoes, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+        `, [
+          id,
+          account_id,
+          transaction.valor,
+          dataPagamento,
+          transaction.tipo,
+          observacoes || null
+        ]);
+      } catch (e) {
+        // Ignorar se tabela não existir
+        console.warn('⚠️ Tabela financial_payments não encontrada, pulando registro de pagamento');
+      }
+
+      // Confirmar transação
+      await connection.commit();
+      connection.release();
+
+      console.log(`✅ Pagamento processado: Transação ${id} paga via conta ${account.nome}`);
+
+      res.json({
+        success: true,
+        message: 'Pagamento processado com sucesso',
+        transaction: {
+          id: parseInt(id),
+          status: 'Pago',
+          data: dataPagamento
+        },
+        account: {
+          id: account.id,
+          nome: account.nome,
+          novo_saldo: novoSaldo
+        }
+      });
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('❌ Erro ao processar pagamento:', error);
+    res.status(500).json({ 
+      error: 'Erro ao processar pagamento', 
+      details: error?.message || 'Erro desconhecido'
+    });
   }
 });
 
@@ -14609,35 +17940,174 @@ app.delete('/api/clientes/:id', async (req, res) => {
 // FORNECEDORES
 app.get('/api/financial/fornecedores', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT * FROM fornecedores ORDER BY nome');
-    res.json({ success: true, fornecedores: rows });
+    console.log('🔍 GET /api/financial/fornecedores - Iniciando busca...');
+    
+    // Garantir que estamos usando o banco correto
+    // IMPORTANTE: Sempre usar rare_toy_companion, mesmo se .env tiver outro valor
+    const dbName = 'rare_toy_companion';
+    console.log(`📊 Banco configurado (forçado): ${dbName}`);
+    console.log(`📊 MYSQL_DATABASE do env: ${process.env.MYSQL_DATABASE}`);
+    console.log(`📊 Pool database config: ${pool.config?.database || 'não definido'}`);
+    
+    let connection;
+    try {
+      // Obter conexão do pool
+      connection = await pool.getConnection();
+      console.log('✅ Conexão obtida do pool');
+      
+      // Buscar fornecedores usando nome completo do banco para garantir
+      // Não depender do banco padrão da conexão
+      const query = `SELECT * FROM \`rare_toy_companion\`.\`fornecedores\` ORDER BY nome`;
+      console.log(`📝 Executando query (forçando banco): ${query}`);
+      const [rows] = await connection.execute(query);
+      console.log(`✅ ${rows.length} fornecedores encontrados`);
+      
+      connection.release();
+      res.json({ success: true, fornecedores: rows || [] });
+    } catch (queryError) {
+      if (connection) connection.release();
+      
+      console.error('❌ Erro ao executar query SELECT:', queryError);
+      console.error('❌ Código do erro:', queryError.code);
+      console.error('❌ SQL State:', queryError.sqlState);
+      console.error('❌ Mensagem:', queryError.message);
+      
+      // Se for erro de tabela não existe, tentar criar
+      if (queryError.code === 'ER_NO_SUCH_TABLE' || queryError.code === '42S02') {
+        console.log('📋 Tabela não existe, criando...');
+        try {
+          connection = await pool.getConnection();
+          await connection.execute(`USE \`${dbName}\``);
+          await connection.execute(`
+            CREATE TABLE IF NOT EXISTS \`${dbName}\`.\`fornecedores\` (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              nome VARCHAR(255) NOT NULL,
+              email VARCHAR(255),
+              telefone VARCHAR(20),
+              endereco TEXT,
+              cnpj VARCHAR(18),
+              total_expenses DECIMAL(15,2) DEFAULT 0,
+              last_payment DATE,
+              status ENUM('ativo','inativo','pendente') DEFAULT 'ativo',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          `);
+          console.log('✅ Tabela fornecedores criada');
+          // Tentar buscar novamente
+          const [rows] = await connection.execute(`SELECT * FROM \`${dbName}\`.\`fornecedores\` ORDER BY nome`);
+          connection.release();
+          res.json({ success: true, fornecedores: rows || [] });
+          return;
+        } catch (createError) {
+          if (connection) connection.release();
+          console.error('❌ Erro ao criar tabela:', createError);
+          throw createError;
+        }
+      } else {
+        throw queryError;
+      }
+    }
   } catch (error) {
-    console.error('Erro ao buscar fornecedores:', error);
-    res.status(500).json({ error: 'Erro ao buscar fornecedores', details: error.message });
+    console.error('❌ Erro ao buscar fornecedores:', error);
+    res.status(500).json({ 
+      error: 'Erro ao buscar fornecedores', 
+      details: error.message,
+      code: error.code,
+      sqlState: error.sqlState
+    });
   }
 });
 
 app.post('/api/financial/fornecedores', async (req, res) => {
   try {
-    const { nome, cnpj, email, telefone, endereco, status } = req.body;
+    const { nome, cnpj, email, telefone, endereco, status } = req.body || {};
     
-    if (!nome) {
-      return res.status(400).json({ error: 'Nome do fornecedor é obrigatório' });
+    // Validação mais rigorosa
+    if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
+      return res.status(400).json({ error: 'Nome do fornecedor é obrigatório e deve ser uma string não vazia' });
     }
 
-    console.log('➕ Criando fornecedor:', nome);
+    const nomeLimpo = nome.trim();
+    console.log('➕ POST /api/financial/fornecedores - Criando fornecedor:', nomeLimpo);
 
-    // Inserir apenas com as colunas que o pool consegue ver
+    // Verificar se a tabela existe e criar se necessário
+    try {
+      // Verificar se a tabela existe
+      const [tables] = await pool.execute(`
+        SELECT TABLE_NAME 
+        FROM INFORMATION_SCHEMA.TABLES 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'fornecedores'
+      `);
+      
+      if (tables.length === 0) {
+        console.log('📋 Criando tabela fornecedores...');
+        await pool.execute(`
+          CREATE TABLE fornecedores (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nome VARCHAR(255) NOT NULL,
+            email VARCHAR(255),
+            telefone VARCHAR(20),
+            endereco TEXT,
+            cnpj VARCHAR(20),
+            total_expenses DECIMAL(10,2) DEFAULT 0,
+            last_payment DATE,
+            status ENUM('ativo', 'inativo') DEFAULT 'ativo',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Tabela fornecedores criada');
+      } else {
+        console.log('✅ Tabela fornecedores já existe');
+      }
+    } catch (createError) {
+      console.error('⚠️ Erro ao verificar/criar tabela fornecedores:', createError.message);
+      // Se for erro de tabela já existe, continuar; caso contrário, lançar erro
+      if (!createError.message.includes('already exists') && !createError.message.includes('Duplicate')) {
+        throw createError;
+      }
+    }
+
+    // Inserir com as colunas que existem na tabela
+    // A tabela real tem: nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, observacoes, status
+    // Status pode ser: 'ativo', 'inativo', 'pendente'
+    const statusValue = status && ['ativo', 'inativo', 'pendente'].includes(status) ? status : 'ativo';
+    
+    console.log('📝 Dados recebidos:', { nome, cnpj, email, telefone, endereco, status: statusValue });
+    
+    try {
     const [result] = await pool.execute(`
       INSERT INTO fornecedores (nome, cnpj, email, telefone, endereco, status) 
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [nome, cnpj || null, email || null, telefone || null, endereco || null, status || 'ativo']);
+      `, [
+        nomeLimpo, 
+        cnpj ? String(cnpj).trim() || null : null, 
+        email ? String(email).trim() || null : null, 
+        telefone ? String(telefone).trim() || null : null, 
+        endereco ? String(endereco).trim() || null : null, 
+        statusValue
+      ]);
 
     console.log('✅ Fornecedor criado com ID:', result.insertId);
     res.json({ success: true, message: 'Fornecedor criado com sucesso', id: result.insertId });
+    } catch (insertError) {
+      console.error('❌ Erro SQL ao inserir fornecedor:', insertError);
+      console.error('❌ Código do erro:', insertError.code);
+      console.error('❌ Mensagem:', insertError.message);
+      throw insertError;
+    }
+
   } catch (error) {
     console.error('❌ Erro ao criar fornecedor:', error);
-    res.status(500).json({ error: 'Erro ao criar fornecedor', details: error.message });
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Erro ao criar fornecedor', 
+      details: error.message,
+      code: error.code,
+      sqlState: error.sqlState
+    });
   }
 });
 
@@ -15748,7 +19218,7 @@ app.post('/api/coupons/first-purchase/:customerId', async (req, res) => {
 // ==================== SUPPORT ADMIN ENDPOINTS ====================
 
 // GET FAQs
-app.get('/api/admin/suporte/faqs', async (req, res) => {
+app.get('/api/admin/suporte/faqs', authenticateAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
@@ -15764,7 +19234,7 @@ app.get('/api/admin/suporte/faqs', async (req, res) => {
 });
 
 // POST FAQs
-app.post('/api/admin/suporte/faqs', async (req, res) => {
+app.post('/api/admin/suporte/faqs', authenticateAdmin, async (req, res) => {
   try {
     const { faqs } = req.body;
     
@@ -15783,7 +19253,7 @@ app.post('/api/admin/suporte/faqs', async (req, res) => {
 });
 
 // GET Contact Info
-app.get('/api/admin/suporte/contact', async (req, res) => {
+app.get('/api/admin/suporte/contact', authenticateAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
@@ -15799,7 +19269,7 @@ app.get('/api/admin/suporte/contact', async (req, res) => {
 });
 
 // POST Contact Info
-app.post('/api/admin/suporte/contact', async (req, res) => {
+app.post('/api/admin/suporte/contact', authenticateAdmin, async (req, res) => {
   try {
     const contactInfo = req.body;
     
@@ -15818,7 +19288,7 @@ app.post('/api/admin/suporte/contact', async (req, res) => {
 });
 
 // GET Store Location
-app.get('/api/admin/suporte/location', async (req, res) => {
+app.get('/api/admin/suporte/location', authenticateAdmin, async (req, res) => {
   try {
     const [rows] = await pool.execute(
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
@@ -15834,7 +19304,7 @@ app.get('/api/admin/suporte/location', async (req, res) => {
 });
 
 // POST Store Location
-app.post('/api/admin/suporte/location', async (req, res) => {
+app.post('/api/admin/suporte/location', authenticateAdmin, async (req, res) => {
   try {
     const location = req.body;
     
@@ -15919,7 +19389,7 @@ app.get('/api/legal-pages/:slug', async (req, res) => {
 });
 
 // ADMIN: GET all pages (including unpublished)
-app.get('/api/admin/legal-pages', async (req, res) => {
+app.get('/api/admin/legal-pages', authenticateAdmin, async (req, res) => {
   try {
     const [pages] = await pool.execute(
       'SELECT * FROM legal_pages ORDER BY title'
@@ -15932,7 +19402,7 @@ app.get('/api/admin/legal-pages', async (req, res) => {
 });
 
 // ADMIN: GET single page by ID
-app.get('/api/admin/legal-pages/:id', async (req, res) => {
+app.get('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const [pages] = await pool.execute(
@@ -15952,7 +19422,7 @@ app.get('/api/admin/legal-pages/:id', async (req, res) => {
 });
 
 // ADMIN: UPDATE page
-app.put('/api/admin/legal-pages/:id', async (req, res) => {
+app.put('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, content, meta_description, is_published } = req.body;
@@ -15973,7 +19443,7 @@ app.put('/api/admin/legal-pages/:id', async (req, res) => {
 });
 
 // ADMIN: CREATE page
-app.post('/api/admin/legal-pages', async (req, res) => {
+app.post('/api/admin/legal-pages', authenticateAdmin, async (req, res) => {
   try {
     const { slug, title, content, meta_description, is_published } = req.body;
     
@@ -15992,7 +19462,7 @@ app.post('/api/admin/legal-pages', async (req, res) => {
 });
 
 // ADMIN: DELETE page
-app.delete('/api/admin/legal-pages/:id', async (req, res) => {
+app.delete('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
