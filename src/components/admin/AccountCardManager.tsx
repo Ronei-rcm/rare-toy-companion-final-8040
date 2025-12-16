@@ -55,6 +55,7 @@ export default function AccountCardManager() {
   const [contas, setContas] = useState<ContaBancaria[]>([]);
   const [cartoes, setCartoes] = useState<Cartao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [apiSimulada, setApiSimulada] = useState(false);
   const [activeTab, setActiveTab] = useState('contas');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<ContaBancaria | Cartao | null>(null);
@@ -64,7 +65,8 @@ export default function AccountCardManager() {
 
   const bancos = [
     'Banco do Brasil', 'Caixa Econômica', 'Bradesco', 'Itaú', 'Santander',
-    'Nubank', 'Inter', 'C6 Bank', 'Original', 'BTG Pactual'
+    'Nubank', 'Inter', 'C6 Bank', 'Original', 'BTG Pactual',
+    'Banco Digital', 'Infinity', 'InfinitPay'
   ];
 
   const carregarDados = async () => {
@@ -92,6 +94,18 @@ export default function AccountCardManager() {
         }));
         setContas(contasFormatadas);
         console.log('✅ Contas carregadas:', contasFormatadas.length);
+
+        // Detectar modo simulado (retorno mock do backend)
+        const nomes = contasFormatadas.map((c: any) => c.nome).sort().join('|');
+        if (
+          contasFormatadas.length === 2 &&
+          nomes.includes('Conta Principal') &&
+          nomes.includes('Conta Poupança')
+        ) {
+          setApiSimulada(true);
+        } else {
+          setApiSimulada(false);
+        }
       } else {
         console.error('❌ Erro ao carregar contas:', contasResponse.status);
         toast.error('Erro ao carregar contas bancárias');
@@ -163,11 +177,22 @@ export default function AccountCardManager() {
   const salvarItem = async () => {
     try {
       if (activeTab === 'contas') {
+        if (apiSimulada) {
+          toast.error('Criação/edição indisponível: API em modo simulado (sem tabela financial_accounts).');
+          return;
+        }
+        const requiredFields = ['nome', 'banco', 'agencia', 'conta'];
+        const missing = requiredFields.filter((f) => !(formData as any)?.[f]?.toString().trim());
+        if (missing.length > 0) {
+          toast.error('Preencha: nome, banco, agência e conta.');
+          return;
+        }
+
         const contaData = {
-          nome: formData.nome,
-          banco: formData.banco,
-          agencia: formData.agencia,
-          conta: formData.conta,
+          nome: formData.nome?.toString().trim(),
+          banco: formData.banco?.toString().trim(),
+          agencia: formData.agencia?.toString().trim(),
+          conta: formData.conta?.toString().trim(),
           tipo: formData.tipo,
           saldo: parseFloat(formData.saldo) || 0,
           limite: parseFloat(formData.limite) || 0,
@@ -187,14 +212,27 @@ export default function AccountCardManager() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro ao salvar conta');
+          const errorData = await response.json().catch(() => ({}));
+          const msg = errorData.error || 'Erro ao salvar conta';
+          const details = errorData.details || '';
+
+          if (response.status === 500 && details.includes('financial_accounts')) {
+            setApiSimulada(true);
+            toast.error('Criação/edição indisponível: API em modo simulado (sem tabela financial_accounts).');
+            return;
+          }
+
+          throw new Error(msg);
         }
 
         toast.success(editingItem ? 'Conta atualizada com sucesso!' : 'Conta criada com sucesso!');
       } else {
+        if (apiSimulada) {
+          toast.error('Criação/edição indisponível: API em modo simulado (sem tabela financial_cards).');
+          return;
+        }
         const cartaoData = {
-          nome: formData.nome,
+          nome: formData.nome?.toString().trim(),
           numero: formData.numero,
           bandeira: formData.bandeira,
           limite: parseFloat(formData.limite) || 0,
@@ -217,8 +255,17 @@ export default function AccountCardManager() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro ao salvar cartão');
+          const errorData = await response.json().catch(() => ({}));
+          const msg = errorData.error || 'Erro ao salvar cartão';
+          const details = errorData.details || '';
+
+          if (response.status === 500 && details.includes('financial_cards')) {
+            setApiSimulada(true);
+            toast.error('Criação/edição indisponível: API em modo simulado (sem tabela financial_cards).');
+            return;
+          }
+
+          throw new Error(msg);
         }
 
         toast.success(editingItem ? 'Cartão atualizado com sucesso!' : 'Cartão criado com sucesso!');
