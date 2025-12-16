@@ -12,7 +12,22 @@ Este diretório contém toda a documentação técnica do projeto.
 
 ## 📋 Documentação Recente (Janeiro 2025)
 
-### ⚡ Correções Críticas
+### 🎨 Melhorias UX e Visual (Janeiro 2025) ⭐ **NOVO**
+- **[MELHORIAS_UX_VISUAL_JAN_2025.md](./MELHORIAS_UX_VISUAL_JAN_2025.md)** ⭐ **NOVO** - Documentação completa das melhorias de UX e visual do sistema financeiro e correções do menu lateral admin (barra de rolagem visível)
+- **[FUNCIONALIDADE_PAGAR_CONTA.md](./FUNCIONALIDADE_PAGAR_CONTA.md)** 💳 **NOVO** - Funcionalidade completa de pagamento de contas com integração ao sistema de contas bancárias (dar baixa e escolher conta de origem)
+
+### 🔥 Novidades (11/01/2025)
+- **[AVALIACAO_E_EVOLUCOES_FINANCEIRO.md](./AVALIACAO_E_EVOLUCOES_FINANCEIRO.md)** ⭐ - Avaliação completa do sistema financeiro e roadmap de evoluções futuras (14 funcionalidades priorizadas)
+
+### 🔥 Correções Críticas (11/01/2025)
+- **[CORRECOES_JANEIRO_2025.md](./CORRECOES_JANEIRO_2025.md)** ⭐ - Documentação completa de todas as correções: endpoints de pedidos, autenticação, frontend, rate limiting, estrutura de tabelas
+- **[RESUMO_SESSAO_JAN_11_2025.md](./RESUMO_SESSAO_JAN_11_2025.md)** ⭐ - Resumo executivo da sessão com tarefas concluídas, métricas e progresso
+- **[INDICE_CORRECOES_JAN_2025.md](./INDICE_CORRECOES_JAN_2025.md)** - Índice rápido de todas as correções de janeiro
+- **[CORRECAO_ENDPOINTS_CUSTOMER_ID.md](./CORRECAO_ENDPOINTS_CUSTOMER_ID.md)** - Correção de uso incorreto de `customer_id` → `user_id` em endpoints
+- **[SOLUCAO_RATE_LIMIT_CADASTRO.md](./SOLUCAO_RATE_LIMIT_CADASTRO.md)** - Ajuste de rate limiting de cadastro (5 → 30/hora, skip de erros)
+- **[TESTE_CRIACAO_USUARIO_PEDIDO.md](./TESTE_CRIACAO_USUARIO_PEDIDO.md)** - Script de teste para criação de usuário e pedido
+
+### ⚡ Correções Anteriores (Janeiro 2025)
 - **[CORRECOES_RATE_LIMITING_E_DASHBOARD_JAN_2025.md](./CORRECOES_RATE_LIMITING_E_DASHBOARD_JAN_2025.md)** - Correções de rate limiting (erros 429), loop infinito no hook useCustomerStats, remoção de cards duplicados no dashboard e melhorias no login admin
 
 ### 📊 Evoluções e Melhorias
@@ -21,7 +36,15 @@ Este diretório contém toda a documentação técnica do projeto.
 - **[FUNCIONALIDADE_EXCLUSAO_PEDIDOS.md](./FUNCIONALIDADE_EXCLUSAO_PEDIDOS.md)** - Funcionalidade de exclusão de pedidos
 
 ### 🔧 Correções Técnicas
-- **[CORRECOES_ENDPOINTS_JAN_2025.md](./CORRECOES_ENDPOINTS_JAN_2025.md)** - 🔥 **NOVO** - Correções de erros 500 em múltiplos endpoints admin (customers, blog, events, orders, marketplace) - Janeiro 2025
+- **[CORRECAO_BARRA_ROLAGEM_VISIVEL.md](./CORRECAO_BARRA_ROLAGEM_VISIVEL.md)** ⭐ **NOVO** - Correção da barra de rolagem do menu lateral admin para ficar sempre visível
+- **[CORRECAO_SCROLL_MENU_FINAL.md](./CORRECAO_SCROLL_MENU_FINAL.md)** - Documentação técnica da correção do scroll do menu
+- **[CORRECOES_ENDPOINTS_DEZ_2025.md](./CORRECOES_ENDPOINTS_DEZ_2025.md)** - Correções de erros 500 em endpoints (events, reviews, orders, analytics) - Dezembro 2025
+
+### 🚀 Evoluções e Melhorias
+- **[EVOLUCAO_PAGINA_FINANCEIRO_DEZ_2025.md](./EVOLUCAO_PAGINA_FINANCEIRO_DEZ_2025.md)** - 🔥 **NOVO** - Evolução completa da página Financeiro com filtros avançados, busca em tempo real, ordenação inteligente, paginação e exportação CSV/JSON - Dezembro 2025
+- **[EVOLUCAO_DASHBOARD_DADOS_REAIS.md](./EVOLUCAO_DASHBOARD_DADOS_REAIS.md)** - Evolução do dashboard admin com dados reais
+- **[EVOLUCAO_PAGINA_PEDIDOS_ADMIN.md](./EVOLUCAO_PAGINA_PEDIDOS_ADMIN.md)** - Evolução da página de pedidos admin
+- **[CORRECOES_ENDPOINTS_JAN_2025.md](./CORRECOES_ENDPOINTS_JAN_2025.md)** - Correções de erros 500 em múltiplos endpoints admin (customers, blog, events, orders, marketplace) - Janeiro 2025
 - **[correções/CORRECOES_ERROS_LOG_NOV_2025.md](./correções/CORRECOES_ERROS_LOG_NOV_2025.md)** - Correções de erros nos logs (PathError, autenticação, Nginx, MySQL2) - Novembro 2025
 - **[CORRECAO_ERRO_502_LOGIN.md](./CORRECAO_ERRO_502_LOGIN.md)** - Correção do erro 502 no login
 - **[CORRECAO_401_MARKETPLACE.md](./CORRECAO_401_MARKETPLACE.md)** - Correção do erro 401 no marketplace
@@ -78,7 +101,9 @@ Cada documento contém:
 
 ## 📅 Última Atualização
 
+**Janeiro 2025** - ✅ Funcionalidade de Pagar Conta implementada: Modal completo, integração com contas bancárias, endpoint de pagamento, atualização automática de saldo  
+**Janeiro 2025** - ✅ Melhorias de UX e Visual completas: Sistema financeiro modernizado, componentes reutilizáveis, barra de rolagem do menu sempre visível  
+**11 de Janeiro de 2025** - ✅ Correções críticas completas: endpoints de pedidos, autenticação, frontend, rate limiting, estrutura de tabelas  
 **29 de Novembro de 2025** - Correções de erros nos logs (PathError, autenticação analytics, Nginx, MySQL2)  
-**Novembro 2025** - Sistema de Galeria de Vídeos implementado  
-**Janeiro 2025** - Correções de rate limiting e dashboard
+**Novembro 2025** - Sistema de Galeria de Vídeos implementado
 
