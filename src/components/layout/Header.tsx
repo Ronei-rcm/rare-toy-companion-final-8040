@@ -323,7 +323,7 @@ const NavLinks = ({ className, onClick, isAdmin, isLogged }: { className?: strin
       onClick={onClick}
     >
       <Store className="w-4 h-4" />
-      <span>Loja</span>
+      <span>Catálogo</span>
     </Link>
     
     <Link 
