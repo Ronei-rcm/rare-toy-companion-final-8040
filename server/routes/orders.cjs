@@ -3,6 +3,10 @@ const router = express.Router();
 const orderManagementService = require('../services/orderManagementService.cjs');
 const ordersController = require('../controllers/orders.controller.cjs');
 
+// Importar middlewares
+const { highFrequencyLimiter } = require('../../config/security.cjs');
+const ordersController = require('../controllers/orders.controller.cjs');
+
 // Middleware de autenticação simples
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -13,6 +17,33 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ===== GESTÃO DE PEDIDOS =====
+
+/**
+ * GET /api/orders/:id
+ * Busca pedido por ID com seus itens
+ * NOTA: Esta rota deve vir ANTES de outras rotas com :id que sejam mais específicas
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    return await ordersController.getById(req, res);
+  } catch (error) {
+    console.error('Erro na rota GET /api/orders/:id:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+/**
+ * DELETE /api/orders/:id
+ * Deleta um pedido
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    return await ordersController.remove(req, res);
+  } catch (error) {
+    console.error('Erro na rota DELETE /api/orders/:id:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
 
 // Atualizar pedido completo (status, payment_method, tracking_code)
 router.put('/:id', async (req, res) => {
@@ -280,6 +311,22 @@ router.get('/shipments/:id/tracking', async (req, res) => {
       message: 'Erro interno do servidor',
       error: error.message
     });
+  }
+});
+
+// ===== ROTAS CRUD BÁSICAS (Extraídas do server.cjs) =====
+
+/**
+ * GET /api/orders
+ * Lista pedidos do usuário autenticado
+ * NOTA: Esta rota deve vir ANTES das rotas com parâmetros dinâmicos
+ */
+router.get('/', highFrequencyLimiter, async (req, res) => {
+  try {
+    return await ordersController.getAll(req, res);
+  } catch (error) {
+    console.error('Erro na rota GET /api/orders:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
 
