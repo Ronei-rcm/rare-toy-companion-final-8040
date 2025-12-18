@@ -61,8 +61,34 @@ function extractUploadPath(urlOrPath) {
   return urlOrPath;
 }
 
+/**
+ * Obtém ou cria um cart_id para o carrinho
+ * 
+ * @param {Object} req - Request object do Express
+ * @param {Object} res - Response object do Express
+ * @returns {string} Cart ID
+ */
+function getOrCreateCartId(req, res) {
+  let cartId = req.cookies?.cart_id;
+  if (!cartId) {
+    const crypto = require('crypto');
+    cartId = crypto.randomUUID();
+    // Cookie para cart_id (pode ser false httpOnly pois é usado no frontend)
+    // Mas mantemos secure e sameSite para segurança
+    const isHttps = (req.headers['x-forwarded-proto'] || req.protocol) === 'https' || process.env.NODE_ENV === 'production';
+    res.cookie('cart_id', cartId, { 
+      httpOnly: false, // Necessário para acesso no frontend
+      sameSite: 'lax', 
+      secure: isHttps, 
+      maxAge: 1000*60*60*24*30 // 30 dias
+    });
+  }
+  return cartId;
+}
+
 module.exports = {
   getPublicUrl,
   normalizeToThisOrigin,
-  extractUploadPath
+  extractUploadPath,
+  getOrCreateCartId
 };

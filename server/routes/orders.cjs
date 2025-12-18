@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderManagementService = require('../services/orderManagementService.cjs');
+const ordersController = require('../controllers/orders.controller.cjs');
 
 // Middleware de autenticação simples
 const authenticateToken = (req, res, next) => {
@@ -488,6 +489,47 @@ router.post('/webhooks/tracking', async (req, res) => {
       message: 'Erro interno do servidor',
       error: error.message
     });
+  }
+});
+
+// ===== ROTAS CRUD BÁSICAS (Extraídas do server.cjs) =====
+
+/**
+ * GET /api/orders
+ * Lista pedidos do usuário autenticado
+ */
+router.get('/', async (req, res) => {
+  try {
+    return await ordersController.getAll(req, res);
+  } catch (error) {
+    console.error('Erro na rota GET /api/orders:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+/**
+ * GET /api/orders/:id
+ * Busca pedido por ID com seus itens
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    return await ordersController.getById(req, res);
+  } catch (error) {
+    console.error('Erro na rota GET /api/orders/:id:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+/**
+ * DELETE /api/orders/:id
+ * Deleta um pedido
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    return await ordersController.remove(req, res);
+  } catch (error) {
+    console.error('Erro na rota DELETE /api/orders/:id:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
 
