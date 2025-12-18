@@ -102,8 +102,10 @@ database/dumps/*.sql
 
 # Arquivos sensíveis (NÃO COMMITAR!)
 cookies.txt
+cookies-*.txt
 *.cookies
 credentials.txt
+__dummy__
 
 # Arquivos de lock alternativos
 bun.lockb
@@ -167,6 +169,7 @@ access-database.sh
 public/lovable-uploads/
 public/forcar-*.html
 public/limpar-*.html
+uploads/
 
 # Documentação temporária organizada
 docs/temporarios/
