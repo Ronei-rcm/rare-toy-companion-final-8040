@@ -6355,6 +6355,10 @@ app.use('/api/inventory', inventoryRouter);
 const crmRouter = require('./routes/crm.cjs');
 app.use('/api/crm', crmRouter);
 
+// Rotas de Produtos
+const productsRouter = require('./routes/products.routes.cjs');
+app.use('/api/produtos', productsRouter);
+
 // Rotas de Gestão de Pedidos
 const ordersRouter = require('./routes/orders.cjs');
 app.use('/api/orders', ordersRouter);
