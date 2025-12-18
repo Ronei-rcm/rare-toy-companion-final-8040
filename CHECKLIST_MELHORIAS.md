@@ -38,8 +38,9 @@
 **Plano:**
 - [x] Analisar `server.cjs` e identificar blocos (Semana 1) ✅
 - [x] Criar estrutura de pastas (routes/, controllers/, services/) ✅
-- [x] Extrair rotas de produtos (~300 linhas) ✅ **100% COMPLETO**
-- [ ] Extrair rotas de pedidos (~400 linhas) 🔄 **Em progresso** (algumas rotas já existem, precisa consolidar)
+- [x] Extrair rotas de produtos (~300 linhas) ✅ **100% COMPLETO (9 rotas)**
+- [x] Criar service/controller para pedidos ✅
+- [ ] Extrair rotas de pedidos (~400 linhas) 🔄 **12.5% (3/24 rotas extraídas)**
 - [ ] Extrair rotas de clientes (~300 linhas)
 - [ ] Extrair rotas admin (~500 linhas)
 - [ ] Extrair controllers (~1000 linhas)
@@ -47,6 +48,17 @@
 - [ ] Refatorar `server.cjs` principal para < 500 linhas
 - [ ] Testar aplicação após refatoração
 - [ ] Documentar nova estrutura
+
+**Progresso Detalhado:**
+- ✅ **Módulo Produtos:** 100% completo (9 rotas extraídas)
+  - Service, Controller e Routes criados
+  - Router registrado no server.cjs
+- 🔄 **Módulo Pedidos:** 12.5% (3 rotas extraídas de 24)
+  - Service e Controller básicos criados
+  - 3 rotas CRUD extraídas (GET listar, GET detalhes, DELETE)
+  - Pendente: POST criar pedido, rotas de pagamento
+- ⏳ **Módulo Clientes:** Aguardando
+- ⏳ **Módulo Admin:** Aguardando
 
 ### Testes ⚠️ CRÍTICO
 **Situação Atual:** ~10% de cobertura ❌  
