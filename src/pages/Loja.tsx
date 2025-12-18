@@ -8,12 +8,10 @@ import QuickSearchBar from '@/components/loja/QuickSearchBar';
 import ComparisonManager from '@/components/loja/ComparisonManager';
 import { useScrollAnimation, getAnimationClass } from '@/lib/animation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Package, Gift, Star, Clock, Sparkles, TrendingUp, Shield, Zap, ChevronRight, Filter, Search } from 'lucide-react';
+import { Sparkles, Star, Gift, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import BannerToyHeroes from '@/components/sections/BannerToyHeroes';
 
 const Loja = () => {
   const [activeView, setActiveView] = useState("todos");
@@ -29,8 +27,6 @@ const Loja = () => {
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/30 to-amber-50/20">
-        <BannerToyHeroes />
-        
         {/* Hero Section da Loja */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-orange-600/5 via-amber-500/3 to-yellow-400/5"></div>
@@ -48,7 +44,7 @@ const Loja = () => {
             >
               <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 text-sm font-medium mb-6">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Loja Premium
+                Catálogo Premium
               </div>
               <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600 bg-clip-text text-transparent mb-6 leading-tight">
                 Catálogo de Brinquedos
@@ -58,94 +54,38 @@ const Loja = () => {
                 Cada peça é cuidadosamente selecionada para oferecer diversão e qualidade.
               </p>
               
-              <div className="flex flex-wrap justify-center gap-4 mb-12">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                >
-                  <Button 
-                    onClick={() => navigate('/colecao')}
-                    size="lg"
-                    className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
-                    <Package className="h-5 w-5 mr-2" />
-                    Ver Coleções Especiais
-                  </Button>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                >
-                  <Button 
-                    variant="outline" 
-                    size="lg"
-                    className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                  >
-                    <TrendingUp className="h-5 w-5 mr-2" />
-                    Produtos em Destaque
-                  </Button>
-                </motion.div>
-              </div>
             </motion.div>
           </div>
         </div>
 
-        {/* Stats Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="container mx-auto px-4 py-16"
-        >
-          <div className="grid md:grid-cols-4 gap-8 mb-16">
-            <div className="text-center p-6 rounded-2xl bg-white/60 backdrop-blur-sm border border-orange-100 hover:shadow-lg transition-all duration-300">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">500+</h3>
-              <p className="text-slate-600 text-sm">Produtos Disponíveis</p>
-            </div>
-            
-            <div className="text-center p-6 rounded-2xl bg-white/60 backdrop-blur-sm border border-orange-100 hover:shadow-lg transition-all duration-300">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Star className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">4.9</h3>
-              <p className="text-slate-600 text-sm">Avaliação Média</p>
-            </div>
-            
-            <div className="text-center p-6 rounded-2xl bg-white/60 backdrop-blur-sm border border-orange-100 hover:shadow-lg transition-all duration-300">
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Gift className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">50+</h3>
-              <p className="text-slate-600 text-sm">Categorias</p>
-            </div>
-            
-            <div className="text-center p-6 rounded-2xl bg-white/60 backdrop-blur-sm border border-orange-100 hover:shadow-lg transition-all duration-300">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">100%</h3>
-              <p className="text-slate-600 text-sm">Garantia de Qualidade</p>
-            </div>
-          </div>
-        </motion.div>
+        <div className="container mx-auto px-4 pt-2 pb-6" />
 
-        {/* Barra de Busca */}
+        {/* Barra de Busca + Filtros inline */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="bg-white/80 backdrop-blur-sm border-b border-orange-100"
+          className="bg-white/90 backdrop-blur-sm border border-orange-100/70 shadow-sm"
         >
-          <div className="container mx-auto px-4 py-6">
-            <QuickSearchBar 
-              placeholder="Buscar produtos, categorias, marcas..."
-              className="max-w-2xl mx-auto"
-            />
+          <div className="container mx-auto px-4 py-5">
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
+              <div className="flex-1 w-full">
+                <QuickSearchBar 
+                  placeholder="Buscar produtos, categorias, marcas..."
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full lg:w-72">
+                <AdvancedProductFilters
+                  categories={['Bonecos de Ação', 'Carrinhos', 'Bonecas', 'Jogos', 'Colecionáveis']}
+                  onFiltersChange={(filters) => {
+                    // Implementar lógica de filtros
+                    console.log('Filtros aplicados:', filters);
+                  }}
+                  maxPrice={10000}
+                />
+              </div>
+            </div>
           </div>
         </motion.div>
 
@@ -154,34 +94,34 @@ const Loja = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="bg-white/80 backdrop-blur-sm border border-orange-100"
+          className="bg-white/90 backdrop-blur-sm border border-orange-100/70 shadow-sm rounded-none lg:rounded-none"
         >
           <div className="container mx-auto px-4 py-8">
             <Tabs defaultValue="todos" className="w-full" onValueChange={setActiveView}>
-              <TabsList className="w-full max-w-2xl mx-auto grid grid-cols-4 bg-white/80 border border-orange-200">
+              <TabsList className="w-full max-w-2xl mx-auto grid grid-cols-4 bg-white border border-orange-100 rounded-xl shadow-[0_10px_30px_-18px_rgba(0,0,0,0.25)]">
                 <TabsTrigger 
                   value="todos" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg"
                 >
                   Todos
                 </TabsTrigger>
                 <TabsTrigger 
                   value="destaques" 
-                  className="flex items-center data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white"
+                  className="flex items-center data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg"
                 >
                   <Star className="mr-1 h-3 w-3" />
                   Destaques
                 </TabsTrigger>
                 <TabsTrigger 
                   value="promocoes" 
-                  className="flex items-center data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white"
+                  className="flex items-center data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg"
                 >
                   <Gift className="mr-1 h-3 w-3" />
                   Promoções
                 </TabsTrigger>
                 <TabsTrigger 
                   value="lancamentos" 
-                  className="flex items-center data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white"
+                  className="flex items-center data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-lg"
                 >
                   <Clock className="mr-1 h-3 w-3" />
                   Lançamentos
@@ -198,22 +138,9 @@ const Loja = () => {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="container mx-auto px-4 py-8"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <aside className="lg:col-span-1">
-              <AdvancedProductFilters
-                categories={['Bonecos de Ação', 'Carrinhos', 'Bonecas', 'Jogos', 'Colecionáveis']}
-                onFiltersChange={(filters) => {
-                  // Implementar lógica de filtros
-                  console.log('Filtros aplicados:', filters);
-                }}
-                maxPrice={10000}
-              />
-            </aside>
-            
-            <main className="lg:col-span-3">
-              <CatalogoBrinquedos filtroView={activeView} />
-            </main>
-          </div>
+          <main className="w-full">
+            <CatalogoBrinquedos filtroView={activeView} />
+          </main>
         </motion.div>
       </div>
 

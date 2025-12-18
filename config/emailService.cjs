@@ -321,9 +321,159 @@ async function sendOrderConfirmationEmail(orderData) {
   }
 }
 
+/**
+ * Template para e-mail de notificação de recorrência próxima
+ */
+const getRecurringTransactionNotificationTemplate = (transaction) => {
+  const tipoLabel = transaction.tipo === 'entrada' ? 'Recebimento' : 'Pagamento';
+  const tipoColor = transaction.tipo === 'entrada' ? '#4CAF50' : '#f5576c';
+  const tipoIcon = transaction.tipo === 'entrada' ? '💰' : '💸';
+  const frequencyLabel = {
+    daily: 'Diária',
+    weekly: 'Semanal',
+    biweekly: 'Quinzenal',
+    monthly: 'Mensal',
+    quarterly: 'Trimestral',
+    semiannual: 'Semestral',
+    yearly: 'Anual'
+  }[transaction.frequency] || transaction.frequency;
+
+  const date = new Date(transaction.next_occurrence);
+  const formattedDate = date.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, ${tipoColor} 0%, ${tipoColor}dd 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">${tipoIcon} Lembrete: ${tipoLabel} Próximo</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 16px;">Olá,</p>
+        
+        <p>Este é um lembrete sobre sua transação recorrente:</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${tipoColor};">
+          <h2 style="margin-top: 0; color: ${tipoColor};">${transaction.descricao}</h2>
+          
+          <table style="width: 100%; margin: 15px 0;">
+            <tr>
+              <td style="padding: 8px 0; color: #666;"><strong>Categoria:</strong></td>
+              <td style="padding: 8px 0; text-align: right;">${transaction.categoria}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;"><strong>Valor:</strong></td>
+              <td style="padding: 8px 0; text-align: right; font-size: 20px; font-weight: bold; color: ${tipoColor};">
+                R$ ${parseFloat(transaction.valor).toFixed(2)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;"><strong>Frequência:</strong></td>
+              <td style="padding: 8px 0; text-align: right;">${frequencyLabel}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;"><strong>Método de Pagamento:</strong></td>
+              <td style="padding: 8px 0; text-align: right;">${transaction.metodo_pagamento || 'Não informado'}</td>
+            </tr>
+          </table>
+          
+          <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 4px;">
+            <strong>⏰ Data do Próximo ${tipoLabel}:</strong><br/>
+            <span style="font-size: 18px; font-weight: bold;">${formattedDate}</span>
+          </div>
+        </div>
+        
+        ${transaction.observacoes ? `
+          <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <strong>📝 Observações:</strong><br/>
+            ${transaction.observacoes}
+          </div>
+        ` : ''}
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <p style="color: #666; font-size: 14px;">
+            Esta é uma transação recorrente configurada no sistema financeiro.
+            ${transaction.auto_create ? 'Será processada automaticamente na data indicada.' : 'Requer processamento manual.'}
+          </p>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center;">
+          MuhlStore - Sistema Financeiro<br/>
+          © ${new Date().getFullYear()} Todos os direitos reservados
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+/**
+ * Enviar e-mail de notificação de recorrência próxima
+ */
+async function sendRecurringTransactionNotification(transactionData) {
+  if (!transporter) {
+    logger.warn('Transporter não inicializado. E-mail não enviado.');
+    return { success: false, error: 'E-mail service not configured' };
+  }
+
+  try {
+    const { transaction, daysUntil } = transactionData;
+    
+    if (!transaction.notify_email) {
+      return { success: false, error: 'E-mail não configurado para esta transação' };
+    }
+
+    const template = getRecurringTransactionNotificationTemplate(transaction);
+    
+    const subject = transaction.tipo === 'entrada'
+      ? `💰 Lembrete: Recebimento de R$ ${parseFloat(transaction.valor).toFixed(2)} em ${daysUntil} dia(s)`
+      : `💸 Lembrete: Pagamento de R$ ${parseFloat(transaction.valor).toFixed(2)} em ${daysUntil} dia(s)`;
+
+    const mailOptions = {
+      from: `"MuhlStore Financeiro" <${process.env.SMTP_USER}>`,
+      to: transaction.notify_email,
+      subject,
+      html: template,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    logger.info('E-mail de notificação de recorrência enviado', {
+      email: transaction.notify_email,
+      transaction_id: transaction.id,
+      daysUntil,
+      messageId: info.messageId,
+    });
+
+    return {
+      success: true,
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    logger.logError(error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
 module.exports = {
   initializeEmailService,
   isEmailServiceAvailable,
   sendAbandonedCartEmail,
   sendOrderConfirmationEmail,
+  sendRecurringTransactionNotification,
 };

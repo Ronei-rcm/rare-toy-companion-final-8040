@@ -54,7 +54,7 @@ interface ProductFilters {
 }
 
 export function AdvancedProductsView() {
-  const { products, loading, error } = useProducts();
+  const { products, loading, error, updateProduct } = useProducts();
   const [activeMainTab, setActiveMainTab] = useState<'products' | 'stock'>('products');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -168,6 +168,7 @@ export function AdvancedProductsView() {
   const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [serverItems, setServerItems] = useState<any[] | null>(null);
   const [serverLoading, setServerLoading] = useState(false);
+  const [settingCoverId, setSettingCoverId] = useState<string | null>(null);
 
   // Resetar página quando filtros mudarem
   useEffect(() => {
@@ -261,6 +262,25 @@ export function AdvancedProductsView() {
     (filters.onSale ? 1 : 0) +
     (filters.featured ? 1 : 0) +
     (filters.new ? 1 : 0);
+
+  const setCoverImage = async (product: any, imageUrl: string) => {
+    if (!imageUrl || imageUrl.startsWith('blob:')) {
+      toast.error('Use apenas URLs hospedadas (sem blob:) para capa.');
+      return;
+    }
+    try {
+      setSettingCoverId(product.id);
+      const gallery = (product.imagens && Array.isArray(product.imagens)) ? product.imagens : [];
+      const reordered = [imageUrl, ...gallery.filter((img: string) => img && img !== imageUrl && !img.startsWith('blob:'))];
+      await updateProduct(product.id, { imagemUrl: imageUrl, imagens: reordered });
+      toast.success('Capa atualizada');
+    } catch (err) {
+      console.error('Erro ao atualizar capa', err);
+      toast.error('Não foi possível atualizar a capa');
+    } finally {
+      setSettingCoverId(null);
+    }
+  };
 
   if (error) {
     return (
@@ -629,11 +649,38 @@ export function AdvancedProductsView() {
                     <>
                       {/* Vista em Grade */}
                       <div className="relative aspect-square overflow-hidden bg-gray-100">
-                        <img
-                          src={product.imagemUrl || '/placeholder.svg'}
-                          alt={product.nome}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
+                        {(() => {
+                          const gallery = (product.imagens && product.imagens.length > 0)
+                            ? product.imagens
+                            : (product.imagemUrl ? [product.imagemUrl] : []);
+                          return (
+                            <>
+                              <img
+                                src={gallery[0] || product.imagemUrl || '/placeholder.svg'}
+                                alt={product.nome}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              />
+                              {gallery.length > 1 && (
+                                <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1 shadow-sm">
+                                  {gallery.slice(0, 4).map((img: string, i: number) => (
+                                    <button
+                                      key={img + i}
+                                      onClick={(e) => { e.stopPropagation(); setCoverImage(product, img); }}
+                                      className={`w-8 h-8 rounded-md overflow-hidden border bg-white hover:scale-105 transition-transform ${img === product.imagemUrl ? 'border-orange-500 ring-1 ring-orange-200' : 'border-gray-200'}`}
+                                      title="Definir como capa"
+                                      disabled={settingCoverId === product.id}
+                                    >
+                                      <img src={img} alt="" className="w-full h-full object-cover" />
+                                    </button>
+                                  ))}
+                                  {gallery.length > 4 && (
+                                    <span className="text-xs text-gray-600">+{gallery.length - 4}</span>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                         
                         {/* Badges */}
                         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -712,11 +759,40 @@ export function AdvancedProductsView() {
                       {/* Vista em Lista */}
                       <div className="flex gap-4 p-4">
                         <div className="w-32 h-32 flex-shrink-0 relative overflow-hidden rounded-lg bg-gray-100">
-                          <img
-                            src={product.imagemUrl || '/placeholder.svg'}
-                            alt={product.nome}
-                            className="w-full h-full object-cover"
-                          />
+                          {(() => {
+                            const gallery = (product.imagens && product.imagens.length > 0)
+                              ? product.imagens
+                              : (product.imagemUrl ? [product.imagemUrl] : []);
+                            return (
+                              <>
+                                <img
+                                  src={gallery[0] || product.imagemUrl || '/placeholder.svg'}
+                                  alt={product.nome}
+                                  className="w-full h-full object-cover"
+                                />
+                                {gallery.length > 1 && (
+                                  <div className="absolute bottom-1 left-1 right-1 flex gap-1">
+                                    {gallery.slice(0, 4).map((img: string, i: number) => (
+                                      <button
+                                        key={img + i}
+                                        onClick={(e) => { e.stopPropagation(); setCoverImage(product, img); }}
+                                        className={`w-6 h-6 rounded-sm overflow-hidden border bg-white hover:scale-105 transition-transform ${img === product.imagemUrl ? 'border-orange-500 ring-1 ring-orange-200' : 'border-gray-200'}`}
+                                        title="Definir como capa"
+                                        disabled={settingCoverId === product.id}
+                                      >
+                                        <img src={img} alt="" className="w-full h-full object-cover" />
+                                      </button>
+                                    ))}
+                                    {gallery.length > 4 && (
+                                      <span className="text-[10px] text-gray-600 bg-white/80 rounded px-1">
+                                        +{gallery.length - 4}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                           
                           {product.estoque <= 0 && (
                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center">

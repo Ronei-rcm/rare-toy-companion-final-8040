@@ -25,6 +25,7 @@ import DashboardSuperEvolved from '@/components/cliente/DashboardSuperEvolved';
 import EnhancedAddressManager from '@/components/cliente/EnhancedAddressManager';
 import EnhancedPedidosTab from '@/components/cliente/EnhancedPedidosTab';
 import OrdersUnified from '@/components/cliente/OrdersUnified';
+import OrdersUnifiedEvolved from '@/components/cliente/OrdersUnifiedEvolved';
 import ActivityHistory from '@/components/cliente/ActivityHistory';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
 import { useUserStats, useRefreshUserData, formatCurrency, getFidelityColor, getFidelityIcon } from '@/hooks/useUserStats';
@@ -122,12 +123,48 @@ const MinhaConta = () => {
     gradient: getFidelityColor(displayStats.fidelidade?.nivel || 'Bronze')
   };
 
+  // Boundary simples para evitar crash em pedidos
+  class OrdersBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+    constructor(props: any) {
+      super(props);
+      this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() {
+      return { hasError: true };
+    }
+    componentDidCatch(error: any, info: any) {
+      console.error('Erro em OrdersUnifiedEvolved:', error, info);
+    }
+    render() {
+      if (this.state.hasError) {
+        return (
+          <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 space-y-2">
+            <p>Não foi possível carregar seus pedidos agora.</p>
+            <Button variant="outline" size="sm" onClick={() => this.setState({ hasError: false })}>
+              Tentar novamente
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
+              Recarregar página
+            </Button>
+          </div>
+        );
+      }
+      return this.props.children as any;
+    }
+  }
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return user ? <DashboardSuperEvolved /> : null;
       case 'pedidos':
-        return user ? <OrdersUnified /> : <PedidosTab />;
+        return user ? (
+          <OrdersBoundary>
+            <OrdersUnifiedEvolved />
+          </OrdersBoundary>
+        ) : (
+          <PedidosTab />
+        );
       case 'enderecos':
         return user ? <EnhancedAddressManager /> : <EnderecosTab />;
       case 'favoritos':

@@ -223,39 +223,49 @@ const EnhancedClienteProfile: React.FC<EnhancedClienteProfileProps> = ({
             
             <div className="space-y-2">
               {menuItems.map((item, index) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
+                // Declarar todas as variáveis no início para evitar problemas de hoisting
+                const itemId = item.id || '';
+                const itemLabel = item.label || '';
+                const itemDescription = item.description || '';
+                const itemGradient = item.gradient || '';
+                const itemBadge = item.badge || null;
+                const IconComponent = item.icon;
+                const isActive = activeTab === itemId;
+                const iconClassName = isActive ? 'text-white' : 'text-gray-500';
+                const buttonVariant = isActive ? "default" : "ghost";
+                const buttonClassName = isActive 
+                  ? `w-full justify-start h-auto p-3 bg-gradient-to-r ${itemGradient} text-white shadow-lg`
+                  : 'w-full justify-start h-auto p-3 hover:bg-gray-50 text-gray-700';
+                const descriptionClassName = isActive ? 'text-white/80' : 'text-gray-500';
+                const badgeClassName = isActive ? 'bg-white/20 text-white' : 'bg-red-500 text-white';
+                const badgeVariant = isActive ? "secondary" : "default";
                 
                 return (
                   <motion.div
-                    key={item.id}
+                    key={itemId}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + index * 0.05 }}
                   >
                     <Button
-                      variant={isActive ? "default" : "ghost"}
-                      className={`w-full justify-start h-auto p-3 ${
-                        isActive 
-                          ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg` 
-                          : 'hover:bg-gray-50 text-gray-700'
-                      }`}
-                      onClick={() => setActiveTab(item.id)}
+                      variant={buttonVariant}
+                      className={buttonClassName}
+                      onClick={() => setActiveTab(itemId)}
                     >
                       <div className="flex items-center w-full gap-3">
-                        <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
+                        <IconComponent className={`h-5 w-5 ${iconClassName}`} />
                         <div className="flex-1 text-left">
-                          <div className="font-medium">{item.label}</div>
-                          <div className={`text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
-                            {item.description}
+                          <div className="font-medium">{itemLabel}</div>
+                          <div className={`text-xs ${descriptionClassName}`}>
+                            {itemDescription}
                           </div>
                         </div>
-                        {item.badge && (
+                        {itemBadge && (
                           <Badge 
-                            variant={isActive ? "secondary" : "default"}
-                            className={`${isActive ? 'bg-white/20 text-white' : 'bg-red-500 text-white'} text-xs`}
+                            variant={badgeVariant}
+                            className={`${badgeClassName} text-xs`}
                           >
-                            {item.badge}
+                            {itemBadge}
                           </Badge>
                         )}
                         {isActive && <ChevronRight className="h-4 w-4 text-white" />}
@@ -284,21 +294,26 @@ const EnhancedClienteProfile: React.FC<EnhancedClienteProfileProps> = ({
             
             <div className="space-y-2">
               {quickActions.map((action, index) => {
-                const Icon = action.icon;
+                // Declarar todas as variáveis no início para evitar problemas de hoisting
+                const actionLabel = action.label || '';
+                const actionColor = action.color || '';
+                const actionHandler = action.action || (() => {});
+                const IconComponent = action.icon;
+                
                 return (
                   <motion.div
-                    key={action.label}
+                    key={actionLabel}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.5 + index * 0.05 }}
                   >
                     <Button
                       variant="ghost"
-                      className={`w-full justify-start h-auto p-3 ${action.color}`}
-                      onClick={action.action}
+                      className={`w-full justify-start h-auto p-3 ${actionColor}`}
+                      onClick={actionHandler}
                     >
-                      <Icon className="h-4 w-4 mr-3" />
-                      <span className="font-medium">{action.label}</span>
+                      <IconComponent className="h-4 w-4 mr-3" />
+                      <span className="font-medium">{actionLabel}</span>
                     </Button>
                   </motion.div>
                 );

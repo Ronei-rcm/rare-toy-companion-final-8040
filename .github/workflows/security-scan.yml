@@ -1,0 +1,137 @@
+name: 🔒 Security Scan
+
+on:
+  push:
+    branches: [ main, develop, master ]
+  pull_request:
+    branches: [ main, develop, master ]
+  schedule:
+    # Executa toda segunda-feira às 9h UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  security-scan:
+    name: 🔒 Análise de Segurança
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necessário para truffleHog
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+      
+      - name: 📥 Instalar dependências
+        run: npm ci
+      
+      - name: 🔍 NPM Audit
+        run: |
+          echo "🔍 Executando NPM Audit..."
+          npm audit --audit-level=moderate || true
+      
+      - name: 🔒 Verificar senhas e secrets no código
+        run: |
+          echo "🔍 Procurando por senhas e secrets hardcoded..."
+          
+          # Lista de padrões suspeitos
+          PATTERNS=(
+            "password.*=.*['\"][^'\"]*['\"]"
+            "PASSWORD.*=.*['\"][^'\"]*['\"]"
+            "senha.*=.*['\"][^'\"]*['\"]"
+            "token.*=.*['\"][^'\"]*['\"]"
+            "TOKEN.*=.*['\"][^'\"]*['\"]"
+            "secret.*=.*['\"][^'\"]*['\"]"
+            "SECRET.*=.*['\"][^'\"]*['\"]"
+            "api[_-]?key.*=.*['\"][^'\"]*['\"]"
+            "apikey.*=.*['\"][^'\"]*['\"]"
+          )
+          
+          FOUND_SECRETS=false
+          
+          for pattern in "${PATTERNS[@]}"; do
+            if grep -r -i -E "$pattern" \
+              --include="*.js" \
+              --include="*.ts" \
+              --include="*.cjs" \
+              --include="*.tsx" \
+              --include="*.yml" \
+              --include="*.yaml" \
+              --exclude-dir=node_modules \
+              --exclude-dir=.git \
+              --exclude-dir=dist \
+              --exclude-dir=coverage \
+              --exclude="*.test.*" \
+              --exclude="*.spec.*" \
+              --exclude=".env.example" \
+              . | grep -v "process.env" | grep -v "process\['env'\]"; then
+              
+              echo "⚠️ ATENÇÃO: Possível secret encontrado com padrão: $pattern"
+              FOUND_SECRETS=true
+            fi
+          done
+          
+          if [ "$FOUND_SECRETS" = true ]; then
+            echo "❌ Possíveis secrets encontrados! Revise o código acima."
+            exit 1
+          else
+            echo "✅ Nenhum secret hardcoded encontrado"
+          fi
+      
+      - name: 🔒 Verificar arquivos sensíveis no Git
+        run: |
+          echo "🔍 Verificando se arquivos sensíveis estão sendo commitados..."
+          
+          SENSITIVE_FILES=(
+            ".env"
+            ".env.local"
+            ".env.production"
+            "*.pem"
+            "*.key"
+            "*.p12"
+            "*.pfx"
+            "id_rsa"
+            "id_ed25519"
+          )
+          
+          for pattern in "${SENSITIVE_FILES[@]}"; do
+            if git ls-files | grep -E "$pattern"; then
+              echo "⚠️ ATENÇÃO: Arquivo sensível encontrado no Git: $pattern"
+              echo "❌ Arquivos sensíveis não devem ser commitados!"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Nenhum arquivo sensível encontrado no Git"
+      
+      - name: 🔒 Verificar .gitignore
+        run: |
+          echo "🔍 Verificando .gitignore..."
+          
+          REQUIRED_IGNORES=(
+            ".env"
+            ".env.local"
+            ".env.production"
+            "*.log"
+            "node_modules"
+            "dist"
+            "coverage"
+          )
+          
+          if [ ! -f .gitignore ]; then
+            echo "❌ Arquivo .gitignore não encontrado!"
+            exit 1
+          fi
+          
+          for ignore in "${REQUIRED_IGNORES[@]}"; do
+            if grep -q "^$ignore$" .gitignore || grep -q "^$ignore/" .gitignore; then
+              echo "✅ $ignore está no .gitignore"
+            else
+              echo "⚠️ $ignore NÃO está no .gitignore"
+            fi
+          done
+

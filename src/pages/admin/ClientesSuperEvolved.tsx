@@ -86,6 +86,8 @@ import {
   CreditCard,
   Award,
   Zap,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -109,6 +111,7 @@ const ClientesSuperEvolved = () => {
     bulkAction,
     getCustomerOrders,
     exportCustomers,
+    syncUsersToCustomers,
   } = useAdminCustomers();
 
   // Estados principais
@@ -143,6 +146,8 @@ const ClientesSuperEvolved = () => {
   const [ordersModal, setOrdersModal] = useState<Customer | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Estados para funcionalidades avançadas
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -504,14 +509,26 @@ const ClientesSuperEvolved = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 lg:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Gerenciamento de Clientes</h1>
           <p className="text-muted-foreground">Gerencie todos os seus clientes de forma avançada</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              setIsSyncing(true);
+              await syncUsersToCustomers();
+              setIsSyncing(false);
+            }}
+            disabled={isSyncing}
+          >
+            <Users className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar clientes'}
+          </Button>
           <Button
             variant="outline"
             onClick={handleRefresh}
@@ -565,9 +582,28 @@ const ClientesSuperEvolved = () => {
 
       {/* Filtros */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Filtros e Busca</CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2"
+          >
+            {showFilters ? (
+              <>
+                Ocultar filtros
+                <ChevronUp className="h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Mostrar filtros
+                <ChevronDown className="h-4 w-4" />
+              </>
+            )}
+          </Button>
         </CardHeader>
+        {showFilters && (
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -687,6 +723,7 @@ const ClientesSuperEvolved = () => {
             </Button>
           </div>
         </CardContent>
+        )}
       </Card>
 
       {/* Lista de Clientes */}

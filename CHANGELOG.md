@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [05 de Dezembro de 2025] - Evolução da Página Financeiro e Correções de Endpoints 🚀
+
+### ✨ Novo - Evolução da Página Financeiro
+- **Sistema de Busca Avançada**: Busca em tempo real por descrição, categoria, origem e observações
+- **Filtros Múltiplos**: Filtros por tipo (entrada/saída), status (pago/pendente/atrasado), categoria e período (hoje, semana, mês, trimestre, ano)
+- **Ordenação Inteligente**: Ordenação clicável nas colunas (Data, Descrição, Categoria, Valor) com indicador visual
+- **Paginação Avançada**: Controle de itens por página (10, 20, 50, 100), navegação com botões e números de página
+- **Exportação de Dados**: Exportação em CSV e JSON com filtros aplicados
+- **Cards de Resumo Melhorados**: Adicionados cards de Pendentes e Atrasados, resumo calculado com base nos filtros
+- **Melhorias Visuais**: Header responsivo, botões organizados, cards de filtro com ícones, tabela com hover states
+- **Performance Otimizada**: Uso de `useMemo` para cálculos, filtragem instantânea no cliente, paginação eficiente
+
+### ✅ Corrigido
+- **GET `/api/events`**: Implementada estratégia de tentativa dupla para lidar com diferenças de schema
+- **POST `/api/events`**: Implementada estratégia de tentativa dupla no INSERT (status vs ativo)
+- **GET `/api/admin/analytics/pedidos-recentes`**: Removido `USE` command, usando nome completo do banco
+- **GET `/api/admin/orders`**: Adicionado `COALESCE` para campos opcionais em `order_items`
+- **GET `/api/admin/reviews`**: Corrigido uso de alias no WHERE, resolvido conflito de collation
+- **Modal de Edição de Produtos**: Alterado para carregar todas as categorias via `/api/categorias/gerenciaveis`
+
+### 🔧 Melhorias
+- Adicionados logs detalhados em todos os endpoints corrigidos
+- Implementado padrão de uso de nome completo do banco (`\`rare_toy_companion\`.\`tabela\``)
+- Implementado padrão de resolução de collation usando `CAST`
+- Implementado padrão de construção dinâmica de WHERE clauses
+- Página Financeiro totalmente responsiva (desktop, tablet, mobile)
+
+### 📝 Documentação
+- Criado `docs/CORRECOES_ENDPOINTS_DEZ_2025.md` com documentação completa das correções
+- Criado `docs/EVOLUCAO_PAGINA_FINANCEIRO_DEZ_2025.md` com documentação completa da evolução
+- Atualizado `docs/DOCS_INDEX.md` com referência às novas correções e evoluções
+
 ## [29 de Novembro de 2025] - Correções de Erros nos Logs 🔧
 
 ### Corrigido

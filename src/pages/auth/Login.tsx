@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/form';
 import { toast } from 'sonner';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -29,6 +30,7 @@ const Login = () => {
   const params = new URLSearchParams(location.search);
   const redirectTo = params.get('redirect') || '/minha-conta';
   const { setUser } = useCurrentUser() as any;
+  const [showPassword, setShowPassword] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -47,14 +49,26 @@ const Login = () => {
         body: JSON.stringify({ email: values.email, senha: values.senha })
       });
       
+      // Tratar erro 502 (Bad Gateway) - servidor não está respondendo
+      if (resp.status === 502) {
+        throw new Error('Servidor não está respondendo. Tente novamente em alguns instantes.');
+      }
+      
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
-        const errorMessage = data.message || 
-          (data.error === 'usuario_nao_encontrado' 
-            ? 'Email não encontrado. Verifique suas credenciais ou crie uma conta.' 
-            : data.error === 'credenciais_invalidas'
-            ? 'Email ou senha incorretos. Verifique suas credenciais.'
-            : 'Login inválido');
+        // Mensagens de erro mais claras e úteis
+        let errorMessage = data.message || 'Login inválido';
+        
+        if (data.error === 'usuario_nao_encontrado') {
+          errorMessage = 'Email não encontrado. Verifique suas credenciais ou crie uma conta.';
+        } else if (data.error === 'credenciais_invalidas') {
+          // Verificar se é o erro específico de senha não cadastrada
+          if (data.message && data.message.includes('não possui senha cadastrada')) {
+            errorMessage = 'Este email não possui senha cadastrada. Use "Esqueci minha senha" para definir uma senha ou tente se registrar novamente.';
+          } else {
+            errorMessage = 'Email ou senha incorretos. Verifique suas credenciais ou use "Esqueci minha senha".';
+          }
+        }
         throw new Error(errorMessage);
       }
       
@@ -148,12 +162,27 @@ const Login = () => {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
+                      <div className="relative">
                       <Input 
-                        type="password" 
+                          type={showPassword ? 'text' : 'password'} 
                         placeholder="••••••••" 
                         autoComplete="current-password"
+                          className="pr-10"
                         {...field} 
                       />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                          aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

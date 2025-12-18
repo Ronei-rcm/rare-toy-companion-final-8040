@@ -4,10 +4,12 @@ services:
     container_name: rare-toy-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: RSM_Rg51gti66
-      MYSQL_DATABASE: rare_toy_companion
-      MYSQL_USER: rare_toy_user
-      MYSQL_PASSWORD: RSM_Rg51gti66
+      # SECURITY: Use variáveis de ambiente ou Docker secrets em produção
+      # Para desenvolvimento local, defina no arquivo .env
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme_in_production}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-rare_toy_companion}
+      MYSQL_USER: ${MYSQL_USER:-rare_toy_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme_in_production}
     ports:
       - "3307:3306"
     volumes:

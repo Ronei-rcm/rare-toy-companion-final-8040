@@ -21,6 +21,9 @@ import {
   Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
+import MetricCard from '@/components/admin/MetricCard';
+import LoadingState from '@/components/admin/LoadingState';
+import EmptyState from '@/components/admin/EmptyState';
 
 interface FinancialData {
   totalEntradas: number;
@@ -185,31 +188,25 @@ export default function AdvancedFinancialDashboard() {
   }, [periodo, filtroCategoria]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-        <span className="ml-2 text-gray-600">Carregando dashboard...</span>
-      </div>
-    );
+    return <LoadingState message="Carregando dashboard financeiro..." />;
   }
 
   if (!data) {
     return (
-      <div className="text-center py-8">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <p className="text-gray-600">Erro ao carregar dados do dashboard</p>
-        <Button onClick={carregarDados} className="mt-4">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Tentar Novamente
-        </Button>
-      </div>
+      <EmptyState
+        icon={AlertCircle}
+        title="Erro ao carregar dados"
+        description="Não foi possível carregar os dados do dashboard. Tente novamente."
+        actionLabel="Tentar Novamente"
+        onAction={carregarDados}
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       {/* Header com Controles */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">📊 Dashboard Financeiro Avançado</h2>
           <p className="text-gray-600">Análise completa e relatórios detalhados</p>
@@ -241,72 +238,52 @@ export default function AdvancedFinancialDashboard() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Total Entradas"
+          value={data.totalEntradas}
+          format="currency"
+          color="green"
+          icon={<TrendingUp className="h-5 w-5" />}
+          subtitle={`Últimos ${periodo} dias`}
+        />
+        
+        <MetricCard
+          title="Total Saídas"
+          value={data.totalSaidas}
+          format="currency"
+          color="red"
+          icon={<TrendingDown className="h-5 w-5" />}
+          subtitle={`Últimos ${periodo} dias`}
+        />
+        
+        <MetricCard
+          title="Saldo Líquido"
+          value={data.saldoLiquido}
+          format="currency"
+          color={data.saldoLiquido >= 0 ? 'green' : 'red'}
+          icon={<DollarSign className="h-5 w-5" />}
+          subtitle="Resultado líquido"
+        />
+        
+        <Card className="min-h-[140px] hover:shadow-lg transition-all border-l-4 border-l-purple-500">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-              <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
-              Total Entradas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              R$ {data.totalEntradas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Meta Mensal
+              </CardTitle>
+              <div className="p-2 bg-purple-100 rounded-full">
+                <Target className="h-5 w-5 text-purple-600" />
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Últimos {periodo} dias
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-              <TrendingDown className="h-4 w-4 mr-2 text-red-600" />
-              Total Saídas
-            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              R$ {data.totalSaidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Últimos {periodo} dias
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-              <DollarSign className="h-4 w-4 mr-2 text-blue-600" />
-              Saldo Líquido
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${data.saldoLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              R$ {data.saldoLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Resultado líquido
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-              <Target className="h-4 w-4 mr-2 text-purple-600" />
-              Meta Mensal
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+          <CardContent className="space-y-2">
+            <div className="text-3xl font-bold text-purple-600">
               {data.metas.percentual.toFixed(1)}%
             </div>
-            <Progress value={data.metas.percentual} className="mt-2" />
-            <p className="text-xs text-gray-500 mt-1">
-              R$ {data.metas.atingido.toLocaleString('pt-BR')} / R$ {data.metas.metaMensal.toLocaleString('pt-BR')}
+            <Progress value={data.metas.percentual} className="h-2" />
+            <p className="text-xs text-gray-500">
+              R$ {data.metas.atingido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / R$ {data.metas.metaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
         </Card>

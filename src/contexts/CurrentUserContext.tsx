@@ -21,6 +21,14 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       try {
         setIsLoading(true);
         const res = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
+        
+        // Tratar erros 502 (Bad Gateway) - servidor não está respondendo
+        if (res.status === 502) {
+          console.warn('⚠️ Servidor não está respondendo (502). Continuando sem autenticação.');
+          setIsLoading(false);
+          return;
+        }
+        
         if (res.ok) {
           const data = await res.json();
           if (data?.authenticated && data?.user?.email) {
@@ -80,7 +88,12 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (e) {
-        // ignore
+        // Tratar erros de rede de forma silenciosa
+        if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
+          console.warn('⚠️ Erro de conexão ao verificar autenticação. Continuando sem usuário.');
+        } else {
+          console.error('Erro ao carregar sessão:', e);
+        }
       } finally {
         setIsLoading(false);
       }

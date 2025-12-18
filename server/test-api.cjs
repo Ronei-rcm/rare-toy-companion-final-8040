@@ -10,7 +10,8 @@ const dbConfig = {
   host: process.env.MYSQL_HOST || '127.0.0.1',
   port: parseInt(process.env.MYSQL_PORT || '3307'),
   user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'RSM_Rg51gti66',
+  // SECURITY: Nunca usar senha padrão, deve vir do .env
+  password: process.env.MYSQL_PASSWORD || '',
   database: process.env.MYSQL_DATABASE || 'rare_toy_companion',
   waitForConnections: true,
   connectionLimit: 10,

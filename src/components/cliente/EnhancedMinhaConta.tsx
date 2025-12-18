@@ -234,9 +234,28 @@ const EnhancedMinhaConta: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {quickActions.map((action, index) => (
-              <QuickAction key={index} {...action} />
-            ))}
+            {quickActions.map((action, index) => {
+              // Declarar todas as variáveis no início para evitar problemas de hoisting
+              const actionTitle = action.title || '';
+              const actionDescription = action.description || '';
+              const actionIcon = action.icon;
+              const actionOnClick = action.onClick || (() => {});
+              const actionBadge = action.badge || undefined;
+              const actionColor = action.color || 'primary';
+              const actionKey = index;
+              
+              return (
+                <QuickAction 
+                  key={actionKey} 
+                  title={actionTitle}
+                  description={actionDescription}
+                  icon={actionIcon}
+                  onClick={actionOnClick}
+                  badge={actionBadge}
+                  color={actionColor}
+                />
+              );
+            })}
           </div>
         </CardContent>
       </Card>

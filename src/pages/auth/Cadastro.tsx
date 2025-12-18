@@ -63,7 +63,14 @@ const Cadastro = () => {
         body: JSON.stringify({ nome: values.nome, email: values.email, senha: values.senha })
       });
       const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || !data.ok) throw new Error(data.error || 'Falha ao criar conta');
+      
+      if (!resp.ok || !data.ok) {
+        // Se o email já está em uso, mostrar mensagem mais clara
+        if (data.error === 'email_in_use') {
+          throw new Error('Este email já está cadastrado. Use "Fazer login" para acessar sua conta ou "Esqueci minha senha" para redefinir.');
+        }
+        throw new Error(data.message || data.error || 'Falha ao criar conta');
+      }
       setUser({ id: values.email, email: values.email, nome: values.nome });
       toast.success('Conta criada com sucesso!');
       navigate('/minha-conta');

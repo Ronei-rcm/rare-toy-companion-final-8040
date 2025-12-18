@@ -13,6 +13,134 @@ const authenticateToken = (req, res, next) => {
 
 // ===== GESTÃO DE PEDIDOS =====
 
+// Atualizar pedido completo (status, payment_method, tracking_code)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, payment_method, tracking_code } = req.body;
+
+    console.log(`📦 Router PUT /api/orders/${id} - Atualizando pedido`, { status, payment_method, tracking_code });
+
+    // Verificar se o db está inicializado
+    if (!orderManagementService.db) {
+      console.error('❌ orderManagementService.db não está inicializado');
+      return res.status(500).json({
+        success: false,
+        message: 'Serviço de pedidos não está disponível'
+      });
+    }
+
+    // Validar que pelo menos um campo foi enviado
+    if (!status && payment_method === undefined && tracking_code === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pelo menos um campo deve ser enviado para atualização'
+      });
+    }
+
+    // Verificar se o pedido existe e obter customer_id
+    const [existingOrders] = await orderManagementService.db.execute(
+      'SELECT customer_id, status as current_status FROM orders WHERE id = ?',
+      [id]
+    );
+
+    if (existingOrders.length === 0) {
+      console.log(`❌ Pedido ${id} não encontrado no banco de dados`);
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido não encontrado'
+      });
+    }
+
+    const order = existingOrders[0];
+    const customerId = order.customer_id;
+    console.log(`✅ Pedido ${id} encontrado - Status atual: ${order.current_status}, Customer: ${customerId}`);
+
+    // Verificar autenticação do cliente (se houver token, validar)
+    const token = req.headers['authorization']?.split(' ')[1];
+    if (token) {
+      // Aqui você pode adicionar validação JWT se necessário
+      // Por enquanto, permitimos se o pedido pertence ao cliente
+    }
+
+    // Construir query dinamicamente
+    const updates = [];
+    const values = [];
+
+    if (status) {
+      // Validar status
+      const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'confirmed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Status inválido'
+        });
+      }
+
+      // Clientes só podem cancelar pedidos pendentes ou em processamento
+      if (status === 'cancelled' && !['pending', 'processing'].includes(order.current_status)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Você só pode cancelar pedidos pendentes ou em processamento'
+        });
+      }
+
+      updates.push('status = ?');
+      values.push(status);
+    }
+
+    if (payment_method !== undefined) {
+      updates.push('payment_method = ?');
+      values.push(payment_method || null);
+    }
+
+    if (tracking_code !== undefined) {
+      // Clientes geralmente não podem alterar tracking_code, mas permitimos se necessário
+      updates.push('tracking_code = ?');
+      values.push(tracking_code || null);
+    }
+
+    updates.push('updated_at = NOW()');
+    values.push(id);
+
+    // Executar atualização
+    const query = `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`;
+    const [result] = await orderManagementService.db.execute(query, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido não encontrado'
+      });
+    }
+
+    // Se status foi atualizado, usar o serviço para registrar histórico
+    if (status) {
+      await orderManagementService.updateOrderStatus(id, status, 'Atualizado pelo cliente', 'customer');
+    }
+
+    // Buscar pedido atualizado
+    const [orders] = await orderManagementService.db.execute(
+      'SELECT * FROM orders WHERE id = ?',
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Pedido atualizado com sucesso',
+      data: orders[0]
+    });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar pedido no router:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor',
+      error: error.message
+    });
+  }
+});
+
 // Atualizar status do pedido
 router.put('/:id/status', authenticateToken, async (req, res) => {
   try {

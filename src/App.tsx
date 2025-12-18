@@ -43,9 +43,31 @@ function App() {
                 <Router>
           <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando...</div>}>
             <Routes>
-              {appRoutes.map((route, index) => (
-                <Route key={index} {...route} />
-              ))}
+              {appRoutes.map((route, index) => {
+                // Renderizar rotas com children de forma recursiva
+                if (route.children && route.children.length > 0) {
+                  return (
+                    <Route key={route.path || index} path={route.path} element={route.element}>
+                      {route.children.map((child, childIndex) => (
+                        <Route 
+                          key={child.path || child.index || childIndex} 
+                          index={child.index}
+                          path={child.path}
+                          element={child.element}
+                        />
+                      ))}
+                    </Route>
+                  );
+                }
+                // Rotas simples sem children
+                return (
+                  <Route 
+                    key={route.path || index} 
+                    path={route.path}
+                    element={route.element}
+                  />
+                );
+              })}
             </Routes>
           </Suspense>
           </Router>

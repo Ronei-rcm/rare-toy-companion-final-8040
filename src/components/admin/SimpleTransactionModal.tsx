@@ -44,8 +44,10 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
     valor: '',
     status: 'Pago',
     data: new Date().toISOString().split('T')[0],
+    hora: '',
     metodo_pagamento: 'PIX',
     origem: '',
+    detalhe: '', // Campo Detalhe (Recebido, Enviado, Devolvido, etc.)
     observacoes: ''
   });
 
@@ -59,6 +61,40 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
   // Carregar dados da transação para edição/duplicação
   useEffect(() => {
     if (isOpen && transaction && (mode === 'edit' || mode === 'duplicate')) {
+      // Converter hora do formato MySQL (HH:MM:SS) para formato do input (HH:MM)
+      let horaFormatada = '';
+      if (transaction.hora) {
+        // Se vier como "HH:MM:SS", pegar apenas "HH:MM"
+        if (transaction.hora.includes(':')) {
+          const partes = transaction.hora.split(':');
+          horaFormatada = `${partes[0]}:${partes[1]}`;
+        } else {
+          horaFormatada = transaction.hora;
+        }
+      }
+      
+      // Extrair detalhe das observações se não estiver direto
+      let detalheExtraido = '';
+      if (transaction.detalhe) {
+        detalheExtraido = transaction.detalhe;
+      } else if (transaction.observacoes) {
+        // Tentar extrair de observações: "Detalhe: Recebido | ..."
+        const match = transaction.observacoes.match(/Detalhe:\s*([^|]+)/);
+        if (match) {
+          detalheExtraido = match[1].trim();
+        }
+      }
+      
+      console.log('🔍 Carregando transação para edição:', {
+        id: transaction.id,
+        hora_original: transaction.hora,
+        hora_formatada: horaFormatada,
+        data: transaction.data,
+        metodo_pagamento: transaction.metodo_pagamento,
+        origem: transaction.origem,
+        detalhe: detalheExtraido
+      });
+      
       setFormData({
         descricao: transaction.descricao || '',
         categoria: transaction.categoria || '',
@@ -66,8 +102,10 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
         valor: transaction.valor ? transaction.valor.toString() : '',
         status: transaction.status || 'Pago',
         data: transaction.data ? transaction.data.split('T')[0] : new Date().toISOString().split('T')[0],
+        hora: horaFormatada,
         metodo_pagamento: transaction.metodo_pagamento || 'PIX',
         origem: transaction.origem || '',
+        detalhe: detalheExtraido,
         observacoes: transaction.observacoes || ''
       });
 
@@ -145,9 +183,25 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
 
     setSaving(true);
     try {
+      // Incluir detalhe nas observações se fornecido
+      let observacoesFinal = formData.observacoes || '';
+      if (formData.detalhe) {
+        if (observacoesFinal) {
+          observacoesFinal = `Detalhe: ${formData.detalhe} | ${observacoesFinal}`;
+        } else {
+          observacoesFinal = `Detalhe: ${formData.detalhe}`;
+        }
+      }
+      
       const transactionData = {
         ...formData,
         valor: parseFloat(formData.valor),
+        // Garantir que hora seja enviada (mesmo que vazia, será null no backend)
+        hora: formData.hora || null,
+        // Incluir detalhe no objeto (será salvo nas observações)
+        detalhe: formData.detalhe || null,
+        // Observações com detalhe incluído
+        observacoes: observacoesFinal,
         // Incluir ID apenas para edição
         ...(mode === 'edit' && transaction?.id && { id: transaction.id })
       };
@@ -155,6 +209,7 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
       console.log('💾 Salvando transação:', transactionData);
       console.log('🔍 Modo:', mode);
       console.log('🔍 FormData completo:', formData);
+      console.log('🔍 Campo hora:', formData.hora || 'vazio');
       console.log('🔍 Tipo selecionado:', formData.tipo);
       
       await onSave(transactionData);
@@ -332,13 +387,25 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="data">Data *</Label>
-              <Input
-                id="data"
-                type="date"
-                value={formData.data}
-                onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-              />
+              <div>
+                <Label htmlFor="data">Data *</Label>
+                <Input
+                  id="data"
+                  type="date"
+                  value={formData.data}
+                  onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="hora">Hora (Opcional)</Label>
+                <Input
+                  id="hora"
+                  type="time"
+                  value={formData.hora}
+                  onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
+                  step="1"
+                />
+              </div>
             </div>
 
             <div>
@@ -357,30 +424,50 @@ const SimpleTransactionModal: React.FC<SimpleTransactionModalProps> = ({
           </div>
 
           <div>
-            <Label htmlFor="metodo_pagamento">Método de Pagamento</Label>
+            <Label htmlFor="metodo_pagamento">Tipo de Transação</Label>
             <Select value={formData.metodo_pagamento} onValueChange={(value) => setFormData({ ...formData, metodo_pagamento: value })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PIX">PIX</SelectItem>
+                <SelectItem value="Pix">Pix</SelectItem>
+                <SelectItem value="Depósito de vendas">Depósito de vendas</SelectItem>
+                <SelectItem value="Depósito">Depósito</SelectItem>
+                <SelectItem value="Transferência">Transferência</SelectItem>
                 <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
                 <SelectItem value="Cartão de Débito">Cartão de Débito</SelectItem>
                 <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                <SelectItem value="Transferência">Transferência</SelectItem>
                 <SelectItem value="Boleto">Boleto</SelectItem>
+                <SelectItem value="TED">TED</SelectItem>
+                <SelectItem value="DOC">DOC</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label htmlFor="origem">Origem</Label>
+            <Label htmlFor="origem">Nome</Label>
             <Input
               id="origem"
               value={formData.origem}
               onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
-              placeholder="Ex: Loja física, E-commerce"
+              placeholder="Ex: Pix Beatriz da Silva, Depósito de vendas, etc."
             />
+          </div>
+
+          <div>
+            <Label htmlFor="detalhe">Detalhe</Label>
+            <Select value={formData.detalhe} onValueChange={(value) => setFormData({ ...formData, detalhe: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o detalhe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Recebido">Recebido</SelectItem>
+                <SelectItem value="Enviado">Enviado</SelectItem>
+                <SelectItem value="Devolvido">Devolvido</SelectItem>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+                <SelectItem value="Cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

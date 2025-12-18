@@ -252,7 +252,13 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
           console.log('✅ Seção video-gallery adicionada à configuração');
         } else {
           // Verificar se há vídeos e habilitar automaticamente
-          fetch('/api/videos/active')
+          fetch('/api/videos/active').catch(e => {
+            if (e instanceof TypeError || e.message?.includes('Failed to fetch')) {
+              console.warn('⚠️ Erro de conexão ao carregar vídeos. Continuando sem vídeos.');
+              return { ok: false, json: () => Promise.resolve({ videos: [] }) };
+            }
+            throw e;
+          })
             .then(res => res.json())
             .then(videos => {
               if (videos && videos.length > 0 && !videoGallerySection.enabled) {

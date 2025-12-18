@@ -1,8 +1,8 @@
 // Service Worker para MuhlStore PWA
-const CACHE_NAME = 'muhlstore-v1.0.4';
-const STATIC_CACHE = 'muhlstore-static-v1.0.4';
-const DYNAMIC_CACHE = 'muhlstore-dynamic-v1.0.4';
-const API_CACHE = 'muhlstore-api-v1.0.4';
+const CACHE_NAME = 'muhlstore-v1.0.5';
+const STATIC_CACHE = 'muhlstore-static-v1.0.5';
+const DYNAMIC_CACHE = 'muhlstore-dynamic-v1.0.5';
+const API_CACHE = 'muhlstore-api-v1.0.5';
 
 // Arquivos estáticos para cache
 const STATIC_FILES = [
@@ -153,6 +153,11 @@ async function handleApiRequest(request) {
 async function handleStaticRequest(request) {
   const url = new URL(request.url);
   
+  // Ignorar fontes externas conhecidas para evitar logs de 404 (ex: rsms Inter)
+  if (url.hostname === 'rsms.me') {
+    return fetch(request);
+  }
+
   // Ignorar URLs de extensões do Chrome e outros esquemas não suportados
   if (url.protocol === 'chrome-extension:' || 
       url.protocol === 'moz-extension:' || 

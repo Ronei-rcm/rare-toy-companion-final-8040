@@ -52,8 +52,16 @@ router.get('/orders/unified', async (req, res) => {
       admin_view = false
     } = req.query;
     
-    const offset = (page - 1) * limit;
+    // Converter para números (req.query sempre retorna strings)
+    const pageNum = parseInt(String(page)) || 1;
+    const limitNum = parseInt(String(limit)) || 50;
+    const offset = (pageNum - 1) * limitNum;
     const isAdmin = admin_view === 'true';
+    
+    // Validar e sanitizar sort (prevenir SQL injection)
+    const allowedSorts = ['created_at', 'updated_at', 'status', 'total', 'id'];
+    const safeSort = allowedSorts.includes(sort) ? sort : 'created_at';
+    const safeOrder = (order === 'ASC' || order === 'DESC') ? order : 'DESC';
     
     // Construir query base
     let whereClause = '';
@@ -66,13 +74,14 @@ router.get('/orders/unified', async (req, res) => {
     }
     
     // Filtro por busca
+    // CORRIGIDO: orders não tem nome, email, telefone - buscar na tabela customers via JOIN
     if (search) {
       const searchCondition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${searchCondition} (
         o.id LIKE ? OR 
-        o.nome LIKE ? OR 
-        o.email LIKE ? OR 
-        o.telefone LIKE ?
+        c.nome LIKE ? OR 
+        c.email LIKE ? OR
+        o.tracking_code LIKE ?
       )`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
@@ -81,8 +90,11 @@ router.get('/orders/unified', async (req, res) => {
     // Filtro por cliente (se não for admin)
     if (!isAdmin && customer_id) {
       let customerFilterId = customer_id;
+      let customerEmail = null;
+      
       // Aceitar email como customer_id
       if (String(customer_id).includes('@')) {
+        customerEmail = customer_id;
         try {
           const [crows] = await pool.execute('SELECT id FROM customers WHERE email = ? LIMIT 1', [customer_id]);
           if (Array.isArray(crows) && crows[0] && crows[0].id) {
@@ -91,31 +103,67 @@ router.get('/orders/unified', async (req, res) => {
             const [urows] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [customer_id]);
             if (Array.isArray(urows) && urows[0] && urows[0].id) {
               customerFilterId = urows[0].id;
+            } else {
+              // Se não encontrou, usar email na query
+              customerFilterId = null;
             }
           }
-        } catch (_) { /* tolerante: mantém valor original */ }
+        } catch (e) {
+          console.error('⚠️ Erro ao buscar cliente por email:', e);
+          customerFilterId = null;
+        }
       }
+      
       const customerCondition = whereClause ? ' AND' : ' WHERE';
-      whereClause += `${customerCondition} (o.customer_id = ? OR o.user_id = ?)`;
-      queryParams.push(customerFilterId, customerFilterId);
+      if (customerFilterId && !customerEmail) {
+        // CORRIGIDO: orders não tem customer_id, apenas user_id
+        whereClause += `${customerCondition} o.user_id = ?`;
+        queryParams.push(customerFilterId);
+      } else if (customerEmail) {
+        // Buscar por email diretamente na tabela customers
+        // CORRIGIDO: orders não tem email, buscar via JOIN com customers
+        whereClause += `${customerCondition} c.email = ?`;
+        queryParams.push(customerEmail);
+      }
     }
     
     // Query principal com dados completos (colunas essenciais)
-    const [orders] = await pool.execute(`
+    // CORRIGIDO: orders não tem customer_id, nome, email, telefone, endereco, metodo_pagamento
+    // Garantir que limit e offset são inteiros
+    const limitInt = Math.floor(Number(limitNum)) || 50;
+    const offsetInt = Math.floor(Number(offset)) || 0;
+    const finalParams = [...queryParams, limitInt, offsetInt];
+    
+    // Debug: log dos parâmetros
+    console.log('🔍 [orders/unified] Query params:', {
+      whereClause,
+      queryParamsCount: queryParams.length,
+      finalParamsCount: finalParams.length,
+      limitNum: limitInt,
+      offset: offsetInt,
+      safeSort,
+      safeOrder,
+      finalParams: finalParams.map(p => typeof p === 'string' ? p.substring(0, 50) : p)
+    });
+    
+    // CORRIGIDO: MySQL não aceita placeholders (?) em LIMIT/OFFSET em algumas versões
+    // Usar valores literais diretamente na query para LIMIT e OFFSET
+    const querySQL = `
       SELECT 
         o.id,
         o.user_id,
-        o.customer_id,
+        o.user_id as customer_id,
         o.status,
         o.total,
-        o.nome as customer_name,
-        o.email as customer_email,
-        o.telefone as customer_phone,
-        o.endereco as shipping_address,
-        o.metodo_pagamento as payment_method,
+        o.shipping_address,
+        o.payment_method,
+        o.tracking_code,
         o.created_at,
         o.updated_at,
         c.nome as customer_nome,
+        c.email as customer_email,
+        c.telefone as customer_phone,
+        c.nome as customer_name,
         c.email as customer_email_real,
         CASE 
           WHEN c.id IS NOT NULL THEN 'Cliente Sincronizado'
@@ -124,23 +172,30 @@ router.get('/orders/unified', async (req, res) => {
         END as customer_type,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as items_count
       FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN customers c ON o.user_id = c.id
       ${whereClause}
-      ORDER BY o.${sort} ${order}
-      LIMIT ? OFFSET ?
-    `, [...queryParams, parseInt(limit), parseInt(offset)]);
+      ORDER BY o.${safeSort} ${safeOrder}
+      LIMIT ${limitInt} OFFSET ${offsetInt}
+    `;
+    
+    // Parâmetros agora são apenas os da WHERE clause (sem limit/offset)
+    const queryParamsOnly = queryParams;
+    
+    console.log('🔍 [orders/unified] SQL Query:', querySQL.substring(0, 200) + '...');
+    console.log('🔍 [orders/unified] SQL Params:', queryParamsOnly);
+    
+    const [orders] = await pool.execute(querySQL, queryParamsOnly);
     
     // Buscar itens de cada pedido
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
-        // Buscar itens sem depender de tabela 'produtos' (compatibilidade)
+        // Buscar itens - order_items não tem coluna 'name' ou 'image_url'
+        // Apenas: id, order_id, product_id, quantity, price, created_at
         const [items] = await pool.execute(`
           SELECT 
             oi.id,
             oi.product_id,
-            oi.name,
             oi.price,
-            oi.image_url,
             oi.quantity,
             oi.created_at
           FROM order_items oi
@@ -148,9 +203,16 @@ router.get('/orders/unified', async (req, res) => {
           ORDER BY oi.created_at ASC
         `, [order.id]);
         
+        // Adicionar campos vazios para compatibilidade com frontend
+        const itemsWithNames = items.map(item => ({
+          ...item,
+          name: `Produto ${item.product_id}`,
+          image_url: null
+        }));
+        
         return {
           ...order,
-          items: items,
+          items: itemsWithNames,
           customer: {
             id: order.customer_id || order.user_id,
             nome: order.customer_nome || order.customer_name || 'Cliente',
@@ -163,10 +225,11 @@ router.get('/orders/unified', async (req, res) => {
     );
     
     // Contar total para paginação
+    // CORRIGIDO: orders não tem customer_id, apenas user_id
     const [countResult] = await pool.execute(`
       SELECT COUNT(*) as total
       FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN customers c ON o.user_id = c.id
       ${whereClause}
     `, queryParams);
     
@@ -175,20 +238,32 @@ router.get('/orders/unified', async (req, res) => {
     res.json({
       orders: ordersWithItems,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       },
       sync_timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('Erro ao buscar pedidos unificados:', error);
+    console.error('❌ Erro ao buscar pedidos unificados:', error);
+    
+    // Garantir que pageNum e limitNum existam mesmo em caso de erro
+    const errorPageNum = parseInt(String(req.query.page)) || 1;
+    const errorLimitNum = parseInt(String(req.query.limit)) || 50;
+    
     res.status(500).json({ 
       error: 'Erro interno do servidor',
+      message: error.message,
       orders: [],
-      pagination: { page: 1, limit: 50, total: 0, pages: 0 }
+      pagination: { 
+        page: errorPageNum, 
+        limit: errorLimitNum, 
+        total: 0, 
+        pages: 0 
+      },
+      sync_timestamp: new Date().toISOString()
     });
   }
 });
@@ -415,7 +490,10 @@ router.get('/orders/stats/unified', async (req, res) => {
     // Filtro por cliente (aceitar email)
     if (customer_id) {
       let customerFilterId = customer_id;
+      let customerEmail = null;
+      
       if (String(customer_id).includes('@')) {
+        customerEmail = customer_id;
         try {
           const [crows] = await pool.execute('SELECT id FROM customers WHERE email = ? LIMIT 1', [customer_id]);
           if (Array.isArray(crows) && crows[0] && crows[0].id) {
@@ -424,13 +502,30 @@ router.get('/orders/stats/unified', async (req, res) => {
             const [urows] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [customer_id]);
             if (Array.isArray(urows) && urows[0] && urows[0].id) {
               customerFilterId = urows[0].id;
+            } else {
+              // Se não encontrou usuário, usar email na query
+              customerFilterId = null;
             }
           }
-        } catch (_) { /* tolerante */ }
+        } catch (e) {
+          console.error('⚠️ Erro ao buscar cliente por email:', e);
+          customerFilterId = null;
+        }
       }
+      
       const customerFilter = dateFilter ? ' AND' : ' WHERE';
-      dateFilter += `${customerFilter} (o.customer_id = ? OR o.user_id = ?)`;
-      queryParams.push(customerFilterId, customerFilterId);
+      if (customerFilterId) {
+        // CORRIGIDO: orders não tem customer_id, apenas user_id
+        dateFilter += `${customerFilter} o.user_id = ?`;
+        queryParams.push(customerFilterId);
+      } else if (customerEmail) {
+        // Buscar por email diretamente na tabela customers
+        // CORRIGIDO: orders não tem email, buscar via JOIN com customers
+        dateFilter += `${customerFilter} EXISTS (
+          SELECT 1 FROM customers c WHERE c.id = o.user_id AND c.email = ?
+        )`;
+        queryParams.push(customerEmail);
+      }
     }
     
     const [stats] = await pool.execute(`
@@ -445,8 +540,8 @@ router.get('/orders/stats/unified', async (req, res) => {
         AVG(CASE WHEN status = 'delivered' THEN total ELSE NULL END) as average_ticket,
         COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as today_orders,
         SUM(CASE WHEN DATE(created_at) = CURDATE() AND status = 'delivered' THEN total ELSE 0 END) as today_revenue,
-        COUNT(DISTINCT customer_id) as unique_customers,
-        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND customer_id IS NOT NULL THEN 1 END) as new_customers_today,
+        COUNT(DISTINCT user_id) as unique_customers,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND user_id IS NOT NULL THEN 1 END) as new_customers_today,
         AVG(TIMESTAMPDIFF(HOUR, created_at, 
           CASE WHEN status = 'delivered' THEN updated_at ELSE NULL END)) as avg_delivery_time_hours
       FROM orders o
@@ -474,8 +569,26 @@ router.get('/orders/stats/unified', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Erro ao buscar estatísticas:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('❌ Erro ao buscar estatísticas unificadas:', error);
+    res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      message: error.message,
+      period: req.query.period || '30d',
+      total: 0,
+      pending: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+      totalRevenue: 0,
+      averageTicket: 0,
+      todayOrders: 0,
+      todayRevenue: 0,
+      uniqueCustomers: 0,
+      newCustomersToday: 0,
+      avgDeliveryTimeHours: 0,
+      generated_at: new Date().toISOString()
+    });
   }
 });
 
@@ -511,4 +624,6 @@ const setupOrderWebSocket = (io) => {
 };
 
 module.exports = { router, setupOrderWebSocket };
+
+
 

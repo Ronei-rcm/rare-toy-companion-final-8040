@@ -152,11 +152,11 @@ const Eventos = () => {
                 >
                   <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-white/20 hover:border-orange-200/50">
                     {event.imagem_url && (
-                      <div className="relative overflow-hidden">
+                      <div className="relative overflow-hidden bg-slate-100">
                         <img
                           src={event.imagem_url}
                           alt={event.titulo}
-                          className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-700"
+                          className="w-full h-64 object-contain group-hover:scale-105 transition-transform duration-700"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                         

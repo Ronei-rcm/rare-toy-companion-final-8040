@@ -13,9 +13,9 @@
 - [x] Remover senhas hardcoded de `server/test-api.cjs` ✅
 - [x] Atualizar `env.example` com todas as variáveis ✅
 - [x] Configurar CI/CD com verificação de segurança ✅
-- [ ] **URGENTE:** Rotacionar senhas no banco de dados
-- [ ] **URGENTE:** Configurar arquivo `.env` com novas senhas
-- [ ] Testar aplicação após mudanças de senha
+- [ ] **URGENTE:** Rotacionar senhas no banco de dados ⏳ (Script pronto: `scripts/rotate-passwords.sh`)
+- [ ] **URGENTE:** Configurar arquivo `.env` com novas senhas ⏳ (Será feito automaticamente pelo script)
+- [ ] Testar aplicação após mudanças de senha ⏳
 
 ### CI/CD
 - [x] Criar `.github/workflows/ci.yml` ✅
@@ -85,11 +85,13 @@
 ## 📊 Progresso Geral
 
 ### Segurança
-**Status:** 🟢 Completo (90%)
+**Status:** 🟢 Completo (95%)
 - ✅ Senhas removidas do código
+- ✅ Scripts de teste corrigidos (sem senhas hardcoded)
 - ✅ Rate limiting ajustado
 - ✅ Scripts de segurança criados
-- ⏳ Pendente: Rotacionar senhas
+- ✅ Guia de rotação de senhas criado (`docs/GUIA_ROTACAO_SENHAS.md`)
+- ⏳ Pendente: Executar rotação de senhas (script pronto)
 
 ### Código
 **Status:** 🟡 Em Progresso (40%)
@@ -160,6 +162,15 @@
 ---
 
 ## 🔧 Correções Recentes (11/01/2025)
+
+### Segurança - Remoção de Senhas Hardcoded
+- [x] Corrigido `scripts/test-mysql-connection.js` ✅
+- [x] Corrigido `tests/unit/database.test.js` ✅
+- [x] Corrigido `src/integrations/mysql/client.ts` ✅
+- [x] Corrigido `server/routes/admin-orders-advanced.cjs` ✅
+- [x] Corrigido `server/routes/google-calendar.cjs` ✅
+- [x] Corrigido `server/services/apiConfigService.cjs` ✅
+- [x] Criado guia completo de rotação de senhas (`docs/GUIA_ROTACAO_SENHAS.md`) ✅
 
 ### Backend - Endpoints
 - [x] Corrigido endpoint `/api/orders/unified` ✅

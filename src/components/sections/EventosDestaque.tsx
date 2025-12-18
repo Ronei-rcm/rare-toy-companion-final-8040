@@ -49,11 +49,11 @@ export const EventosDestaque = () => {
           {events.slice(0, 3).map((event) => (
             <Card key={event.id} className="group hover:shadow-lg transition-all duration-300">
               {event.imagem_url && (
-                <div className="relative overflow-hidden rounded-t-lg">
+                <div className="relative overflow-hidden rounded-t-lg bg-slate-100">
                   <img
                     src={event.imagem_url}
                     alt={event.titulo}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-48 object-contain group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-4 left-4">
                     {event.preco && event.preco > 0 ? (

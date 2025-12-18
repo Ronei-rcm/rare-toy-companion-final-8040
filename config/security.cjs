@@ -59,11 +59,27 @@ const authLimiter = rateLimit({
 });
 
 // Rate limiter para criação de contas
+// Aumentado e configurado para não bloquear tentativas legítimas
+// skipSuccessfulRequests: true = só conta quando cria conta com sucesso (200)
 const createAccountLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 5, // 5 contas por hora (aumentado de 3)
+  max: 30, // 30 contas por hora (aumentado de 5 para 30)
+  skipSuccessfulRequests: true, // NÃO conta tentativas que falharam (409, 400, etc)
+  skip: (req, res) => {
+    // Não contar se a resposta foi erro (qualquer coisa != 2xx)
+    // Isso inclui 409 (email já existe), 400 (validação), etc
+    return res.statusCode && res.statusCode >= 400;
+  },
   message: {
     error: 'Muitas contas criadas deste IP. Tente novamente em 1 hora.',
+  },
+  // Handler customizado para erro 429
+  handler: (req, res) => {
+    res.status(429).json({
+      ok: false,
+      error: 'too_many_requests',
+      message: 'Muitas tentativas de criação de conta. Por favor, aguarde 1 hora ou entre em contato com o suporte se precisar criar uma conta agora.',
+    });
   },
 });
 

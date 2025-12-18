@@ -234,12 +234,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
         
         // Depois, sincronizar com o servidor
         const res = await fetch(`${API_BASE_URL}/cart`, { credentials: 'include' });
-        if (!res.ok) throw new Error('Falha ao carregar carrinho');
+        
+        // Tratar erros 502 (Bad Gateway) - servidor não está respondendo
+        if (res.status === 502) {
+          console.warn('⚠️ Servidor não está respondendo (502). Usando carrinho local.');
+          // Manter carrinho do localStorage se existir
+          return;
+        }
+        
+        if (!res.ok) {
+          // Para outros erros, apenas logar mas não quebrar
+          console.warn('⚠️ Erro ao carregar carrinho da API:', res.status);
+          return;
+        }
+        
         const data = await res.json();
         const itens = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
         dispatch({ type: 'LOAD_CART', payload: itens });
       } catch (error) {
+        // Erros de rede ou outros - não quebrar a aplicação
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          console.warn('⚠️ Erro de conexão ao carregar carrinho. Usando carrinho local.');
+        } else {
         console.error('Erro ao carregar carrinho da API:', error);
+        }
         // Se falhar, manter o carrinho do localStorage se existir
       } finally {
         dispatch({ type: 'SET_LOADING', payload: false });

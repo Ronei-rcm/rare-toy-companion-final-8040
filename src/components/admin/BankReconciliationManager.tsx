@@ -19,7 +19,11 @@ import {
   Building,
   DollarSign,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Edit,
+  Trash2,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { toast } from 'sonner';
 import MetricCard from './MetricCard';
@@ -27,6 +31,7 @@ import LoadingState from './LoadingState';
 import EmptyState from './EmptyState';
 import PayBillModal from './PayBillModal';
 import ImportBankStatementModal from './ImportBankStatementModal';
+import SimpleTransactionModal from './SimpleTransactionModal';
 import { formatCurrency } from '@/utils/currencyUtils';
 
 interface Transacao {
@@ -38,6 +43,7 @@ interface Transacao {
   status: 'Pago' | 'Pendente' | 'Atrasado';
   metodo_pagamento: string;
   data: string;
+  hora?: string | null;
   origem: string;
   observacoes: string;
 }
@@ -77,6 +83,10 @@ export default function BankReconciliationManager() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transacao | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transacao | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
   const [dataInicio, setDataInicio] = useState<string>(() => {
     const date = new Date();
     date.setDate(date.getDate() - 30);
@@ -326,6 +336,173 @@ export default function BankReconciliationManager() {
     setSelectedTransaction(null);
   };
 
+  // Editar transação
+  const abrirModalEdicao = (transacao: Transacao) => {
+    setEditingTransaction(transacao);
+    setShowEditModal(true);
+  };
+
+  const fecharModalEdicao = () => {
+    setShowEditModal(false);
+    setEditingTransaction(null);
+  };
+
+  const salvarTransacaoEditada = async (data: any) => {
+    try {
+      const isEdit = data.id;
+      const url = '/api/financial/transactions';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao salvar transação');
+      }
+
+      toast.success('Transação atualizada com sucesso!');
+      await carregarDados();
+      fecharModalEdicao();
+    } catch (error: any) {
+      console.error('Erro ao salvar transação:', error);
+      toast.error(error.message || 'Erro ao salvar transação');
+    }
+  };
+
+  // Excluir transação
+  const excluirTransacao = async (id: number) => {
+    if (!confirm('Tem certeza que deseja excluir esta transação?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/financial/transactions/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir transação');
+      }
+
+      toast.success('Transação excluída com sucesso!');
+      await carregarDados();
+    } catch (error: any) {
+      console.error('Erro ao excluir transação:', error);
+      toast.error(error.message || 'Erro ao excluir transação');
+    }
+  };
+
+  // Seleção em lote
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds(new Set());
+      setSelectAll(false);
+    } else {
+      const allIds = new Set(transacoesFiltradas.map(t => t.id));
+      setSelectedIds(allIds);
+      setSelectAll(true);
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+    setSelectAll(newSelected.size === transacoesFiltradas.length);
+  };
+
+  // Ações em lote
+  const excluirSelecionadas = async () => {
+    if (selectedIds.size === 0) {
+      toast.warning('Selecione pelo menos uma transação');
+      return;
+    }
+
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.size} transação(ões)?`)) {
+      return;
+    }
+
+    try {
+      let sucesso = 0;
+      let erros = 0;
+
+      for (const id of selectedIds) {
+        try {
+          const response = await fetch(`/api/financial/transactions/${id}`, {
+            method: 'DELETE'
+          });
+
+          if (response.ok) {
+            sucesso++;
+          } else {
+            erros++;
+          }
+        } catch (error) {
+          erros++;
+        }
+      }
+
+      if (sucesso > 0) {
+        toast.success(`${sucesso} transação(ões) excluída(s) com sucesso!`);
+      }
+      if (erros > 0) {
+        toast.error(`${erros} transação(ões) não puderam ser excluídas`);
+      }
+
+      setSelectedIds(new Set());
+      setSelectAll(false);
+      await carregarDados();
+    } catch (error: any) {
+      console.error('Erro ao excluir transações:', error);
+      toast.error('Erro ao excluir transações');
+    }
+  };
+
+  const conciliarSelecionadas = async () => {
+    if (selectedIds.size === 0) {
+      toast.warning('Selecione pelo menos uma transação');
+      return;
+    }
+
+    try {
+      let sucesso = 0;
+      let erros = 0;
+
+      for (const id of selectedIds) {
+        try {
+          await reconciliarTransacao(id);
+          sucesso++;
+        } catch (error) {
+          erros++;
+        }
+      }
+
+      if (sucesso > 0) {
+        toast.success(`${sucesso} transação(ões) conciliada(s) com sucesso!`);
+      }
+      if (erros > 0) {
+        toast.error(`${erros} transação(ões) não puderam ser conciliadas`);
+      }
+
+      setSelectedIds(new Set());
+      setSelectAll(false);
+      await carregarDados();
+    } catch (error: any) {
+      console.error('Erro ao conciliar transações:', error);
+      toast.error('Erro ao conciliar transações');
+    }
+  };
+
   if (loading) {
     return <LoadingState message="Carregando dados de conciliação..." fullHeight />;
   }
@@ -483,10 +660,36 @@ export default function BankReconciliationManager() {
         <TabsContent value="transacoes" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Transações do Sistema</CardTitle>
-              <CardDescription>
-                Transações que podem ser conciliadas com movimentações bancárias
-              </CardDescription>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>Transações do Sistema</CardTitle>
+                  <CardDescription>
+                    Transações que podem ser conciliadas com movimentações bancárias
+                  </CardDescription>
+                </div>
+                {selectedIds.size > 0 && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={conciliarSelecionadas}
+                      className="text-blue-600"
+                    >
+                      <Link2 className="h-4 w-4 mr-2" />
+                      Conciliação em Lote ({selectedIds.size})
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={excluirSelecionadas}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir Selecionadas ({selectedIds.size})
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {transacoesFiltradas.length === 0 ? (
@@ -500,11 +703,28 @@ export default function BankReconciliationManager() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-12">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={toggleSelectAll}
+                            className="h-8 w-8 p-0"
+                            title={selectAll ? 'Desmarcar todas' : 'Marcar todas'}
+                          >
+                            {selectAll ? (
+                              <CheckSquare className="h-4 w-4" />
+                            ) : (
+                              <Square className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead>Descrição</TableHead>
                         <TableHead>Categoria</TableHead>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Valor</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Origem</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Conciliação</TableHead>
                         <TableHead>Ações</TableHead>
@@ -514,9 +734,32 @@ export default function BankReconciliationManager() {
                       {transacoesFiltradas.map((transacao) => (
                         <TableRow key={transacao.id}>
                           <TableCell>
-                            {new Date(transacao.data).toLocaleDateString('pt-BR')}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleSelect(transacao.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              {selectedIds.has(transacao.id) ? (
+                                <CheckSquare className="h-4 w-4 text-blue-600" />
+                              ) : (
+                                <Square className="h-4 w-4" />
+                              )}
+                            </Button>
                           </TableCell>
-                          <TableCell className="font-medium">{transacao.descricao}</TableCell>
+                          <TableCell>
+                            <div>
+                              {new Date(transacao.data).toLocaleDateString('pt-BR')}
+                              {transacao.hora && (
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {transacao.hora}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium" title={transacao.descricao}>
+                            <div className="max-w-xs truncate">{transacao.descricao}</div>
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">{transacao.categoria}</Badge>
                           </TableCell>
@@ -527,6 +770,16 @@ export default function BankReconciliationManager() {
                           </TableCell>
                           <TableCell className={`font-semibold ${transacao.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
                             {transacao.tipo === 'entrada' ? '+' : '-'}{formatCurrency(transacao.valor)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {transacao.metodo_pagamento || 'N/A'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-xs truncate" title={transacao.origem || 'N/A'}>
+                              {transacao.origem || 'N/A'}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge className={
@@ -551,13 +804,31 @@ export default function BankReconciliationManager() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => abrirModalEdicao(transacao)}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                title="Editar transação"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => excluirTransacao(transacao.id)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Excluir transação"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                               {transacao.status !== 'Pago' && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   onClick={() => abrirModalPagamento(transacao)}
-                                  className="text-green-600 hover:text-green-700"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                   title="Pagar conta"
                                 >
                                   <Wallet className="h-4 w-4" />
@@ -566,9 +837,9 @@ export default function BankReconciliationManager() {
                               {isTransacaoConciliada(transacao) ? (
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   onClick={() => desconciliarTransacao(transacao.id)}
-                                  className="text-orange-600 hover:text-orange-700"
+                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                   title="Desconciliar"
                                 >
                                   <Unlink className="h-4 w-4" />
@@ -576,9 +847,9 @@ export default function BankReconciliationManager() {
                               ) : (
                                 <Button
                                   size="sm"
-                                  variant="outline"
+                                  variant="ghost"
                                   onClick={() => reconciliarTransacao(transacao.id)}
-                                  className="text-blue-600 hover:text-blue-700"
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                   disabled={transacao.status !== 'Pago'}
                                   title="Conciliação manual"
                                 >
@@ -685,11 +956,24 @@ export default function BankReconciliationManager() {
       {/* Modal de Importação */}
       <ImportBankStatementModal
         isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
+        onClose={() => {
+          console.log('🔍 Fechando modal de importação');
+          setShowImportModal(false);
+        }}
         onSuccess={async () => {
           await carregarDados();
+          setShowImportModal(false);
         }}
         contaId={contaSelecionada && contaSelecionada !== 'all' ? parseInt(contaSelecionada) : undefined}
+      />
+
+      {/* Modal de Edição */}
+      <SimpleTransactionModal
+        isOpen={showEditModal}
+        onClose={fecharModalEdicao}
+        onSave={salvarTransacaoEditada}
+        mode="edit"
+        transaction={editingTransaction}
       />
     </div>
   );

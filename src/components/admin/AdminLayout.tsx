@@ -209,13 +209,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Sidebar Desktop */}
       <aside 
         className={cn(
-          "fixed inset-y-0 z-50 flex flex-col bg-gradient-to-b from-sidebar to-sidebar/95 border-r border-sidebar-border shadow-2xl transition-all duration-300 md:left-0",
+          "fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-gradient-to-b from-sidebar to-sidebar/95 border-r border-sidebar-border shadow-2xl transition-all duration-300 md:left-0",
           sidebarOpen ? "w-64" : "w-20",
-          "hidden md:flex"
+          "hidden md:flex h-screen"
         )}
       >
         {/* Header */}
-        <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
+        <div className="flex-shrink-0 p-4 flex items-center justify-between border-b border-sidebar-border">
           <div className={cn("overflow-hidden transition-all", !sidebarOpen && "invisible w-0")}>
             <h2 className="text-xl font-bold text-sidebar-foreground flex items-center gap-2">
               <Zap className="h-5 w-5 text-primary" />
@@ -235,7 +235,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
         {/* Busca Rápida (apenas quando expandido) */}
         {sidebarOpen && (
-          <div className="p-3 border-b border-sidebar-border">
+          <div className="flex-shrink-0 p-3 border-b border-sidebar-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -249,8 +249,16 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
         )}
         
-        {/* Navegação */}
-        <ScrollArea className="flex-1 py-2">
+        {/* Navegação - Container rolável */}
+        <div 
+          className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll"
+          style={{ 
+            minHeight: 0,
+            maxHeight: '100%',
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
+          }}
+        >
           {sidebarOpen ? (
             // Menu Expandido com Categorias
             <>
@@ -370,10 +378,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               })}
             </nav>
           )}
-        </ScrollArea>
+        </div>
         
         {/* Footer - Usuário */}
-        <div className="p-4 border-t border-sidebar-border bg-sidebar-accent/30">
+        <div className="flex-shrink-0 p-4 border-t border-sidebar-border bg-sidebar-accent/30">
           <div className={cn(
             "flex items-center gap-3",
             !sidebarOpen && "justify-center"
@@ -413,8 +421,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       <div className="md:hidden">
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm animate-in" onClick={() => setMobileMenuOpen(false)}>
-            <aside className="fixed inset-y-0 left-0 w-80 bg-gradient-to-b from-background to-background/95 animate-in slide-in-from-left shadow-2xl max-w-sm">
-              <div className="p-4 flex items-center justify-between border-b bg-background">
+            <aside className="fixed inset-y-0 left-0 w-80 bg-gradient-to-b from-background to-background/95 animate-in slide-in-from-left shadow-2xl max-w-sm flex flex-col h-screen">
+              <div className="flex-shrink-0 p-4 flex items-center justify-between border-b bg-background">
                 <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                   <Zap className="h-5 w-5 text-primary" />
                   Admin Panel
@@ -428,7 +436,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </Button>
               </div>
               
-              <div className="p-3 border-b">
+              <div className="flex-shrink-0 p-3 border-b">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -441,7 +449,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </div>
               </div>
               
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll" style={{ minHeight: 0 }}>
                 <nav className="px-2 py-4 space-y-1">
                   {Object.entries(groupedNavigation.grouped).map(([category, items]) => (
                     <div key={category} className="space-y-2 mb-4">
@@ -476,9 +484,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     </div>
                   ))}
                 </nav>
-              </ScrollArea>
+              </div>
               
-              <div className="p-4 border-t bg-muted/50">
+              <div className="flex-shrink-0 p-4 border-t bg-muted/50">
                 <div className="flex items-center gap-3 mb-3">
                   <Avatar className="h-10 w-10 ring-2 ring-primary/20">
                     <AvatarImage src={adminUser?.avatar || ''} />

@@ -1,4 +1,4 @@
-import { useState, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 
 interface AdminMobileMenuContextType {
   isOpen: boolean;
@@ -14,7 +14,7 @@ export function AdminMobileMenuProvider({ children }: { children: React.ReactNod
 
   const openMenu = () => setIsOpen(true);
   const closeMenu = () => setIsOpen(false);
-  const toggleMenu = () => setIsOpen(!isOpen);
+  const toggleMenu = () => setIsOpen((prev) => !prev);
 
   return (
     <AdminMobileMenuContext.Provider value={{ isOpen, openMenu, closeMenu, toggleMenu }}>

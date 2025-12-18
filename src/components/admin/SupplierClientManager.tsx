@@ -25,7 +25,8 @@ import {
   TrendingDown,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -79,6 +80,7 @@ export default function SupplierClientManager() {
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [formData, setFormData] = useState<any>({});
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   const carregarFornecedores = async () => {
     try {
@@ -310,6 +312,43 @@ export default function SupplierClientManager() {
     setShowModal(true);
   };
 
+  const sanitizeCep = (value: string) => value.replace(/\D/g, '');
+
+  const preencherEnderecoPorCep = async () => {
+    const cepLimpo = sanitizeCep(formData.cep || '');
+    if (!cepLimpo || cepLimpo.length !== 8) {
+      toast.error('Informe um CEP válido com 8 dígitos');
+      return;
+    }
+
+    try {
+      setBuscandoCep(true);
+      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      if (!response.ok) throw new Error('Erro ao buscar CEP');
+      const data = await response.json();
+
+      if (data.erro) {
+        toast.error('CEP não encontrado');
+        return;
+      }
+
+      setFormData((prev: any) => ({
+        ...prev,
+        cep: data.cep || prev.cep,
+        endereco: data.logradouro ? `${data.logradouro}${data.bairro ? `, ${data.bairro}` : ''}` : prev.endereco,
+        cidade: data.localidade || prev.cidade,
+        estado: data.uf || prev.estado
+      }));
+
+      toast.success('Endereço preenchido pelo CEP');
+    } catch (error) {
+      console.error('❌ Erro ao buscar CEP:', error);
+      toast.error('Não foi possível buscar o CEP agora');
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'ativo': return <CheckCircle className="h-4 w-4 text-green-600" />;
@@ -358,9 +397,9 @@ export default function SupplierClientManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">👥 Gestão de Fornecedores e Clientes</h2>
           <p className="text-gray-600">Gerencie seus fornecedores e clientes de forma completa</p>
@@ -689,12 +728,26 @@ export default function SupplierClientManager() {
 
                 <div>
                   <Label htmlFor="cep">CEP</Label>
-                  <Input
-                    id="cep"
-                    value={formData.cep || ''}
-                    onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-                    placeholder="00000-000"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="cep"
+                      value={formData.cep || ''}
+                      onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                      onBlur={() => formData.cep && formData.cep.length >= 8 ? preencherEnderecoPorCep() : undefined}
+                      placeholder="00000-000"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={preencherEnderecoPorCep}
+                      disabled={buscandoCep}
+                      className="shrink-0"
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      {buscandoCep ? 'Buscando...' : 'Buscar'}
+                    </Button>
+                  </div>
                 </div>
               </div>
 

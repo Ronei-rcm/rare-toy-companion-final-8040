@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 
 // Middleware para obter pool de conexão
+// IMPORTANTE: Sempre usar rare_toy_companion, mesmo se .env tiver outro valor
 const getPool = () => {
   const mysql = require('mysql2/promise');
   return mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'rare_toy_companion',
+    host: process.env.DB_HOST || process.env.MYSQL_HOST || 'localhost',
+    user: process.env.DB_USER || process.env.MYSQL_USER || 'root',
+    password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '',
+    database: 'rare_toy_companion', // Forçado para garantir banco correto
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0

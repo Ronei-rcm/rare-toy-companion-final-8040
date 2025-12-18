@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Plus,
   Edit,
@@ -40,7 +42,8 @@ import {
   TrendingDown,
   Inbox,
   Wallet,
-  Link2
+  Link2,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -118,6 +121,15 @@ export default function FinanceiroCompleto() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [categorias, setCategorias] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchForm, setBatchForm] = useState({
+    status: '',
+    categoria: '',
+    metodo_pagamento: '',
+    data: ''
+  });
+  const [batchSaving, setBatchSaving] = useState(false);
 
   const parseDateSafe = useCallback((value: string | null | undefined) => {
     if (!value) return null;
@@ -412,6 +424,62 @@ export default function FinanceiroCompleto() {
     const start = (currentPage - 1) * itemsPerPage;
     return transacoesFiltradas.slice(start, start + itemsPerPage);
   }, [transacoesFiltradas, currentPage, itemsPerPage]);
+  const selectedCount = selectedIds.length;
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+  const toggleSelectAllPage = () => {
+    const pageIds = transacoesPaginadas.map((t) => t.id);
+    const allSelected = pageIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((prev) =>
+      allSelected ? prev.filter((id) => !pageIds.includes(id)) : Array.from(new Set([...prev, ...pageIds]))
+    );
+  };
+  const isPageFullySelected = transacoesPaginadas.length > 0 && transacoesPaginadas.every((t) => selectedIds.includes(t.id));
+
+  const aplicarEdicaoLote = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('Selecione pelo menos uma transação');
+      return;
+    }
+    const camposSelecionados = Object.values(batchForm).some((v) => v);
+    if (!camposSelecionados) {
+      toast.error('Escolha ao menos um campo para atualizar em lote');
+      return;
+    }
+    try {
+      setBatchSaving(true);
+      for (const id of selectedIds) {
+        const original = transacoes.find((t) => t.id === id);
+        if (!original) continue;
+        const payload = {
+          ...original,
+          status: batchForm.status || original.status,
+          categoria: batchForm.categoria || original.categoria,
+          metodo_pagamento: batchForm.metodo_pagamento || original.metodo_pagamento,
+          data: batchForm.data || original.data
+        };
+        const response = await fetch('/api/financial/transactions', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('Erro ao atualizar transação');
+      }
+      toast.success('Transações atualizadas em lote');
+      setShowBatchModal(false);
+      setBatchForm({ status: '', categoria: '', metodo_pagamento: '', data: '' });
+      setSelectedIds([]);
+      await carregarTransacoes();
+    } catch (error) {
+      console.error('❌ Erro no lote:', error);
+      toast.error('Erro ao atualizar em lote');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
 
   // Função para ordenar
   const handleSort = (field: string) => {
@@ -1064,6 +1132,33 @@ export default function FinanceiroCompleto() {
                   </Select>
                 </div>
               </div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
+                <div className="text-sm text-gray-700">
+                  {selectedCount > 0 ? `${selectedCount} transações selecionadas` : 'Selecione transações para ações em lote'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={selectedCount === 0}
+                    onClick={() => setShowBatchModal(true)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar em lote
+                  </Button>
+                  {selectedCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedIds([])}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Limpar seleção
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -1081,6 +1176,13 @@ export default function FinanceiroCompleto() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="w-12">
+                          <Checkbox
+                            aria-label="Selecionar todas da página"
+                            checked={isPageFullySelected}
+                            onCheckedChange={toggleSelectAllPage}
+                          />
+                        </TableHead>
                         <TableHead className="font-semibold">
                           <Button 
                             variant="ghost" 
@@ -1154,7 +1256,7 @@ export default function FinanceiroCompleto() {
                     <TableBody>
                       {transacoesPaginadas.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="p-0">
+                          <TableCell colSpan={10} className="p-0">
                             <EmptyState
                               icon={Inbox}
                               title="Nenhuma transação corresponde aos filtros"
@@ -1184,6 +1286,13 @@ export default function FinanceiroCompleto() {
                               hover:shadow-sm
                             `}
                           >
+                            <TableCell>
+                              <Checkbox
+                                aria-label={`Selecionar transação ${transacao.id}`}
+                                checked={selectedIds.includes(transacao.id)}
+                                onCheckedChange={() => toggleSelect(transacao.id)}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">
                               <div>
                                 {new Date(transacao.data).toLocaleDateString('pt-BR')}
@@ -1348,6 +1457,94 @@ export default function FinanceiroCompleto() {
             </CardContent>
           </Card>
           </div>
+
+          <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Edição em lote</DialogTitle>
+                <DialogDescription>
+                  Atualize campos selecionados para {selectedCount} transações ao mesmo tempo. Deixe um campo em "Não alterar" para preservar o valor atual.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={batchForm.status || 'manter'}
+                    onValueChange={(value) => setBatchForm((prev) => ({ ...prev, status: value === 'manter' ? '' : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Não alterar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manter">Não alterar</SelectItem>
+                      <SelectItem value="Pago">Pago</SelectItem>
+                      <SelectItem value="Pendente">Pendente</SelectItem>
+                      <SelectItem value="Atrasado">Atrasado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={batchForm.categoria || 'manter'}
+                    onValueChange={(value) => setBatchForm((prev) => ({ ...prev, categoria: value === 'manter' ? '' : value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Não alterar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manter">Não alterar</SelectItem>
+                      {categorias.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Método de Pagamento</Label>
+                  <Input
+                    placeholder="PIX, Cartão, Boleto..."
+                    value={batchForm.metodo_pagamento}
+                    onChange={(e) => setBatchForm((prev) => ({ ...prev, metodo_pagamento: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500">Deixe em branco para não alterar.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Data</Label>
+                  <Input
+                    type="date"
+                    value={batchForm.data}
+                    onChange={(e) => setBatchForm((prev) => ({ ...prev, data: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500">Opcional; mantém data original se vazio.</p>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setShowBatchModal(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={aplicarEdicaoLote} disabled={batchSaving}>
+                  {batchSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Aplicando...
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Aplicar em lote
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="conciliacao" className="mt-8 pt-4">

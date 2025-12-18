@@ -196,7 +196,7 @@ export default function Financeiro() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              R$ {resumo.totalSaidas.toLocaleString('pt-BR',uais: { minimumFractionDigits: 2 })}
+              R$ {resumo.totalSaidas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>

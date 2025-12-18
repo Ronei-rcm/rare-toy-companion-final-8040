@@ -7,6 +7,7 @@ export interface CreateProductData {
   descricao?: string;
   preco: number;
   imagemUrl?: string;
+  imagens?: string[];
   categoria: string;
   estoque: number;
   status?: 'ativo' | 'inativo' | 'esgotado';

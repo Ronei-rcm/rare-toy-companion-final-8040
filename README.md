@@ -22,6 +22,7 @@
 - 📱 **Mobile First** - Interface totalmente responsiva com gestos nativos e design otimizado
 - 🔐 **Segurança Robusta** - Autenticação JWT, rate limiting, CSRF protection e sanitização de dados
 - 📊 **Dashboard Completo** - Analytics em tempo real, gestão de pedidos e controle financeiro
+- 💰 **Sistema Financeiro Avançado** - Filtros avançados, busca em tempo real, ordenação inteligente, paginação completa, exportação CSV/JSON e dashboard responsivo
 - 💳 **Integração de Pagamentos** - PIX, Apple Pay, Google Pay, Cartão de Crédito
 - 📦 **Gestão de Estoque** - Controle completo de produtos, categorias e fornecedores
 - 📧 **Notificações** - Sistema de emails automáticos e notificações push
@@ -138,16 +139,23 @@ rare-toy-companion-final-8040/
 │
 ├── database/               # Banco de dados
 │   ├── init.sql           # Schema inicial
-│   └── migrations/        # Migrations SQL
+│   ├── migrations/        # Migrations SQL
+│   ├── seeds/             # Seeds organizadas
+│   └── dumps/             # Dumps (gitignored)
 │
 ├── docs/                   # Documentação
-│   ├── guias/             # Guias de uso
+│   ├── guias/             # Guias e checklists
 │   ├── evoluções/         # Histórico de evoluções
 │   ├── correções/         # Correções aplicadas
-│   └── resumos/           # Resumos executivos
+│   ├── funcionalidades/   # Novas features e upgrades
+│   ├── integrações/       # Integrações externas
+│   ├── relatórios/        # Relatórios finais
+│   ├── resumos/           # Resumos executivos
+│   └── outros/            # Materiais gerais
 │
 ├── scripts/                # Scripts utilitários
-├── public/                 # Assets públicos
+├── public/                 # Assets públicos e PWA
+│   └── test/              # HTMLs de teste (cache/login/routes) — cache consolidado em `cache/cache-fix-aggressive.html`
 └── logs/                   # Arquivos de log
 ```
 
@@ -179,13 +187,19 @@ rare-toy-companion-final-8040/
 - Sistema de fornecedores
 - Relatórios e analytics
 
-### 💰 Módulo Financeiro
+### 💰 Módulo Financeiro (v2.0)
+- **Sistema de Busca Avançada**: Busca em tempo real por descrição, categoria, origem e observações
+- **Filtros Múltiplos**: Filtros por tipo (entrada/saída), status (pago/pendente/atrasado), categoria e período
+- **Ordenação Inteligente**: Ordenação clicável nas colunas com indicador visual
+- **Paginação Avançada**: Controle de itens por página (10, 20, 50, 100) com navegação completa
+- **Exportação de Dados**: Exportação em CSV e JSON com filtros aplicados
 - Lançamentos de receitas e despesas
 - Categorização inteligente
 - Cadastro rápido de despesas
 - Sincronização automática
 - Relatórios financeiros
 - Gráficos e visualizações
+- Dashboard responsivo e otimizado
 
 ### 📦 Controle de Estoque
 - Gestão avançada de inventário

@@ -1,12 +1,13 @@
 import mysql from 'mysql2/promise';
 
 // MySQL connection configuration
+// SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
 const dbConfig = {
-  host: process.env.MYSQL_HOST || 'localhost',
-  port: parseInt(process.env.MYSQL_PORT || '3306'),
-  user: process.env.MYSQL_USER || 'rare_toy_user',
-  password: process.env.MYSQL_PASSWORD || 'RSM_Rg51gti66',
-  database: process.env.MYSQL_DATABASE || 'rare_toy_companion',
+  host: process.env.MYSQL_HOST || process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
+  user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

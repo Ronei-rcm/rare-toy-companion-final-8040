@@ -304,6 +304,45 @@ export const useAdminCustomers = () => {
     }
   }, [toast, loadCustomers, loadStats]);
 
+  // Sincronizar users -> customers (admin)
+  const syncUsersToCustomers = useCallback(async () => {
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/customers/sync-users`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken && { 'X-Admin-Token': adminToken }),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      toast({
+        title: data.success ? 'Sincronização concluída' : 'Sincronização',
+        description: data.message || 'Sincronização executada com sucesso',
+      });
+
+      // Recarregar lista e estatísticas após sincronizar
+      await loadCustomers();
+      await loadStats();
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao sincronizar clientes:', error);
+      toast({
+        title: 'Erro ao sincronizar clientes',
+        description: 'Não foi possível sincronizar users com customers',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [toast, loadCustomers, loadStats]);
+
   // Ações em lote
   const bulkAction = useCallback(async (customerIds: (string | number)[], action: string, value?: string) => {
     try {
@@ -483,6 +522,7 @@ export const useAdminCustomers = () => {
     bulkAction,
     getCustomerOrders,
     exportCustomers,
+    syncUsersToCustomers,
   };
 };
 

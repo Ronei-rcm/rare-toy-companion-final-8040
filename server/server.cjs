@@ -4820,7 +4820,7 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
         [id, mail, pw, nome || null]
       );
       console.log('✅ Usuário registrado com sucesso:', mail);
-
+      
       // 2) Garantir registro correspondente em customers (para aparecer no Admin > Clientes)
       try {
         await pool.execute(
@@ -4846,8 +4846,8 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
         maxAge: 1000*60*60*24*30 // 30 dias
       }));
       
-      setAuthCookie(res, { id, email: mail });
-      logger.info('New user registered', { email: mail });
+    setAuthCookie(res, { id, email: mail });
+    logger.info('New user registered', { email: mail });
       
       res.json({ 
         ok: true,
@@ -4877,6 +4877,67 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
       ok: false, 
       error: 'register_failed',
       message: 'Erro ao criar conta. Tente novamente mais tarde.'
+    });
+  }
+});
+
+// ==================== SINCRONIZAÇÃO USERS -> CUSTOMERS (ADMIN) ====================
+
+/**
+ * 🔄 Sincronizar tabela customers com tabela users
+ *
+ * - Cria registros em `customers` para todos os `users` que ainda não possuem entrada correspondente
+ * - Mantém o mesmo ID (para preservar relacionamentos com orders, etc.)
+ * - Uso: Admin > Clientes > rodar manualmente quando necessário
+ */
+app.post('/api/admin/customers/sync-users', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('🔄 [SYNC] Iniciando sincronização de customers com users...');
+
+    // Contar clientes antes
+    const [beforeRows] = await pool.execute('SELECT COUNT(*) as total FROM customers');
+    const beforeTotal = beforeRows && beforeRows[0] ? Number(beforeRows[0].total || 0) : 0;
+
+    // Inserir clientes que ainda não existem
+    const [insertResult] = await pool.execute(`
+      INSERT INTO customers (id, email, nome, created_at, updated_at)
+      SELECT 
+        u.id,
+        u.email,
+        COALESCE(u.nome, u.email) AS nome,
+        NOW() AS created_at,
+        NOW() AS updated_at
+      FROM users u
+      LEFT JOIN customers c ON c.id = u.id
+      WHERE c.id IS NULL
+    `);
+
+    const inserted = insertResult && typeof insertResult.affectedRows === 'number'
+      ? insertResult.affectedRows
+      : 0;
+
+    // Contar clientes depois
+    const [afterRows] = await pool.execute('SELECT COUNT(*) as total FROM customers');
+    const afterTotal = afterRows && afterRows[0] ? Number(afterRows[0].total || 0) : beforeTotal + inserted;
+
+    console.log(`✅ [SYNC] Concluída. Inseridos: ${inserted}, Total antes: ${beforeTotal}, Total depois: ${afterTotal}`);
+
+    res.json({
+      success: true,
+      message: inserted > 0 
+        ? `Sincronização concluída. ${inserted} cliente(s) adicionados.`
+        : 'Sincronização concluída. Nenhum novo cliente para adicionar.',
+      inserted,
+      beforeTotal,
+      afterTotal,
+    });
+  } catch (error) {
+    console.error('❌ [SYNC] Erro ao sincronizar customers com users:', error);
+    logger.logError(error, req);
+    res.status(500).json({
+      success: false,
+      error: 'sync_failed',
+      message: 'Erro ao sincronizar clientes. Verifique os logs para mais detalhes.',
     });
   }
 });
@@ -11093,15 +11154,137 @@ app.patch('/api/orders/:id/status', async (req, res) => {
   }
 });
 
-// Atualizar pedido (genérico - para cancelar, etc)
+// Atualizar pedido (genérico - para cancelar, etc) - PUT
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, payment_method, tracking_code } = req.body;
+
+    console.log(`📦 PUT /api/orders/${id} - Atualizando pedido`, { status, payment_method, tracking_code });
+
+    // Verificar se o pedido existe e obter customer_id
+    const [existingOrders] = await pool.execute(
+      'SELECT customer_id, status as current_status FROM orders WHERE id = ?',
+      [id]
+    );
+
+    if (existingOrders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido não encontrado'
+      });
+    }
+
+    const order = existingOrders[0];
+
+    // Construir query dinamicamente
+    const updates = [];
+    const values = [];
+
+    if (status) {
+      // Validar status
+      const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'confirmed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Status inválido'
+        });
+      }
+
+      // Clientes só podem cancelar pedidos pendentes ou em processamento
+      if (status === 'cancelled' && !['pending', 'processing'].includes(order.current_status)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Você só pode cancelar pedidos pendentes ou em processamento'
+        });
+      }
+
+      updates.push('status = ?');
+      values.push(status);
+    }
+
+    if (payment_method !== undefined) {
+      updates.push('payment_method = ?');
+      values.push(payment_method || null);
+    }
+
+    if (tracking_code !== undefined) {
+      updates.push('tracking_code = ?');
+      values.push(tracking_code || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Nenhum campo para atualizar' 
+      });
+    }
+
+    updates.push('updated_at = NOW()');
+    values.push(id);
+
+    const query = `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`;
+    await pool.execute(query, values);
+    
+    logger.info('Pedido atualizado', { orderId: id, updates: { status, payment_method, tracking_code } });
+    
+    // Buscar pedido atualizado
+    const [updatedOrders] = await pool.execute(
+      'SELECT * FROM orders WHERE id = ?',
+      [id]
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Pedido atualizado com sucesso',
+      data: updatedOrders[0]
+    });
+  } catch (error) {
+    logger.logError(error, req);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erro ao atualizar pedido',
+      message: error.message 
+    });
+  }
+});
+
+// Atualizar pedido (genérico - para cancelar, etc) - PATCH
 app.patch('/api/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, payment_method, tracking_code } = req.body;
 
-    await pool.execute('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
+    // Construir query dinamicamente
+    const updates = [];
+    const values = [];
+
+    if (status) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+
+    if (payment_method !== undefined) {
+      updates.push('payment_method = ?');
+      values.push(payment_method || null);
+    }
+
+    if (tracking_code !== undefined) {
+      updates.push('tracking_code = ?');
+      values.push(tracking_code || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+    }
+
+    updates.push('updated_at = NOW()');
+    values.push(id);
+
+    const query = `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`;
+    await pool.execute(query, values);
     
-    logger.info('Pedido atualizado', { orderId: id, newStatus: status });
+    logger.info('Pedido atualizado', { orderId: id, updates: { status, payment_method, tracking_code } });
     res.json({ success: true, message: 'Pedido atualizado com sucesso' });
   } catch (error) {
     logger.logError(error, req);
@@ -14628,17 +14811,19 @@ app.get('/api/financial/transactions', async (req, res) => {
       SELECT 
         id,
         data,
+        hora,
         descricao,
         categoria,
         origem,
         tipo,
         valor,
         status,
+        forma_pagamento as metodo_pagamento,
         observacoes,
         created_at,
         updated_at
       FROM financial_transactions 
-      ORDER BY data DESC, created_at DESC
+      ORDER BY data DESC, hora DESC, created_at DESC
     `);
     
     // Normalizar tipos para minúsculo e sem acentos
@@ -14683,14 +14868,20 @@ app.put('/api/financial/transactions', async (req, res) => {
       return res.status(404).json({ error: 'Transação não encontrada' });
     }
 
+    // Tratar hora se fornecida
+    const hora = req.body.hora || null;
+    
+    // Extrair metodo_pagamento do body (pode vir como metodo_pagamento ou forma_pagamento)
+    const metodoPagamento = req.body.metodo_pagamento || req.body.forma_pagamento || null;
+    
     // Atualizar transação
     const [result] = await pool.execute(`
-      UPDATE financial_transactions 
-      SET descricao = ?, categoria = ?, tipo = ?, valor = ?, status = ?, 
-          data = ?, origem = ?, observacoes = ?, updated_at = NOW()
+      UPDATE financial_transactions
+      SET descricao = ?, categoria = ?, tipo = ?, valor = ?, status = ?,
+          data = ?, hora = ?, origem = ?, forma_pagamento = ?, observacoes = ?, updated_at = NOW()
       WHERE id = ?
     `, [descricao, categoria, tipoNormalizado, valor, status || 'Pago', 
-        data || new Date().toISOString().split('T')[0], origem || '', observacoes || '', id]);
+        data || new Date().toISOString().split('T')[0], hora, origem || '', metodoPagamento, observacoes || '', id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transação não encontrada' });
@@ -14735,13 +14926,17 @@ app.put('/api/financial/transactions/:id', async (req, res) => {
       observacoes
     } = req.body;
 
+    const hora = req.body.hora || null;
+    // Extrair metodo_pagamento do body (pode vir como metodo_pagamento ou forma_pagamento)
+    const metodoPagamento = req.body.metodo_pagamento || req.body.forma_pagamento || metodo_pagamento || null;
+    
     const [result] = await pool.execute(`
       UPDATE financial_transactions 
-      SET data = ?, descricao = ?, categoria = ?, tipo = ?, valor = ?, 
-          status = ?, metodo_pagamento = ?, origem = ?, observacoes = ?, 
+      SET data = ?, hora = ?, descricao = ?, categoria = ?, tipo = ?, valor = ?, 
+          status = ?, forma_pagamento = ?, origem = ?, observacoes = ?, 
           updated_at = NOW()
       WHERE id = ?
-    `, [data, descricao, categoria, tipo, valor, status, metodo_pagamento, origem, observacoes, id]);
+    `, [data, hora, descricao, categoria, tipo, valor, status, metodoPagamento, origem, observacoes, id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transação não encontrada' });
@@ -14926,15 +15121,19 @@ app.post('/api/financial/transactions', async (req, res) => {
     const safeOrigem = origem || null;
     const safeObservacoes = observacoes || null;
     
+    // Tratar hora se fornecida
+    const safeHora = req.body.hora || null;
+    
     // Inserir transação - created_at e updated_at são gerados automaticamente
+    // Usar forma_pagamento (nome correto da coluna no MySQL)
     const [result] = await pool.execute(`
       INSERT INTO financial_transactions (
         descricao, categoria, tipo, valor, status, 
-        metodo_pagamento, data, origem, observacoes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        forma_pagamento, data, hora, origem, observacoes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       descricao, categoria, tipoNormalizado, valor, safeStatus,
-      safeMetodoPagamento, safeData, safeOrigem, safeObservacoes
+      safeMetodoPagamento, safeData, safeHora, safeOrigem, safeObservacoes
     ]);
     
     const insertedId = result.insertId;
@@ -14967,10 +15166,14 @@ app.get('/api/financial/transactions/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await pool.execute(
-      'SELECT * FROM financial_transactions WHERE id = ?',
+      `SELECT 
+        id, data, hora, descricao, categoria, origem, tipo, valor, 
+        status, forma_pagamento as metodo_pagamento, observacoes, 
+        created_at, updated_at
+       FROM financial_transactions WHERE id = ?`,
       [id]
     );
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Transação não encontrada' });
     }
@@ -15014,40 +15217,84 @@ app.post('/api/financial/bank-statements/import', bankStatementUpload.single('fi
     let errors = [];
 
     // Inserir transações no banco
+    console.log(`📥 Importando ${transactions.length} transações...`);
     for (const trans of transactions) {
       try {
         // Verificar se já existe transação similar (evitar duplicatas)
+        // Usar uma verificação mais flexível para não bloquear transações legítimas
         const [existing] = await pool.execute(`
           SELECT id FROM financial_transactions 
-          WHERE data = ? AND descricao LIKE ? AND ABS(valor - ?) < 0.01
+          WHERE data = ? 
+            AND descricao LIKE ? 
+            AND ABS(valor - ?) < 0.01
+            AND origem = ?
+            AND forma_pagamento = ?
           LIMIT 1
-        `, [trans.data, `%${trans.descricao.substring(0, 50)}%`, trans.valor]);
+        `, [
+          trans.data, 
+          `%${trans.descricao.substring(0, 50)}%`, 
+          trans.valor,
+          trans.origem || 'Extrato Bancário',
+          trans.metodo_pagamento || 'PIX'
+        ]);
 
         if (existing.length > 0) {
-          errors.push(`Transação duplicada ignorada: ${trans.descricao}`);
+          console.log(`⚠️ Transação duplicada ignorada: ${trans.descricao.substring(0, 30)}... - ${trans.data} - R$ ${trans.valor}`);
+          errors.push(`Transação duplicada ignorada: ${trans.descricao.substring(0, 30)}...`);
           continue;
         }
 
         // Determinar tipo e status
         const tipo = trans.tipo === 'credito' ? 'entrada' : 'saida';
-        const metodoPagamento = contaId 
-          ? `Conta: ${contaId} (Importado do extrato)`
-          : 'Importado do extrato';
+        
+        // Extrair método de pagamento e origem dos dados parseados
+        // GARANTIR que sempre tenha valores, mesmo que vazios
+        const metodoPagamento = (trans.metodo_pagamento && trans.metodo_pagamento !== 'N/A') 
+                               ? trans.metodo_pagamento 
+                               : (contaId ? `Conta: ${contaId}` : 'PIX');
+        const origem = (trans.origem && trans.origem !== 'N/A' && trans.origem !== 'Extrato Bancário')
+                      ? trans.origem 
+                      : (trans.origem || 'Extrato Bancário');
+        const observacoes = trans.observacoes || 
+                           `Importado automaticamente em ${new Date().toLocaleString('pt-BR')}`;
 
-        // Inserir transação
+        // Inserir transação com todos os campos do CSV
+        // GARANTIR que todos os campos sejam preenchidos
+        const dadosInsert = {
+          descricao: trans.descricao || 'Transação importada',
+          categoria: trans.categoria || 'Outros',
+          tipo: tipo,
+          valor: trans.valor,
+          data: trans.data,
+          hora: trans.hora || null,
+          origem: origem,
+          metodo_pagamento: metodoPagamento,
+          observacoes: observacoes
+        };
+        
+        console.log('💾 Inserindo transação com TODOS os campos:', dadosInsert);
+        
         await pool.execute(`
           INSERT INTO financial_transactions 
-          (descricao, categoria, tipo, valor, status, data, origem, metodo_pagamento, observacoes, created_at, updated_at)
-          VALUES (?, ?, ?, ?, 'Pago', ?, 'Extrato Bancário', ?, ?, NOW(), NOW())
+          (descricao, categoria, tipo, valor, status, data, hora, origem, forma_pagamento, observacoes, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'Pago', ?, ?, ?, ?, ?, NOW(), NOW())
         `, [
-          trans.descricao || 'Transação importada',
-          'Outros',
-          tipo,
-          trans.valor,
-          trans.data,
-          metodoPagamento,
-          `Importado automaticamente em ${new Date().toLocaleString('pt-BR')}`
+          dadosInsert.descricao,
+          dadosInsert.categoria,
+          dadosInsert.tipo,
+          dadosInsert.valor,
+          dadosInsert.data,
+          dadosInsert.hora,
+          dadosInsert.origem,
+          dadosInsert.metodo_pagamento,
+          dadosInsert.observacoes
         ]);
+        
+        console.log('✅ Transação inserida com sucesso - Campos salvos:', {
+          metodo_pagamento: dadosInsert.metodo_pagamento,
+          origem: dadosInsert.origem,
+          hora: dadosInsert.hora
+        });
 
         imported++;
       } catch (error) {
@@ -18216,12 +18463,13 @@ app.get('/api/financial/categorias', async (req, res) => {
     console.log('✅ Buscando categorias financeiras...');
     
     // Criar um novo pool temporário para resolver problema de cache
+    // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
     const tempPool = mysql.createPool({
-      host: '127.0.0.1',
-      user: 'root',
-      password: 'RSM_Rg51gti66',
-      database: 'rare_toy_companion',
-      port: 3306,
+      host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+      user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+      port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
@@ -18240,12 +18488,13 @@ app.get('/api/financial/categorias', async (req, res) => {
 
 // POST - Criar nova categoria financeira
 app.post('/api/financial/categorias', async (req, res) => {
+  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
   const tempPool = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'RSM_Rg51gti66',
-    database: 'rare_toy_companion',
-    port: 3306,
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18274,12 +18523,13 @@ app.post('/api/financial/categorias', async (req, res) => {
 
 // PUT - Atualizar categoria financeira
 app.put('/api/financial/categorias/:id', async (req, res) => {
+  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
   const tempPool = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'RSM_Rg51gti66',
-    database: 'rare_toy_companion',
-    port: 3306,
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18310,12 +18560,13 @@ app.put('/api/financial/categorias/:id', async (req, res) => {
 
 // DELETE - Excluir categoria financeira
 app.delete('/api/financial/categorias/:id', async (req, res) => {
+  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
   const tempPool = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'RSM_Rg51gti66',
-    database: 'rare_toy_companion',
-    port: 3306,
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18346,12 +18597,13 @@ app.get('/api/financial/clientes', async (req, res) => {
     console.log('👥 Buscando clientes da loja (tabela customers)...');
     
     // Criar pool temporário para acessar tabela customers
+    // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
     const tempPool = mysql.createPool({
-      host: '127.0.0.1',
-      user: 'root',
-      password: 'RSM_Rg51gti66',
-      database: 'rare_toy_companion',
-      port: 3306,
+      host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+      user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+      port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
@@ -18404,12 +18656,13 @@ app.get('/api/financial/clientes', async (req, res) => {
 
 // POST - Criar novo cliente
 app.post('/api/financial/clientes', async (req, res) => {
+  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
   const tempPool = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'RSM_Rg51gti66',
-    database: 'rare_toy_companion',
-    port: 3306,
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18438,12 +18691,13 @@ app.post('/api/financial/clientes', async (req, res) => {
 
 // PUT - Atualizar cliente
 app.put('/api/financial/clientes/:id', async (req, res) => {
+  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
   const tempPool = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'RSM_Rg51gti66',
-    database: 'rare_toy_companion',
-    port: 3306,
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18474,12 +18728,13 @@ app.put('/api/financial/clientes/:id', async (req, res) => {
 
 // DELETE - Excluir cliente
 app.delete('/api/financial/clientes/:id', async (req, res) => {
+  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
   const tempPool = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'RSM_Rg51gti66',
-    database: 'rare_toy_companion',
-    port: 3306,
+    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -18665,12 +18920,13 @@ app.get('/api/test-clientes-direct', async (req, res) => {
     console.log('Testando tabela clientes diretamente...');
     
     // Criar um novo pool de conexões para este teste
+    // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
     const testPool = mysql.createPool({
-      host: '127.0.0.1',
-      user: 'root',
-      password: 'RSM_Rg51gti66',
-      database: 'rare_toy_companion',
-      port: 3306,
+      host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
+      user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
+      port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0

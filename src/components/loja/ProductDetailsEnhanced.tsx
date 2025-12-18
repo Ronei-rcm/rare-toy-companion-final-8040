@@ -32,6 +32,7 @@ interface Product {
   preco_original?: number;
   descricao?: string;
   imagem_url?: string;
+  imagens?: string[];
   estoque: number;
   categoria?: string;
   avaliacao?: number;
@@ -62,10 +63,15 @@ const ProductDetailsEnhanced: React.FC<ProductDetailsEnhancedProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState('descricao');
+  const [activeImage, setActiveImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (product) {
       setQuantity(1);
+      const gallery = (product.imagens && product.imagens.length > 0)
+        ? product.imagens
+        : (product.imagem_url ? [product.imagem_url] : ['/placeholder.svg']);
+      setActiveImage(gallery[0] || null);
     }
   }, [product]);
 
@@ -158,7 +164,10 @@ const ProductDetailsEnhanced: React.FC<ProductDetailsEnhancedProps> = ({
   };
 
   const emEstoque = product.estoque > 0;
-  const imageUrl = getProductImage(product.imagem_url);
+  const galleryImages = (product.imagens && product.imagens.length > 0)
+    ? product.imagens
+    : (product.imagem_url ? [product.imagem_url] : ['/placeholder.svg']);
+  const imageUrl = getProductImage(activeImage || galleryImages[0]);
 
   return (
     <div className="space-y-6">
@@ -233,6 +242,36 @@ const ProductDetailsEnhanced: React.FC<ProductDetailsEnhancedProps> = ({
               <Scale className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* Galeria de imagens */}
+      <div className="space-y-3">
+        <div className="relative bg-gray-50 rounded-xl overflow-hidden border">
+          <div className="aspect-[4/5] bg-white flex items-center justify-center">
+            <img
+              src={imageUrl || '/placeholder.svg'}
+              alt={product.nome}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          {galleryImages.length > 1 && (
+            <div className="absolute bottom-3 left-3 right-3 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm px-3 py-2 flex gap-2 overflow-x-auto no-scrollbar">
+              {galleryImages.map((img, idx) => (
+                <button
+                  key={img + idx}
+                  onClick={() => setActiveImage(img)}
+                  className={cn(
+                    "w-14 h-14 rounded-md overflow-hidden border transition-transform hover:scale-105",
+                    (activeImage === img || (!activeImage && idx === 0)) ? "border-orange-500 ring-2 ring-orange-200" : "border-gray-200"
+                  )}
+                  aria-label={`Selecionar imagem ${idx + 1}`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -18,6 +18,7 @@ export interface Produto {
   lancamento?: boolean;
   colecoes?: string[];
   emEstoque?: boolean;
+  imagens?: string[];
   // Novos campos
   avaliacao?: number;
   totalAvaliacoes?: number;

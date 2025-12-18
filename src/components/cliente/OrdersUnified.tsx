@@ -42,6 +42,44 @@ import {
 } from 'lucide-react';
 import OrderTimeline from './OrderTimeline';
 
+// Função auxiliar para informações de status (movida para fora do componente para evitar problemas de hoisting)
+const getStatusInfo = (status: string) => {
+  const statusMap: Record<string, { color: string; icon: any; label: string; description: string }> = {
+    pending: { 
+      color: 'bg-yellow-500', 
+      icon: Clock, 
+      label: 'Pendente',
+      description: 'Seu pedido está sendo processado'
+    },
+    processing: { 
+      color: 'bg-blue-500', 
+      icon: Package, 
+      label: 'Processando',
+      description: 'Preparando seu pedido para envio'
+    },
+    shipped: { 
+      color: 'bg-purple-500', 
+      icon: Truck, 
+      label: 'Enviado',
+      description: 'Seu pedido está a caminho'
+    },
+    delivered: { 
+      color: 'bg-green-500', 
+      icon: CheckCircle, 
+      label: 'Entregue',
+      description: 'Pedido entregue com sucesso!'
+    },
+    cancelled: { 
+      color: 'bg-red-500', 
+      icon: AlertCircle, 
+      label: 'Cancelado',
+      description: 'Pedido foi cancelado'
+    }
+  };
+  
+  return statusMap[status] || statusMap.pending;
+};
+
 interface Order {
   id: string;
   status: string;
@@ -193,7 +231,7 @@ const OrdersUnified: React.FC = () => {
       setLoading(true);
       
       const params = new URLSearchParams({
-        customer_id: user?.id || '',
+        customer_id: user?.id || user?.email || '',
         ...filters
       });
       
@@ -203,36 +241,106 @@ const OrdersUnified: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setOrders(data.orders || []);
+        // Garantir que cada pedido tenha items como array
+        const normalizedOrders = (data.orders || []).map((order: any) => ({
+          ...order,
+          items: Array.isArray(order.items) ? order.items : []
+        }));
+        setOrders(normalizedOrders);
       } else {
-        throw new Error('Falha ao carregar pedidos');
+        // Se for erro 500, tentar usar dados do response mesmo assim
+        if (response.status === 500) {
+          try {
+            const errorData = await response.json();
+            if (errorData.orders) {
+              // Garantir que cada pedido tenha items como array
+              const normalizedOrders = (errorData.orders || []).map((order: any) => ({
+                ...order,
+                items: Array.isArray(order.items) ? order.items : []
+              }));
+              setOrders(normalizedOrders);
+              return;
+            }
+          } catch (_) {
+            // Ignorar erro ao parsear JSON de erro
+          }
+        }
+        // Se não conseguiu recuperar dados, usar array vazio
+        setOrders([]);
+        if (response.status !== 500) {
+          // Só mostrar toast para erros que não sejam 500 (já tratado no backend)
+          console.warn('Erro ao carregar pedidos:', response.status);
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
+      // Não quebrar a UI - usar array vazio
+      setOrders([]);
+      // Só mostrar toast se não for erro de rede silencioso
+      if (error instanceof Error && !error.message.includes('Failed to fetch')) {
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os pedidos',
-        variant: 'destructive'
+          title: 'Aviso',
+          description: 'Não foi possível carregar os pedidos. Tente novamente mais tarde.',
+          variant: 'default'
       });
+      }
     } finally {
       setLoading(false);
     }
-  }, [filters, user?.id]);
+  }, [filters, user?.id, user?.email]);
   
   const loadStats = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/stats/unified?customer_id=${user?.id}&period=${filters.period}`, {
+      const customerId = user?.id || user?.email || '';
+      const response = await fetch(`${API_BASE_URL}/orders/stats/unified?customer_id=${customerId}&period=${filters.period}`, {
         credentials: 'include'
       });
       
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+      } else {
+        // Se for erro 500, tentar usar dados do response mesmo assim
+        if (response.status === 500) {
+          try {
+            const errorData = await response.json();
+            if (errorData.total !== undefined) {
+              setStats(errorData);
+              return;
+            }
+          } catch (_) {
+            // Ignorar erro ao parsear JSON de erro
+          }
+        }
+        // Usar valores padrão se não conseguir recuperar
+        setStats({
+          period: filters.period,
+          total: 0,
+          pending: 0,
+          processing: 0,
+          shipped: 0,
+          delivered: 0,
+          cancelled: 0,
+          totalRevenue: 0,
+          averageTicket: 0
+        });
       }
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
+      // Não quebrar a UI - usar valores padrão
+      setStats({
+        period: filters.period,
+        total: 0,
+        pending: 0,
+        processing: 0,
+        shipped: 0,
+        delivered: 0,
+        cancelled: 0,
+        totalRevenue: 0,
+        averageTicket: 0
+      });
     }
-  }, [filters.period, user?.id]);
+  }, [filters.period, user?.id, user?.email]);
   
   const refreshData = async () => {
     setRefreshing(true);
@@ -359,57 +467,22 @@ const OrdersUnified: React.FC = () => {
     return status === 'cancelled' || (status === 'delivered' && daysSinceOrder > 30);
   };
 
-  // ==================== RENDERIZAÇÃO ====================
-  
-  const getStatusInfo = (status: string) => {
-    const statusMap = {
-      pending: { 
-        color: 'bg-yellow-500', 
-        icon: Clock, 
-        label: 'Pendente',
-        description: 'Seu pedido está sendo processado'
-      },
-      processing: { 
-        color: 'bg-blue-500', 
-        icon: Package, 
-        label: 'Processando',
-        description: 'Preparando seu pedido para envio'
-      },
-      shipped: { 
-        color: 'bg-purple-500', 
-        icon: Truck, 
-        label: 'Enviado',
-        description: 'Seu pedido está a caminho'
-      },
-      delivered: { 
-        color: 'bg-green-500', 
-        icon: CheckCircle, 
-        label: 'Entregue',
-        description: 'Pedido entregue com sucesso!'
-      },
-      cancelled: { 
-        color: 'bg-red-500', 
-        icon: AlertCircle, 
-        label: 'Cancelado',
-        description: 'Pedido foi cancelado'
-      }
-    };
-    
-    return statusMap[status as keyof typeof statusMap] || statusMap.pending;
-  };
-
   // ==================== EFFECTS ====================
   
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id || user?.email) {
       loadOrders();
       loadStats();
     }
-  }, [loadOrders, loadStats, user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.email]);
   
   useEffect(() => {
-    loadOrders();
-  }, [filters]);
+    if (user?.id || user?.email) {
+      loadOrders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.search, filters.status, filters.period, filters.sort, filters.order]);
 
   return (
     <div className="space-y-6">
@@ -489,7 +562,7 @@ const OrdersUnified: React.FC = () => {
                     new Date(order.created_at).toLocaleDateString('pt-BR'),
                     getStatusInfo(order.status).label,
                     Number(order.total || 0).toFixed(2),
-                    order.items.length
+                    (order.items || []).length
                   ].join(','))
                 ].join('\n');
                 
@@ -548,12 +621,23 @@ const OrdersUnified: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {orders.map((order) => {
-                const statusInfo = getStatusInfo(order.status);
+                // Declarar todas as variáveis no início para evitar problemas de hoisting
+                const orderStatus = order.status || 'pending';
+                const statusInfo = getStatusInfo(orderStatus);
                 const StatusIcon = statusInfo.icon;
+                const orderId = order.id || '';
+                const orderTotal = Number(order.total || 0);
+                const orderItems = order.items || [];
+                const itemsCount = orderItems.length;
+                const orderCreatedAt = order.created_at || new Date().toISOString();
+                const orderTrackingCode = order.tracking_code || null;
+                const canCancel = canCancelOrder(orderStatus);
+                const canDelete = canDeleteOrder(orderStatus, orderCreatedAt);
+                const isDelivered = orderStatus === 'delivered';
                 
                 return (
                   <motion.div
-                    key={order.id}
+                    key={orderId}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="border rounded-lg p-4 hover:shadow-md transition-shadow"
@@ -566,9 +650,9 @@ const OrdersUnified: React.FC = () => {
                         </Badge>
                         
                         <div>
-                          <p className="font-medium">#{order.id.substring(0, 8)}</p>
+                          <p className="font-medium">#{orderId.substring(0, 8)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                            {new Date(orderCreatedAt).toLocaleDateString('pt-BR')}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {statusInfo.description}
@@ -578,9 +662,9 @@ const OrdersUnified: React.FC = () => {
                       
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <p className="font-medium">R$ {Number(order.total || 0).toFixed(2)}</p>
+                          <p className="font-medium">R$ {orderTotal.toFixed(2)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                            {itemsCount} item{itemsCount !== 1 ? 's' : ''}
                           </p>
                         </div>
                         
@@ -597,7 +681,7 @@ const OrdersUnified: React.FC = () => {
                             <Eye className="h-4 w-4" />
                           </Button>
                           
-                          {canCancelOrder(order.status) && (
+                          {canCancel && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -612,7 +696,7 @@ const OrdersUnified: React.FC = () => {
                             </Button>
                           )}
                           
-                          {canDeleteOrder(order.status, order.created_at) && (
+                          {canDelete && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -627,22 +711,22 @@ const OrdersUnified: React.FC = () => {
                             </Button>
                           )}
                           
-                          {order.status === 'delivered' && (
+                          {isDelivered && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => reorderItems(order.id)}
+                              onClick={() => reorderItems(orderId)}
                               title="Comprar Novamente"
                             >
                               <Repeat className="h-4 w-4" />
                             </Button>
                           )}
                           
-                          {order.tracking_code && (
+                          {orderTrackingCode && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => trackOrder(order.tracking_code!)}
+                              onClick={() => trackOrder(orderTrackingCode)}
                               title="Rastrear Entrega"
                             >
                               <Truck className="h-4 w-4" />
@@ -672,22 +756,23 @@ const OrdersUnified: React.FC = () => {
             
             <div className="space-y-6">
               {/* Status Atual */}
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                {(() => {
-                  const statusInfo = getStatusInfo(selectedOrder.status);
-                  const StatusIcon = statusInfo.icon;
-                  
-                  return (
+              {(() => {
+                const statusInfo = getStatusInfo(selectedOrder.status);
+                const StatusIcon = statusInfo.icon;
+                const statusColorClass = statusInfo.color.replace('bg-', 'text-');
+                
+                return (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-center gap-3">
-                      <StatusIcon className={`h-8 w-8 ${statusInfo.color.replace('bg-', 'text-')}`} />
+                      <StatusIcon className={`h-8 w-8 ${statusColorClass}`} />
                       <div>
                         <h3 className="text-lg font-medium">{statusInfo.label}</h3>
                         <p className="text-sm text-muted-foreground">{statusInfo.description}</p>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                );
+              })()}
               
               {/* Informações de Entrega */}
               {selectedOrder.shipping_address && (
@@ -802,8 +887,8 @@ Status: ${getStatusInfo(selectedOrder.status).label}
 Total: R$ ${Number(selectedOrder.total || 0).toFixed(2)}
 
 Itens:
-${selectedOrder.items.map(item => 
-  `- ${item.name || item.product_name} (${item.quantity}x) - R$ ${Number(item.price || 0).toFixed(2)}`
+${(selectedOrder.items || []).map((item: any) => 
+  `- ${item.name || item.product_name || 'Produto'} (${item.quantity || 1}x) - R$ ${Number(item.price || 0).toFixed(2)}`
 ).join('\n')}
                     `.trim();
                     navigator.clipboard.writeText(orderText);

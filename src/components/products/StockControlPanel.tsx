@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package,
@@ -89,6 +89,57 @@ export function StockControlPanel() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showFullEditDialog, setShowFullEditDialog] = useState(false);
   const [productToEdit, setProductToEdit] = useState<any>(null);
+  const [categoriasDisponiveis, setCategoriasDisponiveis] = useState<Array<{ id: string | number; nome: string; ativo?: boolean }>>([]);
+  const [loadingCategorias, setLoadingCategorias] = useState(false);
+
+  // Carregar categorias do banco de dados (usando o mesmo endpoint da página de categorias)
+  useEffect(() => {
+    const carregarCategorias = async () => {
+      try {
+        setLoadingCategorias(true);
+        // Usar o mesmo endpoint que a página de categorias usa
+        const response = await fetch('/api/categorias/gerenciaveis', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao carregar categorias');
+        }
+        
+        const categorias = await response.json();
+        console.log('📡 Categorias recebidas da API no StockControlPanel:', categorias);
+        
+        // Mapear categorias para o formato esperado
+        const categoriasFormatadas = categorias.map((cat: any) => ({
+          id: cat.id,
+          nome: cat.nome,
+          slug: cat.slug,
+          ativo: cat.ativo !== false // Se não tem campo ativo, considerar como ativa
+        }));
+        
+        console.log('✅ Categorias formatadas no StockControlPanel:', categoriasFormatadas.length);
+        setCategoriasDisponiveis(categoriasFormatadas);
+      } catch (error) {
+        console.error('❌ Erro ao carregar categorias no StockControlPanel:', error);
+        // Fallback para categorias estáticas em caso de erro
+        setCategoriasDisponiveis([
+          { id: 1, nome: 'Bonecos', ativo: true },
+          { id: 2, nome: 'Carrinhos', ativo: true },
+          { id: 3, nome: 'Jogos', ativo: true },
+          { id: 4, nome: 'Quebra-Cabeças', ativo: true },
+          { id: 5, nome: 'Pelúcias', ativo: true },
+          { id: 6, nome: 'Livros', ativo: true },
+          { id: 7, nome: 'Educativos', ativo: true },
+          { id: 8, nome: 'Colecionáveis', ativo: true },
+          { id: 9, nome: 'Outros', ativo: true }
+        ]);
+      } finally {
+        setLoadingCategorias(false);
+      }
+    };
+
+    carregarCategorias();
+  }, []);
 
   // Calcular estatísticas
   const stats = useMemo(() => {
@@ -898,20 +949,19 @@ export function StockControlPanel() {
                 <Select
                   value={productToEdit.categoria || ''}
                   onValueChange={(value) => setProductToEdit({ ...productToEdit, categoria: value })}
+                  disabled={loadingCategorias}
                 >
                   <SelectTrigger id="edit-categoria">
-                    <SelectValue placeholder="Selecione uma categoria" />
+                    <SelectValue placeholder={loadingCategorias ? "Carregando categorias..." : "Selecione uma categoria"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Bonecos">Bonecos</SelectItem>
-                    <SelectItem value="Carrinhos">Carrinhos</SelectItem>
-                    <SelectItem value="Jogos">Jogos</SelectItem>
-                    <SelectItem value="Quebra-Cabeças">Quebra-Cabeças</SelectItem>
-                    <SelectItem value="Pelúcias">Pelúcias</SelectItem>
-                    <SelectItem value="Livros">Livros</SelectItem>
-                    <SelectItem value="Educativos">Educativos</SelectItem>
-                    <SelectItem value="Colecionáveis">Colecionáveis</SelectItem>
-                    <SelectItem value="Outros">Outros</SelectItem>
+                    {categoriasDisponiveis
+                      .filter(cat => cat.ativo !== false) // Filtrar apenas categorias ativas
+                      .map((cat) => (
+                        <SelectItem key={cat.id} value={cat.nome}>
+                          {cat.nome}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -10,12 +10,13 @@ module.exports = {
       env_file: ".env",
       env: {
         NODE_ENV: "development",
-        SERVER_PORT: 3001,
-        MYSQL_HOST: "127.0.0.1",
-        MYSQL_USER: "root",
-        MYSQL_PASSWORD: "RSM_Rg51gti66",
-        MYSQL_DATABASE: "rare_toy_companion",
-        MYSQL_PORT: 3306
+        SERVER_PORT: process.env.SERVER_PORT || 3001,
+        MYSQL_HOST: process.env.MYSQL_HOST || "127.0.0.1",
+        MYSQL_USER: process.env.MYSQL_USER || "root",
+        // SECURITY: Nunca hardcodar senhas! Use variáveis de ambiente
+        MYSQL_PASSWORD: process.env.MYSQL_PASSWORD || "",
+        MYSQL_DATABASE: process.env.MYSQL_DATABASE || "rare_toy_companion",
+        MYSQL_PORT: parseInt(process.env.MYSQL_PORT || "3306")
       },
       autorestart: true,
       max_memory_restart: "300M"

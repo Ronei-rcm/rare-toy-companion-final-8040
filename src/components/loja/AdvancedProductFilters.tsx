@@ -56,19 +56,9 @@ export default function AdvancedProductFilters({
   });
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>(
     filters.priceRange
   );
-
-  useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
 
   useEffect(() => {
     onFiltersChange(filters);
@@ -119,8 +109,8 @@ export default function AdvancedProductFilters({
 
   return (
     <div className="space-y-4">
-      {/* Botão de toggle para mobile */}
-      <div className="lg:hidden">
+      {/* Botão de toggle (mobile e desktop) */}
+      <div className="flex">
         <Button
           variant="outline"
           className="w-full justify-between"
@@ -146,7 +136,7 @@ export default function AdvancedProductFilters({
 
       {/* Painel de filtros */}
       <AnimatePresence>
-        {(isOpen || isDesktop) && (
+        {isOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}

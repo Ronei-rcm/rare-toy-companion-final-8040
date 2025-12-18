@@ -231,9 +231,9 @@ const Suporte = () => {
         description="Central de ajuda MuhlStore. Tire suas dúvidas, entre em contato e encontre soluções rápidas para suas necessidades."
       />
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-slate-50 to-white">
         {/* Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 py-20">
+        <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 via-fuchsia-500 to-indigo-600 py-20">
           <div className="absolute inset-0 opacity-20" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}></div>
@@ -282,12 +282,14 @@ const Suporte = () => {
                 transition={{ delay: index * 0.1 }}
               >
                 <Card 
-                  className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 bg-white/80 backdrop-blur-sm"
+                  className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1 bg-white/90 backdrop-blur-sm border border-orange-100/70"
                   onClick={() => window.location.href = item.link}
                 >
-                  <CardContent className="p-6 text-center">
-                    <item.icon className="w-8 h-8 mx-auto mb-3 text-blue-600" />
-                    <p className="font-medium text-sm">{item.title}</p>
+                  <CardContent className="p-6 text-center space-y-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-orange-500 to-purple-500 flex items-center justify-center shadow-md text-white">
+                      <item.icon className="w-6 h-6" />
+                    </div>
+                    <p className="font-semibold text-sm text-gray-900">{item.title}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -301,7 +303,7 @@ const Suporte = () => {
               <Card className="shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <HelpCircle className="w-6 h-6 text-blue-600" />
+                    <HelpCircle className="w-6 h-6 text-orange-600" />
                     Perguntas Frequentes
                   </CardTitle>
                   <CardDescription>
@@ -321,12 +323,12 @@ const Suporte = () => {
                           <div className="border rounded-lg overflow-hidden">
                             <button
                               onClick={() => setOpenFAQ(openFAQ === faq.id ? null : faq.id)}
-                              className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-start gap-3"
+                              className="w-full p-4 text-left hover:bg-orange-50/60 transition-colors flex items-start gap-3"
                             >
                               <Icon className={`w-5 h-5 mt-0.5 ${faq.color} flex-shrink-0`} />
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs border-orange-200 text-orange-700 bg-orange-50/60">
                                     {faq.category}
                                   </Badge>
                                 </div>

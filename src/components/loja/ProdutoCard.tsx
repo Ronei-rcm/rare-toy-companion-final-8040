@@ -103,13 +103,16 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
     });
   };
 
+  const precoOriginal = produto.precoOriginal ?? (produto.promocao ? produto.preco * 1.15 : undefined);
+  const imagemPrincipal = produto.imagemUrl || '/placeholder.svg';
+
   const produtoForQuickView = {
     id: produto.id,
     nome: produto.nome,
     preco: produto.preco,
-    preco_original: produto.promocao ? produto.preco * 1.2 : undefined, // Simular preço original se em promoção
+    preco_original: precoOriginal,
     descricao: produto.descricao,
-    imagem_url: produto.imagemUrl,
+    imagem_url: imagemPrincipal,
     estoque: produto.estoque,
     categoria: produto.categoria,
     avaliacao: produto.avaliacao,
@@ -123,20 +126,20 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
   const emEstoque = produto.emEstoque !== undefined ? produto.emEstoque : produto.estoque > 0;
 
   return (
-    <Card key={produto.id} className="overflow-hidden flex flex-col transition-shadow hover:shadow-lg">
+    <Card key={produto.id} className="overflow-hidden flex flex-col transition-shadow hover:shadow-lg h-full border border-orange-50/60 bg-white">
       <CardHeader className="p-0">
         <Dialog>
-          <div className="relative h-40 sm:h-48 md:h-56 lg:h-52 p-2 bg-gradient-to-b from-muted/40 to-transparent">
-            <div className="relative h-full">
+          <div className="relative p-3 bg-gradient-to-b from-muted/40 to-transparent">
+            <AspectRatio ratio={4 / 5} className="rounded-xl bg-white border border-orange-50/60">
               <DialogTrigger asChild>
                 <button className="group block w-full h-full focus:outline-none" aria-label={`Ver imagem de ${produto.nome}`}>
                   <img
-                    src={produto.imagemUrl}
+                    src={imagemPrincipal}
                     alt={produto.nome}
                     loading="lazy"
                     decoding="async"
                     fetchpriority="low"
-                    className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-[1.03] rounded-md"
+                    className="object-contain w-full h-full transition-transform duration-300 group-hover:scale-[1.03] rounded-xl bg-white"
                     sizes="(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -147,15 +150,15 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
               </DialogTrigger>
 
               {produto.promocao && (
-                <Badge className="absolute top-2 right-2 bg-red-500">-{Math.min(30, Math.round((produto.descontoPercentual || 10)))}%</Badge>
+                <Badge className="absolute top-2 right-2 bg-red-500 shadow-sm">-{Math.min(30, Math.round((produto.descontoPercentual || 10)))}%</Badge>
               )}
               {produto.lancamento && (
-                <Badge className="absolute top-2 right-2 bg-blue-500">Lançamento</Badge>
+                <Badge className="absolute top-2 right-2 bg-blue-500 shadow-sm">Lançamento</Badge>
               )}
               {produto.destaque && !produto.promocao && !produto.lancamento && (
-                <Badge className="absolute top-2 right-2 bg-amber-500">Destaque</Badge>
+                <Badge className="absolute top-2 right-2 bg-amber-500 shadow-sm">Destaque</Badge>
               )}
-            </div>
+            </AspectRatio>
           </div>
 
           <DialogContent className="max-w-lg">
@@ -173,20 +176,26 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
       </CardHeader>
       <CardContent className="p-4 flex-grow">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-bold text-lg line-clamp-2">{produto.nome}</h3>
-          <Badge variant="outline" className="ml-2 whitespace-nowrap">
-            {produto.categoria}
-          </Badge>
+          <h3 className="font-bold text-lg line-clamp-2 pr-2">{produto.nome}</h3>
+          {produto.categoria && (
+            <Badge variant="outline" className="ml-2 whitespace-nowrap">
+              {produto.categoria}
+            </Badge>
+          )}
         </div>
-        <p className="text-xl font-bold text-primary mb-1">
-          R$ {produto.preco.toFixed(2)}
-        </p>
-        {produto.promocao && produto.precoOriginal && (
-          <p className="text-xs text-muted-foreground line-through mb-2">R$ {produto.precoOriginal.toFixed(2)}</p>
+        <div className="space-y-1 mb-2">
+          <p className="text-xl font-bold text-primary leading-tight">
+            R$ {produto.preco.toFixed(2)}
+          </p>
+          {produto.promocao && precoOriginal && (
+            <p className="text-xs text-muted-foreground line-through">R$ {precoOriginal.toFixed(2)}</p>
+          )}
+        </div>
+        {produto.descricao && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+            {produto.descricao}
+          </p>
         )}
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-          {produto.descricao}
-        </p>
         <div className="flex items-center">
           <Badge 
             variant={emEstoque ? "default" : "destructive"}

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ImageUpload from '@/components/admin/ImageUpload';
 import EnhancedImageUpload from '@/components/admin/EnhancedImageUpload';
+import ImageGalleryUpload from '@/components/admin/ImageGalleryUpload';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,11 +25,13 @@ export const ProductsManager = () => {
   const [editingProduct, setEditingProduct] = useState<Produto | null>(null);
   const [formErrors, setFormErrors] = useState<{ nome?: string; preco?: string; categoria?: string; imagemUrl?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<{ id: string; url: string; isMain?: boolean; order: number }[]>([]);
   const [formData, setFormData] = useState<CreateProductData>({
     nome: '',
     descricao: '',
     preco: 0,
     imagemUrl: '/placeholder.svg',
+    imagens: [],
     categoria: '',
     estoque: 0,
     status: 'ativo',
@@ -81,7 +84,18 @@ export const ProductsManager = () => {
     }
     try {
       setSubmitting(true);
-      const newProduct = await createProduct(formData);
+      const validGallery = galleryImages.filter(img => img.url && !img.url.startsWith('blob:'));
+      const mainImage = validGallery.find(img => img.isMain)?.url || validGallery[0]?.url || formData.imagemUrl;
+      if (!mainImage || mainImage.startsWith('blob:')) {
+        toast({ title: 'Imagem inválida', description: 'Use URLs hospedadas ou upload que retorne URL final (sem blob:).', variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+      const newProduct = await createProduct({
+        ...formData,
+        imagemUrl: mainImage || '/placeholder.svg',
+        imagens: validGallery.map(img => img.url),
+      });
       if (newProduct) {
         toast({
           title: "Produto criado!",
@@ -109,7 +123,18 @@ export const ProductsManager = () => {
     }
     try {
       setSubmitting(true);
-      const updatedProduct = await updateProduct(editingProduct.id, formData);
+      const validGallery = galleryImages.filter(img => img.url && !img.url.startsWith('blob:'));
+      const mainImage = validGallery.find(img => img.isMain)?.url || validGallery[0]?.url || formData.imagemUrl;
+      if (!mainImage || mainImage.startsWith('blob:')) {
+        toast({ title: 'Imagem inválida', description: 'Use URLs hospedadas ou upload que retorne URL final (sem blob:).', variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+      const updatedProduct = await updateProduct(editingProduct.id, {
+        ...formData,
+        imagemUrl: mainImage || '/placeholder.svg',
+        imagens: validGallery.map(img => img.url),
+      });
       if (updatedProduct) {
         toast({
           title: "Produto atualizado!",
@@ -157,6 +182,7 @@ export const ProductsManager = () => {
       descricao: product.descricao || '',
       preco: product.preco,
       imagemUrl: product.imagemUrl || '/placeholder.svg',
+      imagens: product.imagens || [],
       categoria: product.categoria,
       estoque: product.estoque,
       status: product.status as 'ativo' | 'inativo' | 'esgotado',
@@ -175,6 +201,13 @@ export const ProductsManager = () => {
       codigoBarras: product.codigoBarras || '',
       dataLancamento: product.dataLancamento || '',
     });
+    const existingGallery = (product.imagens && product.imagens.length > 0 ? product.imagens : [product.imagemUrl]).filter(Boolean).map((url, idx) => ({
+      id: `img-${product.id}-${idx}`,
+      url,
+      isMain: idx === 0,
+      order: idx,
+    }));
+    setGalleryImages(existingGallery);
     setIsEditDialogOpen(true);
   };
 
@@ -184,6 +217,7 @@ export const ProductsManager = () => {
       descricao: '',
       preco: 0,
       imagemUrl: '/placeholder.svg',
+      imagens: [],
       categoria: '',
       estoque: 0,
       status: 'ativo',
@@ -203,6 +237,7 @@ export const ProductsManager = () => {
       dataLancamento: '',
     });
     setFormErrors({});
+    setGalleryImages([]);
   };
 
   const validateForm = (): boolean => {
@@ -216,10 +251,16 @@ export const ProductsManager = () => {
     if (!formData.categoria?.trim()) {
       errors.categoria = 'Selecione uma categoria';
     }
-    const url = formData.imagemUrl?.trim();
-    const isValidUrl = !!url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')); // aceita caminhos locais da API
+    const validGallery = galleryImages.filter(img => img.url && !img.url.startsWith('blob:'));
+    const mainImage = validGallery.find(img => img.isMain)?.url || validGallery[0]?.url || formData.imagemUrl;
+    const url = mainImage?.trim();
+    const isValidUrl = !!url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/'));
     if (!isValidUrl || url === '/placeholder.svg') {
-      errors.imagemUrl = 'Informe uma URL de imagem válida';
+      errors.imagemUrl = 'Informe ao menos uma imagem hospedada (sem blob:)';
+    } else {
+      if (url !== formData.imagemUrl) {
+        setFormData(prev => ({ ...prev, imagemUrl: url }));
+      }
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -315,6 +356,24 @@ export const ProductsManager = () => {
         maxSize={10}
       />
       {formErrors.imagemUrl && <p className="text-xs text-red-600">{formErrors.imagemUrl}</p>}
+
+      <div className="space-y-2">
+        <Label>Galeria de imagens (capa + extras)</Label>
+        <ImageGalleryUpload
+          images={galleryImages}
+          onChange={(imgs) => {
+            setGalleryImages(imgs);
+            const sanitized = imgs.filter(i => i.url && !i.url.startsWith('blob:'));
+            const main = sanitized.find(img => img.isMain)?.url || sanitized[0]?.url || formData.imagemUrl;
+            setFormData(prev => ({ ...prev, imagemUrl: main || prev.imagemUrl, imagens: sanitized.map(i => i.url) }));
+          }}
+          maxImages={8}
+          maxSizePerImage={8}
+          allowMainImage
+          allowReorder
+        />
+        <p className="text-xs text-gray-500">Escolha a capa marcando “Principal”; demais entram como galeria.</p>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
