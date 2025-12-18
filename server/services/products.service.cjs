@@ -182,9 +182,307 @@ async function findByCategory(categoria) {
   }
 }
 
+/**
+ * Cria um novo produto
+ * 
+ * @param {Object} produtoData - Dados do produto
+ * @returns {Promise<Object>} Produto criado com ID
+ */
+async function create(produtoData) {
+  try {
+    const crypto = require('crypto');
+    
+    // Buscar categoria_id pelo nome
+    let categoria_id = null;
+    if (produtoData.categoria) {
+      const [catRows] = await pool.execute(
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE nome = ? OR slug = ? LIMIT 1',
+        [produtoData.categoria, produtoData.categoria]
+      );
+      if (catRows.length > 0) {
+        categoria_id = catRows[0].id;
+      }
+    }
+    
+    // Se não encontrou, usa a primeira categoria disponível
+    if (!categoria_id) {
+      const [firstCat] = await pool.execute(
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
+      );
+      if (firstCat.length > 0) {
+        categoria_id = firstCat[0].id;
+      } else {
+        throw new Error('Nenhuma categoria disponível');
+      }
+    }
+    
+    // Criar produto com campos obrigatórios
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      
+      // Verificar banco atual
+      const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
+      const currentDb = dbCheck[0]?.current_db;
+      
+      // Forçar uso do banco correto
+      if (currentDb !== 'rare_toy_companion') {
+        await connection.query('USE `rare_toy_companion`');
+      }
+      
+      const id = crypto.randomUUID();
+      const [result] = await connection.execute(`
+        INSERT INTO produtos (
+          id, nome, preco, categoria, categoria_id, imagem_url, descricao, estoque, status,
+          destaque, promocao, lancamento, avaliacao, total_avaliacoes,
+          faixa_etaria, peso, dimensoes, material, marca, origem, fornecedor,
+          codigo_barras, data_lancamento
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        produtoData.nome,
+        produtoData.preco,
+        produtoData.categoria,
+        categoria_id,
+        produtoData.imagemUrl || null,
+        produtoData.descricao || null,
+        produtoData.estoque || 0,
+        produtoData.status || 'ativo',
+        produtoData.destaque || false,
+        produtoData.promocao || false,
+        produtoData.lancamento || false,
+        produtoData.avaliacao || 0,
+        produtoData.totalAvaliacoes || 0,
+        produtoData.faixaEtaria || null,
+        produtoData.peso || null,
+        produtoData.dimensoes || null,
+        produtoData.material || null,
+        produtoData.marca || null,
+        produtoData.origem || null,
+        produtoData.fornecedor || null,
+        produtoData.codigoBarras || null,
+        produtoData.dataLancamento || null
+      ]);
+      
+      connection.release();
+      
+      return { id, insertId: result.insertId || id };
+    } catch (insertError) {
+      if (connection) connection.release();
+      console.error('Erro ao inserir produto:', insertError);
+      throw insertError;
+    }
+  } catch (error) {
+    console.error('Erro no service create:', error);
+    throw error;
+  }
+}
+
+/**
+ * Atualiza um produto existente
+ * 
+ * @param {string} id - ID do produto
+ * @param {Object} produtoData - Dados a serem atualizados
+ * @returns {Promise<Object|null>} Produto atualizado ou null se não encontrado
+ */
+async function update(id, produtoData) {
+  try {
+    // Construir query dinamicamente baseado nos campos enviados
+    const fields = [];
+    const values = [];
+    
+    // Mapear campos do camelCase para snake_case
+    const fieldMap = {
+      nome: 'nome',
+      descricao: 'descricao',
+      preco: 'preco',
+      imagemUrl: 'imagem_url',
+      categoria: 'categoria',
+      estoque: 'estoque',
+      status: 'status',
+      destaque: 'destaque',
+      promocao: 'promocao',
+      lancamento: 'lancamento',
+      avaliacao: 'avaliacao',
+      totalAvaliacoes: 'total_avaliacoes',
+      faixaEtaria: 'faixa_etaria',
+      peso: 'peso',
+      dimensoes: 'dimensoes',
+      material: 'material',
+      marca: 'marca',
+      origem: 'origem',
+      fornecedor: 'fornecedor',
+      codigoBarras: 'codigo_barras',
+      dataLancamento: 'data_lancamento'
+    };
+    
+    for (const [key, dbField] of Object.entries(fieldMap)) {
+      if (produtoData[key] !== undefined) {
+        fields.push(`${dbField} = ?`);
+        values.push(produtoData[key]);
+      }
+    }
+    
+    if (fields.length === 0) {
+      throw new Error('Nenhum campo para atualizar');
+    }
+    
+    // Adicionar updated_at
+    fields.push('updated_at = NOW()');
+    values.push(id);
+    
+    const query = `UPDATE produtos SET ${fields.join(', ')} WHERE id = ?`;
+    const [result] = await pool.execute(query, values);
+    
+    if (result.affectedRows === 0) {
+      return null;
+    }
+    
+    // Buscar o produto atualizado completo
+    return await findById(id);
+  } catch (error) {
+    console.error('Erro no service update:', error);
+    throw error;
+  }
+}
+
+/**
+ * Deleta um produto
+ * 
+ * @param {string} id - ID do produto
+ * @returns {Promise<boolean>} true se deletado, false se não encontrado
+ */
+async function remove(id) {
+  try {
+    const [result] = await pool.execute(
+      'DELETE FROM produtos WHERE id = ?',
+      [id]
+    );
+    
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error('Erro no service remove:', error);
+    throw error;
+  }
+}
+
+/**
+ * Cria um produto rapidamente (quick-add)
+ * 
+ * @param {Object} produtoData - Dados básicos do produto
+ * @param {string|null} imagemUrl - URL da imagem (opcional)
+ * @returns {Promise<Object>} Produto criado com ID
+ */
+async function quickCreate(produtoData, imagemUrl = null) {
+  try {
+    const crypto = require('crypto');
+    const id = crypto.randomUUID();
+    
+    // Buscar categoria_id
+    let categoria_id = null;
+    if (produtoData.categoria) {
+      const [catRows] = await pool.execute(
+        'SELECT id FROM `rare_toy_companion`.`categorias` WHERE nome = ? OR slug = ? LIMIT 1',
+        [produtoData.categoria, produtoData.categoria]
+      );
+      if (catRows.length > 0) {
+        categoria_id = catRows[0].id;
+      }
+    }
+    
+    if (!categoria_id) {
+      const [firstCat] = await pool.execute(
+        'SELECT id, nome FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
+      );
+      if (firstCat.length > 0) {
+        categoria_id = firstCat[0].id;
+      } else {
+        // Tentar qualquer categoria
+        const [anyCat] = await pool.execute(
+          'SELECT id, nome FROM `rare_toy_companion`.`categorias` ORDER BY id LIMIT 1'
+        );
+        if (anyCat.length > 0) {
+          categoria_id = anyCat[0].id;
+        } else {
+          throw new Error('Nenhuma categoria disponível no banco de dados');
+        }
+      }
+    }
+    
+    // Inserir produto com campos mínimos
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      
+      // Forçar uso do banco correto
+      const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
+      const currentDb = dbCheck[0]?.current_db;
+      if (currentDb !== 'rare_toy_companion') {
+        await connection.query('USE `rare_toy_companion`');
+      }
+      
+      // Tentar inserir SEM categoria_id primeiro, depois COM categoria_id se falhar
+      let result;
+      try {
+        result = await connection.query(`
+          INSERT INTO produtos (
+            id, nome, preco, categoria, imagem_url, estoque, status,
+            destaque, promocao, lancamento
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id,
+          produtoData.nome,
+          Number(produtoData.preco || 0),
+          produtoData.categoria || 'Outros',
+          imagemUrl,
+          Number(produtoData.estoque || 1),
+          produtoData.status || 'ativo',
+          false,
+          false,
+          false
+        ]);
+      } catch (errorWithoutCat) {
+        // Se falhar, tentar COM categoria_id
+        result = await connection.query(`
+          INSERT INTO produtos (
+            id, nome, preco, categoria, categoria_id, imagem_url, estoque, status,
+            destaque, promocao, lancamento
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          id,
+          produtoData.nome,
+          Number(produtoData.preco || 0),
+          produtoData.categoria || 'Outros',
+          categoria_id,
+          imagemUrl,
+          Number(produtoData.estoque || 1),
+          produtoData.status || 'ativo',
+          false,
+          false,
+          false
+        ]);
+      }
+      
+      connection.release();
+      return { id, success: true };
+    } catch (insertError) {
+      if (connection) connection.release();
+      console.error('Erro ao inserir produto (quick-add):', insertError);
+      throw insertError;
+    }
+  } catch (error) {
+    console.error('Erro no service quickCreate:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   findAll,
   findById,
   findFeatured,
-  findByCategory
+  findByCategory,
+  create,
+  update,
+  remove,
+  quickCreate
 };

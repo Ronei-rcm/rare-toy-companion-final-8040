@@ -158,9 +158,190 @@ async function getByCategory(req, res) {
   }
 }
 
+/**
+ * Cria um novo produto
+ * POST /api/produtos
+ */
+async function create(req, res) {
+  try {
+    const produtoData = req.body;
+    console.log('🔄 Criando produto:', produtoData.nome);
+    
+    const result = await productsService.create(produtoData);
+    
+    // Invalidar cache
+    await cacheHelpers.invalidateProductsCache();
+    await cacheHelpers.invalidateCategoriesCache();
+    
+    console.log('✅ Produto criado com ID:', result.id);
+    return res.status(201).json({ id: result.id, ...produtoData });
+  } catch (error) {
+    console.error('❌ Erro ao criar produto:', error);
+    if (error.message === 'Nenhuma categoria disponível') {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+/**
+ * Atualiza um produto existente
+ * PUT /api/produtos/:id
+ */
+async function update(req, res) {
+  try {
+    const { id } = req.params;
+    const produtoData = req.body;
+    console.log(`🔄 Atualizando produto ID: ${id}`);
+    
+    const produto = await productsService.update(id, produtoData);
+    
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+    
+    // Converter snake_case para camelCase
+    const produtoFormatado = {
+      id: produto.id,
+      nome: produto.nome,
+      descricao: produto.descricao,
+      preco: parseFloat(produto.preco),
+      imagemUrl: produto.imagemUrl ? getPublicUrl(req, produto.imagemUrl) : produto.imagemUrl,
+      categoria: produto.categoria,
+      estoque: produto.estoque,
+      status: produto.status,
+      destaque: Boolean(produto.destaque),
+      promocao: Boolean(produto.promocao),
+      lancamento: Boolean(produto.lancamento),
+      avaliacao: parseFloat(produto.avaliacao) || 0,
+      totalAvaliacoes: produto.totalAvaliacoes || 0,
+      faixaEtaria: produto.faixaEtaria,
+      peso: produto.peso,
+      dimensoes: produto.dimensoes,
+      material: produto.material,
+      marca: produto.marca,
+      origem: produto.origem,
+      fornecedor: produto.fornecedor,
+      codigoBarras: produto.codigoBarras,
+      dataLancamento: produto.dataLancamento,
+      createdAt: produto.createdAt,
+      updatedAt: produto.updatedAt
+    };
+    
+    // Invalidar cache
+    await cacheHelpers.invalidateProductCache(id);
+    await cacheHelpers.invalidateProductsCache();
+    
+    console.log('✅ Produto atualizado com sucesso');
+    return res.json(produtoFormatado);
+  } catch (error) {
+    console.error('❌ Erro ao atualizar produto:', error);
+    if (error.message === 'Nenhum campo para atualizar') {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+/**
+ * Deleta um produto
+ * DELETE /api/produtos/:id
+ */
+async function remove(req, res) {
+  try {
+    const { id } = req.params;
+    console.log(`🔄 Deletando produto ID: ${id}`);
+    
+    const deleted = await productsService.remove(id);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+    
+    // Invalidar cache
+    await cacheHelpers.invalidateProductCache(id);
+    await cacheHelpers.invalidateProductsCache();
+    
+    console.log('✅ Produto deletado');
+    return res.json({ message: 'Produto deletado com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar produto:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+/**
+ * Cria um produto rapidamente (quick-add)
+ * POST /api/produtos/quick-add
+ */
+async function quickCreate(req, res) {
+  try {
+    const { nome, preco, estoque, categoria, status } = req.body;
+    console.log('⚡ Cadastro rápido:', nome);
+    
+    // URL da imagem (se enviou arquivo)
+    let imagemUrl = null;
+    if (req.file) {
+      imagemUrl = `/lovable-uploads/${req.file.filename}`;
+      console.log('📸 Foto capturada:', imagemUrl);
+    }
+    
+    const produtoData = { nome, preco, estoque, categoria, status };
+    const result = await productsService.quickCreate(produtoData, imagemUrl);
+    
+    // Invalidar cache
+    await cacheHelpers.invalidateProductsCache();
+    await cacheHelpers.invalidateCategoriesCache();
+    
+    return res.json({ 
+      success: true, 
+      id: result.id,
+      message: status === 'rascunho' ? 'Rascunho salvo! Complete depois.' : 'Produto cadastrado com sucesso!',
+      produto: { id: result.id, nome, preco, categoria, status }
+    });
+  } catch (error) {
+    console.error('❌ Erro no quick-add:', error);
+    return res.status(500).json({ 
+      error: 'Erro ao cadastrar produto rapidamente', 
+      details: error.message 
+    });
+  }
+}
+
+/**
+ * Cria um produto rapidamente (quick-add-test - sem upload)
+ * POST /api/produtos/quick-add-test
+ */
+async function quickCreateTest(req, res) {
+  try {
+    const { nome, preco, estoque, categoria, status } = req.body;
+    console.log('⚡ Cadastro rápido (teste):', nome);
+    
+    const produtoData = { nome, preco, estoque, categoria, status };
+    const result = await productsService.quickCreate(produtoData, null);
+    
+    return res.json({ 
+      success: true, 
+      id: result.id, 
+      message: 'Produto cadastrado (teste)' 
+    });
+  } catch (error) {
+    console.error('❌ Erro no quick-add-test:', error);
+    return res.status(500).json({ 
+      error: 'Erro ao cadastrar produto (teste)', 
+      details: error.message 
+    });
+  }
+}
+
 module.exports = {
   getAll,
   getById,
   getFeatured,
-  getByCategory
+  getByCategory,
+  create,
+  update,
+  remove,
+  quickCreate,
+  quickCreateTest
 };
