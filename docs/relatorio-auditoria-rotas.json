@@ -1,0 +1,5234 @@
+{
+  "timestamp": "2025-12-18T16:41:20.813Z",
+  "serverRoutes": 423,
+  "modularRoutes": 5,
+  "percentageModularized": "1.2",
+  "groups": {
+    "uploads": [
+      {
+        "method": "GET",
+        "path": "/api/uploads/:filename",
+        "line": 168,
+        "file": "server.cjs"
+      }
+    ],
+    "files": [
+      {
+        "method": "GET",
+        "path": "/api/files/:filename",
+        "line": 173,
+        "file": "server.cjs"
+      }
+    ],
+    "media": [
+      {
+        "method": "GET",
+        "path": "/api/media/:filename",
+        "line": 178,
+        "file": "server.cjs"
+      }
+    ],
+    "static": [
+      {
+        "method": "GET",
+        "path": "/api/static/:filename",
+        "line": 183,
+        "file": "server.cjs"
+      }
+    ],
+    "img": [
+      {
+        "method": "GET",
+        "path": "/api/img/:filename",
+        "line": 188,
+        "file": "server.cjs"
+      }
+    ],
+    "file": [
+      {
+        "method": "GET",
+        "path": "/api/file/:filename",
+        "line": 193,
+        "file": "server.cjs"
+      }
+    ],
+    "asset": [
+      {
+        "method": "GET",
+        "path": "/api/asset/:filename",
+        "line": 198,
+        "file": "server.cjs"
+      }
+    ],
+    "csrf-token": [
+      {
+        "method": "GET",
+        "path": "/api/csrf-token",
+        "line": 286,
+        "file": "server.cjs"
+      }
+    ],
+    "icons": [
+      {
+        "method": "GET",
+        "path": "/api/icons/:filename",
+        "line": 346,
+        "file": "server.cjs"
+      }
+    ],
+    "other": [
+      {
+        "method": "GET",
+        "path": "/pwa-icon/:filename",
+        "line": 359,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/icon/:filename",
+        "line": 372,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/lovable-uploads/:filename",
+        "line": 386,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/uploads/:filename",
+        "line": 414,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/img/:filename",
+        "line": 427,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/:fileName",
+        "line": 454,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/sitemap.xml",
+        "line": 9414,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/login",
+        "line": 12947,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/analytics/dashboard",
+        "line": 19780,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/analytics/vendas",
+        "line": 19800,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/analytics/produtos-populares",
+        "line": 19812,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/analytics/pedidos-recentes",
+        "line": 19824,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "*",
+        "line": 19863,
+        "file": "server.cjs"
+      }
+    ],
+    "carousel": [
+      {
+        "method": "GET",
+        "path": "/api/carousel",
+        "line": 613,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/carousel/active",
+        "line": 627,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/carousel",
+        "line": 642,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/carousel/:id",
+        "line": 676,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/carousel/:id",
+        "line": 714,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/carousel/:id/toggle",
+        "line": 732,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/carousel/bulk",
+        "line": 757,
+        "file": "server.cjs"
+      }
+    ],
+    "videos": [
+      {
+        "method": "GET",
+        "path": "/api/videos",
+        "line": 883,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/videos/active",
+        "line": 900,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/videos/:id",
+        "line": 914,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/videos",
+        "line": 930,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/videos/:id",
+        "line": 980,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/videos/:id",
+        "line": 1019,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/videos/:id/toggle",
+        "line": 1037,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/videos/bulk",
+        "line": 1062,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/videos/:id/increment-views",
+        "line": 1144,
+        "file": "server.cjs"
+      }
+    ],
+    "upload": [
+      {
+        "method": "POST",
+        "path": "/api/upload",
+        "line": 1167,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/upload/video",
+        "line": 1206,
+        "file": "server.cjs"
+      }
+    ],
+    "produtos": [
+      {
+        "method": "GET",
+        "path": "/api/produtos",
+        "line": 1253,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/produtos/destaque",
+        "line": 1366,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/produtos/categoria/:categoria",
+        "line": 1837,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/produtos/:id",
+        "line": 1968,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/produtos/quick-add-test",
+        "line": 2026,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/produtos/quick-add",
+        "line": 2092,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/produtos",
+        "line": 2263,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/produtos/:id",
+        "line": 2362,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/produtos/:id",
+        "line": 2521,
+        "file": "server.cjs"
+      }
+    ],
+    "categorias": [
+      {
+        "method": "GET",
+        "path": "/api/categorias",
+        "line": 1392,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/categorias/nomes",
+        "line": 1463,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/categorias/lista",
+        "line": 1480,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/categorias/gerenciaveis",
+        "line": 1497,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/categorias/:id",
+        "line": 1532,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/categorias",
+        "line": 1571,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/categorias/:id",
+        "line": 1642,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/categorias/:id",
+        "line": 1731,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/categorias/:id/ordem",
+        "line": 1772,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/categorias/:id/toggle",
+        "line": 1802,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/categorias",
+        "line": 17964,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/categorias",
+        "line": 17974,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/categorias/:id",
+        "line": 17995,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/categorias/:id",
+        "line": 18018,
+        "file": "server.cjs"
+      }
+    ],
+    "stats": [
+      {
+        "method": "GET",
+        "path": "/api/stats",
+        "line": 1873,
+        "file": "server.cjs"
+      }
+    ],
+    "compras-recentes": [
+      {
+        "method": "GET",
+        "path": "/api/compras-recentes",
+        "line": 1912,
+        "file": "server.cjs"
+      }
+    ],
+    "events": [
+      {
+        "method": "GET",
+        "path": "/api/events",
+        "line": 2551,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/events/:id",
+        "line": 2614,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/events",
+        "line": 2652,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/events/:id",
+        "line": 2798,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/events/:id/fechar-feira",
+        "line": 2846,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/events/:id",
+        "line": 2880,
+        "file": "server.cjs"
+      }
+    ],
+    "users": [
+      {
+        "method": "GET",
+        "path": "/api/users",
+        "line": 2908,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/users/:id",
+        "line": 2927,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/users",
+        "line": 2950,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/users/:id",
+        "line": 2982,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/users/:id",
+        "line": 3016,
+        "file": "server.cjs"
+      }
+    ],
+    "collections": [
+      {
+        "method": "GET",
+        "path": "/api/collections",
+        "line": 3042,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/collections/:id",
+        "line": 3126,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/collections/:id/full",
+        "line": 3156,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/collections/slug/:slug",
+        "line": 3182,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/collections/:id",
+        "line": 3205,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/collections/:id/products",
+        "line": 3232,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collections",
+        "line": 3352,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/collections/:id",
+        "line": 3423,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/collections/:id",
+        "line": 3485,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collections/:id/products",
+        "line": 8605,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/collections/:id/products/:productId",
+        "line": 8658,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/collections/:id/products/reorder",
+        "line": 8709,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/collections/reorder",
+        "line": 8758,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collections/seed",
+        "line": 8787,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collections/upload-image",
+        "line": 8876,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/collections/:id/image",
+        "line": 8909,
+        "file": "server.cjs"
+      }
+    ],
+    "debug": [
+      {
+        "method": "GET",
+        "path": "/api/debug/collections-schema",
+        "line": 3499,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/debug/collections/:id/summary",
+        "line": 8742,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/debug/collections-structure",
+        "line": 8931,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/debug/fix-collections-table",
+        "line": 8941,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/debug/connection",
+        "line": 10449,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/debug/database",
+        "line": 11762,
+        "file": "server.cjs"
+      }
+    ],
+    "settings": [
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "line": 3649,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/settings",
+        "line": 3673,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings/audit",
+        "line": 3836,
+        "file": "server.cjs"
+      }
+    ],
+    "utils": [
+      {
+        "method": "POST",
+        "path": "/api/utils/smtp-test",
+        "line": 3743,
+        "file": "server.cjs"
+      }
+    ],
+    "recovery": [
+      {
+        "method": "POST",
+        "path": "/api/recovery/notify",
+        "line": 3772,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/recovery/emails",
+        "line": 3816,
+        "file": "server.cjs"
+      }
+    ],
+    "auth": [
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "line": 4048,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/logout",
+        "line": 4226,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "line": 4279,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "line": 4376,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/register",
+        "line": 4668,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "line": 4948,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "line": 5044,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "line": 5172,
+        "file": "server.cjs"
+      }
+    ],
+    "favorites": [
+      {
+        "method": "GET",
+        "path": "/api/favorites",
+        "line": 4531,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/favorites",
+        "line": 5239,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/favorites/:product_id",
+        "line": 5254,
+        "file": "server.cjs"
+      }
+    ],
+    "admin": [
+      {
+        "method": "POST",
+        "path": "/api/admin/customers/sync-users",
+        "line": 4893,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/audit-logs",
+        "line": 6156,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/audit-logs/stats",
+        "line": 6223,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/audit-logs/clean",
+        "line": 6284,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/customers",
+        "line": 6391,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/customers/stats",
+        "line": 6555,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/admin/customers/:id",
+        "line": 6621,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/customers/:id",
+        "line": 6661,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/customers/bulk-action",
+        "line": 6688,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/customers/:id/orders",
+        "line": 6790,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/customers/export",
+        "line": 6812,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders",
+        "line": 6891,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/orders/bulk-action",
+        "line": 7086,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders/stats",
+        "line": 7196,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders/export",
+        "line": 7242,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/orders/test-data",
+        "line": 7318,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders-evolved",
+        "line": 7413,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders-stats-evolved",
+        "line": 7474,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/customers/search",
+        "line": 7501,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders-evolved-simple",
+        "line": 7612,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/orders-stats-evolved-simple",
+        "line": 7649,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/automations/rules",
+        "line": 7737,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/automations/rules/:id",
+        "line": 7751,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/automations/rules",
+        "line": 7768,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/automations/rules/:id",
+        "line": 7782,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/admin/automations/rules/:id/toggle",
+        "line": 7797,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/automations/rules/:id",
+        "line": 7812,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/automations/templates",
+        "line": 7826,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/automations/templates/:name/render",
+        "line": 7840,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/users/search",
+        "line": 8024,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/reviews",
+        "line": 10939,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/reviews/:reviewId/approve",
+        "line": 11009,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/reviews/:reviewId/reject",
+        "line": 11050,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/reviews/:reviewId",
+        "line": 11069,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/orders/:id",
+        "line": 11296,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/login",
+        "line": 12788,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/change-password",
+        "line": 12955,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/forgot-password",
+        "line": 12989,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/reset-password",
+        "line": 13010,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/seed",
+        "line": 13049,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/me",
+        "line": 13075,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/logout",
+        "line": 13132,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics/dashboard",
+        "line": 13150,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics/vendas",
+        "line": 13300,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics/produtos-populares",
+        "line": 13326,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics/vendas-por-periodo",
+        "line": 13383,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics/pedidos-recentes",
+        "line": 13431,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics/estatisticas-gerais",
+        "line": 13463,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/blog/posts",
+        "line": 13671,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/blog/posts/:id",
+        "line": 13720,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/blog/posts",
+        "line": 13757,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/blog/clean-broken-images",
+        "line": 13842,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/blog/posts/:id",
+        "line": 13899,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/blog/posts/:id",
+        "line": 13992,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/admin/blog/posts/:id/status",
+        "line": 14015,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/marketplace/sellers",
+        "line": 14193,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/marketplace/sellers/:id",
+        "line": 14250,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/marketplace/sellers/structure",
+        "line": 14297,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/marketplace/sellers",
+        "line": 14315,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/marketplace/sellers/:id",
+        "line": 14432,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/marketplace/sellers/:id",
+        "line": 14518,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/admin/marketplace/sellers/:id/toggle",
+        "line": 14546,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/usuarios",
+        "line": 14578,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/usuarios/:id",
+        "line": 14594,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/usuarios",
+        "line": 14617,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/usuarios/:id",
+        "line": 14668,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/usuarios/:id",
+        "line": 14719,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/usuarios/:id/reset-password",
+        "line": 14753,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/usuarios/:id/toggle-status",
+        "line": 14781,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/coupons/run-automations",
+        "line": 19451,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/suporte/faqs",
+        "line": 19477,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/suporte/faqs",
+        "line": 19493,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/suporte/contact",
+        "line": 19512,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/suporte/contact",
+        "line": 19528,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/suporte/location",
+        "line": 19547,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/suporte/location",
+        "line": 19563,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/legal-pages",
+        "line": 19648,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/legal-pages/:id",
+        "line": 19661,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/legal-pages/:id",
+        "line": 19681,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/legal-pages",
+        "line": 19702,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/admin/legal-pages/:id",
+        "line": 19721,
+        "file": "server.cjs"
+      }
+    ],
+    "cart": [
+      {
+        "method": "GET",
+        "path": "/api/cart",
+        "line": 5304,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/cart/items",
+        "line": 5324,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/cart/items/:id",
+        "line": 5353,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/cart/items/:id",
+        "line": 5370,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/cart/pix-qr",
+        "line": 5833,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/cart/sync",
+        "line": 17893,
+        "file": "server.cjs"
+      }
+    ],
+    "orders": [
+      {
+        "method": "POST",
+        "path": "/api/orders",
+        "line": 5386,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/pix",
+        "line": 5685,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:id/status",
+        "line": 5901,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/infinitetap-result",
+        "line": 5934,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/confirm-payment",
+        "line": 6044,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders",
+        "line": 6069,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/orders/:id/associate-customer",
+        "line": 7538,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/stats",
+        "line": 7676,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/orders/:id/status",
+        "line": 7858,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/tracking",
+        "line": 7930,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/orders/:id/associate-user",
+        "line": 7973,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/bulk-action",
+        "line": 8047,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:orderId/status",
+        "line": 10036,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/stats",
+        "line": 11112,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/orders/:id/status",
+        "line": 11142,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/orders/:id",
+        "line": 11158,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/orders/:id",
+        "line": 11253,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/orders/:id",
+        "line": 11381,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/reorder",
+        "line": 11407,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:id/invoice",
+        "line": 11446,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:id",
+        "line": 11886,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/reorder",
+        "line": 11997,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders/:id/resend",
+        "line": 12049,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/:id/timeline",
+        "line": 12172,
+        "file": "server.cjs"
+      }
+    ],
+    "addresses": [
+      {
+        "method": "GET",
+        "path": "/api/addresses",
+        "line": 8237,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/addresses",
+        "line": 8360,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/addresses/:id",
+        "line": 8489,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/addresses/:id",
+        "line": 8591,
+        "file": "server.cjs"
+      }
+    ],
+    "sobre": [
+      {
+        "method": "GET",
+        "path": "/api/sobre/content",
+        "line": 8976,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/sobre/content/:section",
+        "line": 8991,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/sobre/content/:id",
+        "line": 9026,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/upload-image",
+        "line": 9052,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sobre/values",
+        "line": 9071,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/values",
+        "line": 9086,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/sobre/values/:id",
+        "line": 9104,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/sobre/values/:id",
+        "line": 9123,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sobre/team",
+        "line": 9137,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/team",
+        "line": 9152,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/sobre/team/:id",
+        "line": 9183,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/sobre/team/:id",
+        "line": 9202,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sobre/stats",
+        "line": 9216,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/stats",
+        "line": 9231,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/sobre/stats/:id",
+        "line": 9249,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/sobre/stats/:id",
+        "line": 9268,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sobre/contact",
+        "line": 9282,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/contact",
+        "line": 9297,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/sobre/contact/:id",
+        "line": 9315,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/sobre/contact/:id",
+        "line": 9334,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/upload-image",
+        "line": 9350,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/sobre/team/:id/image",
+        "line": 9374,
+        "file": "server.cjs"
+      }
+    ],
+    "health": [
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "line": 9402,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "line": 11824,
+        "file": "server.cjs"
+      }
+    ],
+    "push": [
+      {
+        "method": "GET",
+        "path": "/api/push/vapid-public-key",
+        "line": 9430,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/push/subscribe",
+        "line": 9439,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/push/unsubscribe",
+        "line": 9476,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/push/test",
+        "line": 9494,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/push/campaign",
+        "line": 9539,
+        "file": "server.cjs"
+      }
+    ],
+    "customers": [
+      {
+        "method": "GET",
+        "path": "/api/customers/current/stats",
+        "line": 9587,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/stats",
+        "line": 9703,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId",
+        "line": 9735,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/customers/:userId",
+        "line": 9867,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/stats",
+        "line": 9887,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/order-stats",
+        "line": 10005,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/addresses",
+        "line": 10232,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/customers/addresses",
+        "line": 10281,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/customers/addresses/:id",
+        "line": 10342,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/customers/addresses/:id",
+        "line": 10400,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/addresses",
+        "line": 10493,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/customers/:userId/addresses",
+        "line": 10549,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/customers/:userId/addresses/:addressId",
+        "line": 10610,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/customers/:userId/addresses/:addressId",
+        "line": 10642,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/customers/:userId/addresses/:addressId/set-default",
+        "line": 10664,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/favorites",
+        "line": 10689,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/customers/:userId/favorites/:productId",
+        "line": 10717,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/customers/:userId/favorites/:productId",
+        "line": 10744,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/notifications",
+        "line": 12549,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/coupons",
+        "line": 12565,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/loyalty",
+        "line": 12580,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/reviews",
+        "line": 12601,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/review-stats",
+        "line": 12616,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/customers/:userId/settings/privacy",
+        "line": 12633,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/recommendations",
+        "line": 12671,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/order-insights",
+        "line": 12694,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/pending-reviews",
+        "line": 12710,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/by-email/:email",
+        "line": 17928,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/settings",
+        "line": 19002,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/customers/:userId/settings",
+        "line": 19068,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/notification-preferences",
+        "line": 19166,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/customers/:userId/notification-preferences",
+        "line": 19205,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/customers/:userId/sessions",
+        "line": 19259,
+        "file": "server.cjs"
+      }
+    ],
+    "user-stats": [
+      {
+        "method": "GET",
+        "path": "/api/user-stats/stats/:userId",
+        "line": 10072,
+        "file": "server.cjs"
+      }
+    ],
+    "test": [
+      {
+        "method": "POST",
+        "path": "/api/test/create-test-data",
+        "line": 10146,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/test/stats",
+        "line": 10196,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/test",
+        "line": 18411,
+        "file": "server.cjs"
+      }
+    ],
+    "products": [
+      {
+        "method": "GET",
+        "path": "/api/products/:productId/reviews",
+        "line": 10768,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/products/:productId/reviews",
+        "line": 10790,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/:productId/reviews/stats",
+        "line": 10877,
+        "file": "server.cjs"
+      }
+    ],
+    "reviews": [
+      {
+        "method": "POST",
+        "path": "/api/reviews/:reviewId/helpful",
+        "line": 10836,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/reviews/:reviewId/report",
+        "line": 10903,
+        "file": "server.cjs"
+      }
+    ],
+    "suppliers": [
+      {
+        "method": "GET",
+        "path": "/api/suppliers",
+        "line": 11503,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/suppliers/:id",
+        "line": 11573,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/suppliers",
+        "line": 11590,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/suppliers/:id",
+        "line": 11609,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/suppliers/:id",
+        "line": 11629,
+        "file": "server.cjs"
+      }
+    ],
+    "payments": [
+      {
+        "method": "POST",
+        "path": "/api/payments/mercadopago/create-preference",
+        "line": 11669,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/mercadopago/pix",
+        "line": 11692,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/mercadopago/webhook",
+        "line": 11716,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/payments/mercadopago/status/:paymentId",
+        "line": 11743,
+        "file": "server.cjs"
+      }
+    ],
+    "shipping": [
+      {
+        "method": "POST",
+        "path": "/api/shipping/quote",
+        "line": 12199,
+        "file": "server.cjs"
+      }
+    ],
+    "coupons": [
+      {
+        "method": "POST",
+        "path": "/api/coupons/validate",
+        "line": 12231,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/coupons/first-purchase/:customerId",
+        "line": 19463,
+        "file": "server.cjs"
+      }
+    ],
+    "account": [
+      {
+        "method": "POST",
+        "path": "/api/account/password",
+        "line": 12274,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/account/profile",
+        "line": 12524,
+        "file": "server.cjs"
+      }
+    ],
+    "whatsapp": [
+      {
+        "method": "GET",
+        "path": "/api/whatsapp/config",
+        "line": 12292,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/whatsapp/config",
+        "line": 12323,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/whatsapp/test-webhook",
+        "line": 12354,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/whatsapp/stats",
+        "line": 12384,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/whatsapp/send-message",
+        "line": 12424,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/whatsapp/messages",
+        "line": 12476,
+        "file": "server.cjs"
+      }
+    ],
+    "delivery-estimate": [
+      {
+        "method": "POST",
+        "path": "/api/delivery-estimate",
+        "line": 12725,
+        "file": "server.cjs"
+      }
+    ],
+    "blog": [
+      {
+        "method": "GET",
+        "path": "/api/blog/posts",
+        "line": 13533,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/posts/:slug",
+        "line": 13593,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/categorias",
+        "line": 13646,
+        "file": "server.cjs"
+      }
+    ],
+    "marketplace": [
+      {
+        "method": "GET",
+        "path": "/api/marketplace/sellers",
+        "line": 14049,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/marketplace/sellers/:slug",
+        "line": 14113,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/marketplace/categorias",
+        "line": 14156,
+        "file": "server.cjs"
+      }
+    ],
+    "financial": [
+      {
+        "method": "GET",
+        "path": "/api/financial/transactions",
+        "line": 14808,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/transactions",
+        "line": 14845,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/transactions/:id",
+        "line": 14914,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/transactions/:id",
+        "line": 14954,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/transactions/:id/reverse",
+        "line": 14976,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/transactions/bulk-delete",
+        "line": 15036,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/transactions/bulk-update-status",
+        "line": 15063,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/transactions",
+        "line": 15094,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/transactions/:id",
+        "line": 15165,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/bank-statements/import",
+        "line": 15190,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/bank-statements/import-pdf",
+        "line": 15330,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/recurring",
+        "line": 15760,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/recurring/:id",
+        "line": 15852,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/recurring",
+        "line": 15880,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/recurring/:id",
+        "line": 16018,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/recurring/:id",
+        "line": 16102,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/recurring/process",
+        "line": 16133,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/recurring/notify",
+        "line": 16231,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/recurring/:id/occurrences",
+        "line": 16256,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/reports/pl",
+        "line": 16286,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/reports/dre",
+        "line": 16357,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/reports/trends",
+        "line": 16486,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/budgets",
+        "line": 16577,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/budgets/:id",
+        "line": 16672,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/budgets",
+        "line": 16698,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/budgets/:id",
+        "line": 16750,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/budgets/:id",
+        "line": 16827,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/budgets/:id/alerts",
+        "line": 16855,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/budgets/process-alerts",
+        "line": 16877,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/reports/comparative",
+        "line": 16961,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/contas",
+        "line": 17082,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/contas",
+        "line": 17127,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/contas/:id",
+        "line": 17156,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/contas/:id",
+        "line": 17188,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/transactions/:id/pay",
+        "line": 17206,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/cartoes",
+        "line": 17412,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/financial_cards",
+        "line": 17455,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/financial_cards/:id",
+        "line": 17484,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/cartoes/:id",
+        "line": 17516,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/setup",
+        "line": 17534,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/suppliers/:id/transactions",
+        "line": 17600,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/suppliers/:id/transactions",
+        "line": 17614,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/suppliers/:id/payments",
+        "line": 17632,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/suppliers/:id/payments",
+        "line": 17646,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/suppliers/reset-expenses",
+        "line": 17664,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/values",
+        "line": 17708,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/values",
+        "line": 17758,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/values/reset",
+        "line": 17807,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/suppliers/:id/credit-limit",
+        "line": 17870,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/fornecedores",
+        "line": 18188,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/fornecedores",
+        "line": 18269,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/fornecedores/:id",
+        "line": 18361,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/fornecedores/:id",
+        "line": 18387,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/categorias",
+        "line": 18461,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/categorias",
+        "line": 18490,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/categorias/:id",
+        "line": 18525,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/categorias/:id",
+        "line": 18562,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/financial/clientes",
+        "line": 18595,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/financial/clientes",
+        "line": 18658,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/financial/clientes/:id",
+        "line": 18693,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/financial/clientes/:id",
+        "line": 18730,
+        "file": "server.cjs"
+      }
+    ],
+    "test-contas-financial_cards": [
+      {
+        "method": "GET",
+        "path": "/api/test-contas-financial_cards",
+        "line": 17050,
+        "file": "server.cjs"
+      }
+    ],
+    "fornecedores": [
+      {
+        "method": "GET",
+        "path": "/api/fornecedores",
+        "line": 18037,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/fornecedores",
+        "line": 18047,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/fornecedores/:id",
+        "line": 18068,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/fornecedores/:id",
+        "line": 18091,
+        "file": "server.cjs"
+      }
+    ],
+    "clientes": [
+      {
+        "method": "GET",
+        "path": "/api/clientes",
+        "line": 18110,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/clientes",
+        "line": 18120,
+        "file": "server.cjs"
+      },
+      {
+        "method": "PUT",
+        "path": "/api/clientes/:id",
+        "line": 18141,
+        "file": "server.cjs"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/clientes/:id",
+        "line": 18164,
+        "file": "server.cjs"
+      }
+    ],
+    "test-fornecedores-structure": [
+      {
+        "method": "GET",
+        "path": "/api/test-fornecedores-structure",
+        "line": 18416,
+        "file": "server.cjs"
+      }
+    ],
+    "test-db": [
+      {
+        "method": "GET",
+        "path": "/api/test-db",
+        "line": 18426,
+        "file": "server.cjs"
+      }
+    ],
+    "test-tables": [
+      {
+        "method": "GET",
+        "path": "/api/test-tables",
+        "line": 18437,
+        "file": "server.cjs"
+      }
+    ],
+    "test-all-tables": [
+      {
+        "method": "GET",
+        "path": "/api/test-all-tables",
+        "line": 18448,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes",
+        "line": 18761,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-alt": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-alt",
+        "line": 18774,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-simple": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-simple",
+        "line": 18787,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-final": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-final",
+        "line": 18800,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-ultimo": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-ultimo",
+        "line": 18813,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-ultimo-alt": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-ultimo-alt",
+        "line": 18826,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-ultimo-alt2": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-ultimo-alt2",
+        "line": 18839,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-ultimo-alt3": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-ultimo-alt3",
+        "line": 18852,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-ultimo-alt4": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-ultimo-alt4",
+        "line": 18865,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-ultimo-alt5": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-ultimo-alt5",
+        "line": 18878,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-novo": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-novo",
+        "line": 18891,
+        "file": "server.cjs"
+      }
+    ],
+    "test-db-connection": [
+      {
+        "method": "GET",
+        "path": "/api/test-db-connection",
+        "line": 18904,
+        "file": "server.cjs"
+      }
+    ],
+    "test-clientes-direct": [
+      {
+        "method": "GET",
+        "path": "/api/test-clientes-direct",
+        "line": 18918,
+        "file": "server.cjs"
+      }
+    ],
+    "test-fornecedores": [
+      {
+        "method": "GET",
+        "path": "/api/test-fornecedores",
+        "line": 18949,
+        "file": "server.cjs"
+      }
+    ],
+    "test-categorias": [
+      {
+        "method": "GET",
+        "path": "/api/test-categorias",
+        "line": 18962,
+        "file": "server.cjs"
+      }
+    ],
+    "test-customers": [
+      {
+        "method": "GET",
+        "path": "/api/test-customers",
+        "line": 18975,
+        "file": "server.cjs"
+      }
+    ],
+    "suporte": [
+      {
+        "method": "GET",
+        "path": "/api/suporte/config",
+        "line": 19582,
+        "file": "server.cjs"
+      }
+    ],
+    "legal-pages": [
+      {
+        "method": "GET",
+        "path": "/api/legal-pages",
+        "line": 19615,
+        "file": "server.cjs"
+      },
+      {
+        "method": "GET",
+        "path": "/api/legal-pages/:slug",
+        "line": 19628,
+        "file": "server.cjs"
+      }
+    ],
+    "analytics": [
+      {
+        "method": "GET",
+        "path": "/api/analytics/realtime",
+        "line": 19837,
+        "file": "server.cjs"
+      },
+      {
+        "method": "POST",
+        "path": "/api/analytics/web-vitals",
+        "line": 19850,
+        "file": "server.cjs"
+      }
+    ]
+  },
+  "allServerRoutes": [
+    {
+      "method": "GET",
+      "path": "*",
+      "line": 19863,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/:fileName",
+      "line": 454,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/dashboard",
+      "line": 19780,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/pedidos-recentes",
+      "line": 19824,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/produtos-populares",
+      "line": 19812,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/analytics/vendas",
+      "line": 19800,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/password",
+      "line": 12274,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/profile",
+      "line": 12524,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/addresses",
+      "line": 8237,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/addresses",
+      "line": 8360,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/addresses/:id",
+      "line": 8489,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/addresses/:id",
+      "line": 8591,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/dashboard",
+      "line": 13150,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/estatisticas-gerais",
+      "line": 13463,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/pedidos-recentes",
+      "line": 13431,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/produtos-populares",
+      "line": 13326,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/vendas",
+      "line": 13300,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/vendas-por-periodo",
+      "line": 13383,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/audit-logs",
+      "line": 6156,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/audit-logs/clean",
+      "line": 6284,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/audit-logs/stats",
+      "line": 6223,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/automations/rules",
+      "line": 7737,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/automations/rules",
+      "line": 7768,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/automations/rules/:id",
+      "line": 7751,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/automations/rules/:id",
+      "line": 7782,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/automations/rules/:id",
+      "line": 7812,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/automations/rules/:id/toggle",
+      "line": 7797,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/automations/templates",
+      "line": 7826,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/automations/templates/:name/render",
+      "line": 7840,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/blog/clean-broken-images",
+      "line": 13842,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/blog/posts",
+      "line": 13671,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/blog/posts",
+      "line": 13757,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/blog/posts/:id",
+      "line": 13720,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/blog/posts/:id",
+      "line": 13899,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/blog/posts/:id",
+      "line": 13992,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/blog/posts/:id/status",
+      "line": 14015,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/change-password",
+      "line": 12955,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/coupons/run-automations",
+      "line": 19451,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/customers",
+      "line": 6391,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/customers/:id",
+      "line": 6621,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/customers/:id",
+      "line": 6661,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/customers/:id/orders",
+      "line": 6790,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/customers/bulk-action",
+      "line": 6688,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/customers/export",
+      "line": 6812,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/customers/search",
+      "line": 7501,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/customers/stats",
+      "line": 6555,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/customers/sync-users",
+      "line": 4893,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/forgot-password",
+      "line": 12989,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legal-pages",
+      "line": 19648,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/legal-pages",
+      "line": 19702,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legal-pages/:id",
+      "line": 19661,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/legal-pages/:id",
+      "line": 19681,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/legal-pages/:id",
+      "line": 19721,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/login",
+      "line": 12788,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/logout",
+      "line": 13132,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/marketplace/sellers",
+      "line": 14193,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/marketplace/sellers",
+      "line": 14315,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/marketplace/sellers/:id",
+      "line": 14250,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/marketplace/sellers/:id",
+      "line": 14432,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/marketplace/sellers/:id",
+      "line": 14518,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/marketplace/sellers/:id/toggle",
+      "line": 14546,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/marketplace/sellers/structure",
+      "line": 14297,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/me",
+      "line": 13075,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders",
+      "line": 6891,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders-evolved",
+      "line": 7413,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders-evolved-simple",
+      "line": 7612,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders-stats-evolved",
+      "line": 7474,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders-stats-evolved-simple",
+      "line": 7649,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/orders/:id",
+      "line": 11296,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/bulk-action",
+      "line": 7086,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/export",
+      "line": 7242,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/stats",
+      "line": 7196,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/test-data",
+      "line": 7318,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/reset-password",
+      "line": 13010,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/reviews",
+      "line": 10939,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/reviews/:reviewId",
+      "line": 11069,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/reviews/:reviewId/approve",
+      "line": 11009,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/reviews/:reviewId/reject",
+      "line": 11050,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/seed",
+      "line": 13049,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/suporte/contact",
+      "line": 19512,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/suporte/contact",
+      "line": 19528,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/suporte/faqs",
+      "line": 19477,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/suporte/faqs",
+      "line": 19493,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/suporte/location",
+      "line": 19547,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/suporte/location",
+      "line": 19563,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users/search",
+      "line": 8024,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usuarios",
+      "line": 14578,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/usuarios",
+      "line": 14617,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usuarios/:id",
+      "line": 14594,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/usuarios/:id",
+      "line": 14668,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/usuarios/:id",
+      "line": 14719,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/usuarios/:id/reset-password",
+      "line": 14753,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/usuarios/:id/toggle-status",
+      "line": 14781,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/realtime",
+      "line": 19837,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/analytics/web-vitals",
+      "line": 19850,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/asset/:filename",
+      "line": 198,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "line": 4279,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "line": 4948,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "line": 4048,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "line": 4226,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "line": 5172,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "line": 4668,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "line": 4376,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "line": 5044,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/blog/categorias",
+      "line": 13646,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/blog/posts",
+      "line": 13533,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/blog/posts/:slug",
+      "line": 13593,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/carousel",
+      "line": 613,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/carousel",
+      "line": 642,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/carousel/:id",
+      "line": 676,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/carousel/:id",
+      "line": 714,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/carousel/:id/toggle",
+      "line": 732,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/carousel/active",
+      "line": 627,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/carousel/bulk",
+      "line": 757,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/cart",
+      "line": 5304,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cart/items",
+      "line": 5324,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/cart/items/:id",
+      "line": 5353,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cart/items/:id",
+      "line": 5370,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cart/pix-qr",
+      "line": 5833,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/cart/sync",
+      "line": 17893,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/categorias",
+      "line": 1392,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/categorias",
+      "line": 1571,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/categorias",
+      "line": 17964,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/categorias",
+      "line": 17974,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/categorias/:id",
+      "line": 1532,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/categorias/:id",
+      "line": 1642,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/categorias/:id",
+      "line": 1731,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/categorias/:id",
+      "line": 17995,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/categorias/:id",
+      "line": 18018,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/categorias/:id/ordem",
+      "line": 1772,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/categorias/:id/toggle",
+      "line": 1802,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/categorias/gerenciaveis",
+      "line": 1497,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/categorias/lista",
+      "line": 1480,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/categorias/nomes",
+      "line": 1463,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/clientes",
+      "line": 18110,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/clientes",
+      "line": 18120,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/clientes/:id",
+      "line": 18141,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/clientes/:id",
+      "line": 18164,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/collections",
+      "line": 3042,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/collections",
+      "line": 3352,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/collections/:id",
+      "line": 3126,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/collections/:id",
+      "line": 3205,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/collections/:id",
+      "line": 3423,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/collections/:id",
+      "line": 3485,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/collections/:id/full",
+      "line": 3156,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/collections/:id/image",
+      "line": 8909,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/collections/:id/products",
+      "line": 3232,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/collections/:id/products",
+      "line": 8605,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/collections/:id/products/:productId",
+      "line": 8658,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/collections/:id/products/reorder",
+      "line": 8709,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/collections/reorder",
+      "line": 8758,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/collections/seed",
+      "line": 8787,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/collections/slug/:slug",
+      "line": 3182,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/collections/upload-image",
+      "line": 8876,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/compras-recentes",
+      "line": 1912,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/coupons/first-purchase/:customerId",
+      "line": 19463,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/coupons/validate",
+      "line": 12231,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/csrf-token",
+      "line": 286,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId",
+      "line": 9735,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/:userId",
+      "line": 9867,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/addresses",
+      "line": 10493,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/customers/:userId/addresses",
+      "line": 10549,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/:userId/addresses/:addressId",
+      "line": 10610,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/customers/:userId/addresses/:addressId",
+      "line": 10642,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/customers/:userId/addresses/:addressId/set-default",
+      "line": 10664,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/coupons",
+      "line": 12565,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/favorites",
+      "line": 10689,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/customers/:userId/favorites/:productId",
+      "line": 10717,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/customers/:userId/favorites/:productId",
+      "line": 10744,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/loyalty",
+      "line": 12580,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/notification-preferences",
+      "line": 19166,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/:userId/notification-preferences",
+      "line": 19205,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/notifications",
+      "line": 12549,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/order-insights",
+      "line": 12694,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/order-stats",
+      "line": 10005,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/pending-reviews",
+      "line": 12710,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/recommendations",
+      "line": 12671,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/review-stats",
+      "line": 12616,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/reviews",
+      "line": 12601,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/sessions",
+      "line": 19259,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/settings",
+      "line": 19002,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/:userId/settings",
+      "line": 19068,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/:userId/settings/privacy",
+      "line": 12633,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/:userId/stats",
+      "line": 9887,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/addresses",
+      "line": 10232,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/customers/addresses",
+      "line": 10281,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/customers/addresses/:id",
+      "line": 10342,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/customers/addresses/:id",
+      "line": 10400,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/by-email/:email",
+      "line": 17928,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/current/stats",
+      "line": 9587,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/customers/stats",
+      "line": 9703,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/debug/collections-schema",
+      "line": 3499,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/debug/collections-structure",
+      "line": 8931,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/debug/collections/:id/summary",
+      "line": 8742,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/debug/connection",
+      "line": 10449,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/debug/database",
+      "line": 11762,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/debug/fix-collections-table",
+      "line": 8941,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/delivery-estimate",
+      "line": 12725,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/events",
+      "line": 2551,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/events",
+      "line": 2652,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/events/:id",
+      "line": 2614,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/events/:id",
+      "line": 2798,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/events/:id",
+      "line": 2880,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/events/:id/fechar-feira",
+      "line": 2846,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/favorites",
+      "line": 4531,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/favorites",
+      "line": 5239,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/favorites/:product_id",
+      "line": 5254,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/file/:filename",
+      "line": 193,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/files/:filename",
+      "line": 173,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/bank-statements/import",
+      "line": 15190,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/bank-statements/import-pdf",
+      "line": 15330,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/budgets",
+      "line": 16577,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/budgets",
+      "line": 16698,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/budgets/:id",
+      "line": 16672,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/budgets/:id",
+      "line": 16750,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/budgets/:id",
+      "line": 16827,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/budgets/:id/alerts",
+      "line": 16855,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/budgets/process-alerts",
+      "line": 16877,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/cartoes",
+      "line": 17412,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/cartoes/:id",
+      "line": 17516,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/categorias",
+      "line": 18461,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/categorias",
+      "line": 18490,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/categorias/:id",
+      "line": 18525,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/categorias/:id",
+      "line": 18562,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/clientes",
+      "line": 18595,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/clientes",
+      "line": 18658,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/clientes/:id",
+      "line": 18693,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/clientes/:id",
+      "line": 18730,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/contas",
+      "line": 17082,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/contas",
+      "line": 17127,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/contas/:id",
+      "line": 17156,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/contas/:id",
+      "line": 17188,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/financial_cards",
+      "line": 17455,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/financial_cards/:id",
+      "line": 17484,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/fornecedores",
+      "line": 18188,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/fornecedores",
+      "line": 18269,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/fornecedores/:id",
+      "line": 18361,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/fornecedores/:id",
+      "line": 18387,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/recurring",
+      "line": 15760,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/recurring",
+      "line": 15880,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/recurring/:id",
+      "line": 15852,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/recurring/:id",
+      "line": 16018,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/recurring/:id",
+      "line": 16102,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/recurring/:id/occurrences",
+      "line": 16256,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/recurring/notify",
+      "line": 16231,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/recurring/process",
+      "line": 16133,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/reports/comparative",
+      "line": 16961,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/reports/dre",
+      "line": 16357,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/reports/pl",
+      "line": 16286,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/reports/trends",
+      "line": 16486,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/setup",
+      "line": 17534,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/suppliers/:id/credit-limit",
+      "line": 17870,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/suppliers/:id/payments",
+      "line": 17632,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/suppliers/:id/payments",
+      "line": 17646,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/suppliers/:id/transactions",
+      "line": 17600,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/suppliers/:id/transactions",
+      "line": 17614,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/suppliers/reset-expenses",
+      "line": 17664,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/transactions",
+      "line": 14808,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/transactions",
+      "line": 14845,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/transactions",
+      "line": 15094,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/transactions/:id",
+      "line": 14914,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/financial/transactions/:id",
+      "line": 14954,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/transactions/:id",
+      "line": 15165,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/transactions/:id/pay",
+      "line": 17206,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/transactions/:id/reverse",
+      "line": 14976,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/transactions/bulk-delete",
+      "line": 15036,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/transactions/bulk-update-status",
+      "line": 15063,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/financial/values",
+      "line": 17708,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/financial/values",
+      "line": 17758,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial/values/reset",
+      "line": 17807,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/fornecedores",
+      "line": 18037,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/fornecedores",
+      "line": 18047,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/fornecedores/:id",
+      "line": 18068,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/fornecedores/:id",
+      "line": 18091,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "line": 9402,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "line": 11824,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/icons/:filename",
+      "line": 346,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/img/:filename",
+      "line": 188,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/legal-pages",
+      "line": 19615,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/legal-pages/:slug",
+      "line": 19628,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/marketplace/categorias",
+      "line": 14156,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/marketplace/sellers",
+      "line": 14049,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/marketplace/sellers/:slug",
+      "line": 14113,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/:filename",
+      "line": 178,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders",
+      "line": 5386,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders",
+      "line": 6069,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/orders/:id",
+      "line": 11158,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/orders/:id",
+      "line": 11253,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/orders/:id",
+      "line": 11381,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/:id",
+      "line": 11886,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/orders/:id/associate-customer",
+      "line": 7538,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/orders/:id/associate-user",
+      "line": 7973,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/confirm-payment",
+      "line": 6044,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/infinitetap-result",
+      "line": 5934,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/:id/invoice",
+      "line": 11446,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/pix",
+      "line": 5685,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/reorder",
+      "line": 11407,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/reorder",
+      "line": 11997,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/resend",
+      "line": 12049,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/:id/status",
+      "line": 5901,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/orders/:id/status",
+      "line": 7858,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/orders/:id/status",
+      "line": 11142,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/:id/timeline",
+      "line": 12172,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/:id/tracking",
+      "line": 7930,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/:orderId/status",
+      "line": 10036,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/bulk-action",
+      "line": 8047,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/stats",
+      "line": 7676,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/stats",
+      "line": 11112,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/mercadopago/create-preference",
+      "line": 11669,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/mercadopago/pix",
+      "line": 11692,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/payments/mercadopago/status/:paymentId",
+      "line": 11743,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments/mercadopago/webhook",
+      "line": 11716,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/products/:productId/reviews",
+      "line": 10768,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/products/:productId/reviews",
+      "line": 10790,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/products/:productId/reviews/stats",
+      "line": 10877,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/produtos",
+      "line": 1253,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/produtos",
+      "line": 2263,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/produtos/:id",
+      "line": 1968,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/produtos/:id",
+      "line": 2362,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/produtos/:id",
+      "line": 2521,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/produtos/categoria/:categoria",
+      "line": 1837,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/produtos/destaque",
+      "line": 1366,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/produtos/quick-add",
+      "line": 2092,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/produtos/quick-add-test",
+      "line": 2026,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/campaign",
+      "line": 9539,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/subscribe",
+      "line": 9439,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/test",
+      "line": 9494,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/push/unsubscribe",
+      "line": 9476,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/push/vapid-public-key",
+      "line": 9430,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/recovery/emails",
+      "line": 3816,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/recovery/notify",
+      "line": 3772,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reviews/:reviewId/helpful",
+      "line": 10836,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reviews/:reviewId/report",
+      "line": 10903,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "line": 3649,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings",
+      "line": 3673,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings/audit",
+      "line": 3836,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/shipping/quote",
+      "line": 12199,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sobre/contact",
+      "line": 9282,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/contact",
+      "line": 9297,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/sobre/contact/:id",
+      "line": 9315,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/sobre/contact/:id",
+      "line": 9334,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sobre/content",
+      "line": 8976,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/sobre/content/:id",
+      "line": 9026,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/sobre/content/:section",
+      "line": 8991,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sobre/stats",
+      "line": 9216,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/stats",
+      "line": 9231,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/sobre/stats/:id",
+      "line": 9249,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/sobre/stats/:id",
+      "line": 9268,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sobre/team",
+      "line": 9137,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/team",
+      "line": 9152,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/sobre/team/:id",
+      "line": 9183,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/sobre/team/:id",
+      "line": 9202,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/team/:id/image",
+      "line": 9374,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/upload-image",
+      "line": 9052,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/upload-image",
+      "line": 9350,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/sobre/values",
+      "line": 9071,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/sobre/values",
+      "line": 9086,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/sobre/values/:id",
+      "line": 9104,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/sobre/values/:id",
+      "line": 9123,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/static/:filename",
+      "line": 183,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats",
+      "line": 1873,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/suporte/config",
+      "line": 19582,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/suppliers",
+      "line": 11503,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/suppliers",
+      "line": 11590,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/suppliers/:id",
+      "line": 11573,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/suppliers/:id",
+      "line": 11609,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/suppliers/:id",
+      "line": 11629,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test",
+      "line": 18411,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-all-tables",
+      "line": 18448,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-categorias",
+      "line": 18962,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes",
+      "line": 18761,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-alt",
+      "line": 18774,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-direct",
+      "line": 18918,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-final",
+      "line": 18800,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-novo",
+      "line": 18891,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-simple",
+      "line": 18787,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-ultimo",
+      "line": 18813,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-ultimo-alt",
+      "line": 18826,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-ultimo-alt2",
+      "line": 18839,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-ultimo-alt3",
+      "line": 18852,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-ultimo-alt4",
+      "line": 18865,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-clientes-ultimo-alt5",
+      "line": 18878,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-contas-financial_cards",
+      "line": 17050,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-customers",
+      "line": 18975,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-db",
+      "line": 18426,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-db-connection",
+      "line": 18904,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-fornecedores",
+      "line": 18949,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-fornecedores-structure",
+      "line": 18416,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test-tables",
+      "line": 18437,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/test/create-test-data",
+      "line": 10146,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/test/stats",
+      "line": 10196,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload",
+      "line": 1167,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload/video",
+      "line": 1206,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/:filename",
+      "line": 168,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user-stats/stats/:userId",
+      "line": 10072,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users",
+      "line": 2908,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "line": 2950,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/:id",
+      "line": 2927,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/:id",
+      "line": 2982,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/:id",
+      "line": 3016,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/utils/smtp-test",
+      "line": 3743,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos",
+      "line": 883,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/videos",
+      "line": 930,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/:id",
+      "line": 914,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/videos/:id",
+      "line": 980,
+      "file": "server.cjs"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/videos/:id",
+      "line": 1019,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/videos/:id/increment-views",
+      "line": 1144,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/videos/:id/toggle",
+      "line": 1037,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/active",
+      "line": 900,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/videos/bulk",
+      "line": 1062,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/whatsapp/config",
+      "line": 12292,
+      "file": "server.cjs"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/whatsapp/config",
+      "line": 12323,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/whatsapp/messages",
+      "line": 12476,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/whatsapp/send-message",
+      "line": 12424,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/whatsapp/stats",
+      "line": 12384,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/whatsapp/test-webhook",
+      "line": 12354,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/icon/:filename",
+      "line": 372,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/img/:filename",
+      "line": 427,
+      "file": "server.cjs"
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "line": 12947,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/lovable-uploads/:filename",
+      "line": 386,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/pwa-icon/:filename",
+      "line": 359,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/sitemap.xml",
+      "line": 9414,
+      "file": "server.cjs"
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/:filename",
+      "line": 414,
+      "file": "server.cjs"
+    }
+  ]
+}
