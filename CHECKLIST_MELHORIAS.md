@@ -36,10 +36,10 @@
 **Impacto:** +300% manutenibilidade, +500% testabilidade
 
 **Plano:**
-- [ ] Analisar `server.cjs` e identificar blocos (Semana 1)
-- [ ] Criar estrutura de pastas (routes/, controllers/, services/)
-- [ ] Extrair rotas de produtos (~300 linhas)
-- [ ] Extrair rotas de pedidos (~400 linhas)
+- [x] Analisar `server.cjs` e identificar blocos (Semana 1) ✅
+- [x] Criar estrutura de pastas (routes/, controllers/, services/) ✅
+- [x] Extrair rotas de produtos (~300 linhas) ✅ **100% COMPLETO**
+- [ ] Extrair rotas de pedidos (~400 linhas) 🔄 **Em progresso** (algumas rotas já existem, precisa consolidar)
 - [ ] Extrair rotas de clientes (~300 linhas)
 - [ ] Extrair rotas admin (~500 linhas)
 - [ ] Extrair controllers (~1000 linhas)
