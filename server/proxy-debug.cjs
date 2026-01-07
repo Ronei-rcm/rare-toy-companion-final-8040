@@ -42,10 +42,32 @@ app.use('/lovable-uploads', createProxyMiddleware({
 }));
 
 // Servir arquivos estáticos do build
-app.use(express.static(path.join(__dirname, '../dist')));
+// IMPORTANTE: express.static deve vir ANTES do fallback para servir arquivos como favicon.ico
+app.use(express.static(path.join(__dirname, '../dist'), {
+  // Configurar headers para arquivos estáticos
+  setHeaders: (res, filePath) => {
+    // Headers de cache para arquivos estáticos
+    if (filePath.endsWith('.ico') || filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.svg')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 ano
+    } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 dia
+    }
+  },
+  // Não servir index.html para arquivos estáticos
+  index: false
+}));
 
-// Fallback para SPA
-app.use((req, res) => {
+// Fallback para SPA - APENAS para rotas que não são arquivos estáticos
+app.use((req, res, next) => {
+  // Se a requisição tem extensão de arquivo, não é uma rota SPA
+  const hasExtension = /\.\w+$/.test(req.path);
+  if (hasExtension) {
+    // Arquivo não encontrado
+    console.log(`❌ Arquivo não encontrado: ${req.url}`);
+    return res.status(404).send('Arquivo não encontrado');
+  }
+  
+  // É uma rota SPA, servir index.html
   console.log(`📄 Fallback: serving index.html for ${req.url}`);
   res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });

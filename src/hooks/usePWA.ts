@@ -65,6 +65,20 @@ export const usePWA = (): PWAState => {
 
     // Registrar Service Worker
     if ('serviceWorker' in navigator) {
+      // Verificar se está em contexto seguro
+      const isSecureContext = window.isSecureContext || 
+                              location.protocol === 'https:' || 
+                              location.hostname === 'localhost' || 
+                              location.hostname === '127.0.0.1' ||
+                              location.hostname.includes('192.168.') ||
+                              location.hostname.includes('10.0.') ||
+                              location.hostname.includes('172.');
+
+      if (!isSecureContext && location.protocol !== 'http:') {
+        console.warn('⚠️ Service Worker requer contexto seguro (HTTPS ou localhost).');
+        return;
+      }
+
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
           setSwRegistration(registration);
@@ -82,7 +96,14 @@ export const usePWA = (): PWAState => {
           });
         })
         .catch((error) => {
-          console.error('Erro ao registrar Service Worker:', error);
+          // Tratar erros específicos de SSL
+          if (error.name === 'SecurityError' || 
+              error.message.includes('SSL certificate') || 
+              error.message.includes('certificate')) {
+            console.warn('⚠️ Erro de certificado SSL ao registrar Service Worker:', error.message);
+          } else {
+            console.error('Erro ao registrar Service Worker:', error);
+          }
         });
     }
 
