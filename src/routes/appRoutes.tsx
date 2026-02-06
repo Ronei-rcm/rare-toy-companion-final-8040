@@ -23,6 +23,8 @@ const NotFound = React.lazy(() => import("@/pages/NotFound"));
 // Autenticação / conta do cliente
 const Login = React.lazy(() => import("@/pages/auth/Login"));
 const Cadastro = React.lazy(() => import("@/pages/auth/Cadastro"));
+const ForgotPassword = React.lazy(() => import("@/pages/auth/ForgotPassword"));
+const ResetPassword = React.lazy(() => import("@/pages/auth/ResetPassword"));
 const MinhaConta = React.lazy(() => import("@/pages/cliente/MinhaConta"));
 const PedidoDetalhe = React.lazy(() => import("@/pages/cliente/PedidoDetalhe"));
 
@@ -61,6 +63,7 @@ const BlogAdmin = React.lazy(() => import("@/pages/admin/BlogAdmin"));
 const MarketplaceAdmin = React.lazy(() => import("@/pages/admin/MarketplaceAdmin"));
 const CategoriasAdmin = React.lazy(() => import("@/pages/admin/CategoriasAdmin"));
 const Automacoes = React.lazy(() => import("@/pages/admin/Automacoes"));
+const DatabaseBackup = React.lazy(() => import("@/pages/admin/DatabaseBackup"));
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AdminRoute from "@/components/auth/AdminRoute";
@@ -95,6 +98,8 @@ export const publicRoutes: RouteObject[] = [
 export const customerRoutes: RouteObject[] = [
   { path: "/auth/login", element: <Login /> },
   { path: "/auth/cadastro", element: <Cadastro /> },
+  { path: "/auth/recuperar-senha", element: <ForgotPassword /> },
+  { path: "/auth/reset-password", element: <ResetPassword /> },
   {
     path: "/minha-conta",
     element: (
@@ -155,7 +160,8 @@ export const adminRoutes: RouteObject[] = [
       { path: "sobre", element: <SobreAdmin /> },
       { path: "suporte", element: <SuporteAdmin /> },
       { path: "paginas", element: <PaginasAdmin /> },
-      { path: "reviews", element: <ReviewsAdmin /> }
+      { path: "reviews", element: <ReviewsAdmin /> },
+      { path: "database-backup", element: <DatabaseBackup /> }
     ]
   }
 ];

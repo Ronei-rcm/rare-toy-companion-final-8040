@@ -528,9 +528,7 @@ export default function BankReconciliationManager() {
           <Button 
             variant="outline" 
             onClick={() => {
-              console.log('📤 Botão Importar Extrato clicado');
               setShowImportModal(true);
-              console.log('📤 showImportModal definido como:', true);
             }}
           >
             <Upload className="h-4 w-4 mr-2" />
@@ -957,7 +955,6 @@ export default function BankReconciliationManager() {
       <ImportBankStatementModal
         isOpen={showImportModal}
         onClose={() => {
-          console.log('🔍 Fechando modal de importação');
           setShowImportModal(false);
         }}
         onSuccess={async () => {

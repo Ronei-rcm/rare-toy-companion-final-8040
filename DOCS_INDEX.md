@@ -47,6 +47,17 @@
 
 ---
 
+## 🆕 Atualizações Recentes (Fev 2026)
+
+### 📅 06 de Fevereiro de 2026
+
+| Documento | Descrição | Link |
+|-----------|-----------|------|
+| **Importação Extrato CSV** | Importação fiel, valor bruto/líquido, resiliência de schema, migrations 021/022 | [IMPORTACAO_EXTRATO_CSV_FEV_2026.md](docs/evoluções/IMPORTACAO_EXTRATO_CSV_FEV_2026.md) |
+| **Gerar APK Android** | Capacitor 5, scripts e passo a passo para gerar APK (MuhlStore) | [BUILD_APK.md](docs/BUILD_APK.md) |
+
+---
+
 ## 🆕 Atualizações Recentes (Nov 2025)
 
 ### 📅 02 de Novembro de 2025
@@ -122,6 +133,7 @@
 | Documento | Conteúdo | Link |
 |-----------|----------|------|
 | **Financeiro Profissional** | Sistema financeiro completo | [MODULO_FINANCEIRO_PROFISSIONAL.md](docs/MODULO_FINANCEIRO_PROFISSIONAL.md) |
+| **Importação Extrato CSV (Fev 2026)** | Importação fiel, valor bruto/líquido, migrations | [IMPORTACAO_EXTRATO_CSV_FEV_2026.md](docs/evoluções/IMPORTACAO_EXTRATO_CSV_FEV_2026.md) |
 | **Aba Lançamentos** | Gestão de lançamentos | [ABA_LANCAMENTOS_EVOLUIDA.md](docs/ABA_LANCAMENTOS_EVOLUIDA.md) |
 | **Cadastro Rápido** | Cadastro rápido de despesas | [CADASTRO_RAPIDO_DESPESAS.md](docs/CADASTRO_RAPIDO_DESPESAS.md) |
 | **Categorias Financeiras** | Sistema de categorias | [SISTEMA_CATEGORIAS.md](docs/SISTEMA_CATEGORIAS.md) |
@@ -298,29 +310,76 @@ docs/
 │   ├── SCRIPTS.md                # Scripts NPM
 │   └── CHANGELOG.md              # Histórico de versões
 │
-├── 📁 guias/                     # Guias práticos
+├── 📁 correções/                 # ✨ NOVA - Correções aplicadas (52+ documentos)
+│   ├── CORRECAO_SEGURANCA_RESUMO.md
+│   ├── CORRECAO_SERVICE_WORKER_ERROS.md
+│   ├── CORRECAO_SERVICE_WORKER_FINAL.md
+│   ├── TROUBLESHOOTING_ERROS_COMUNS.md
+│   ├── TROUBLESHOOTING_RECUPERACAO_SENHA.md
+│   ├── PROBLEMA_RESOLVIDO.md
+│   └── ... (52+ correções)
+│
+├── 📁 resumos/                   # ✨ NOVA - Resumos executivos (37+ documentos)
+│   ├── RESUMO_EXECUTIVO_SESSAO.md
+│   ├── RESUMO_FINAL_ATUALIZADO.md
+│   ├── RESUMO_FINAL_COMPLETO.md
+│   ├── RESUMO_FINAL_SESSAO.md
+│   ├── RESUMO_SESSAO_ATUAL.md
+│   ├── RESUMO_SESSAO_AVALIACAO.md
+│   ├── RESUMO_SESSAO_COMPLETA.md
+│   ├── RESUMO_SESSAO_COMPLETA_FINAL.md
+│   └── ... (37+ resumos)
+│
+├── 📁 evoluções/                 # ✨ NOVA - Histórico de evoluções (40+ documentos)
+│   ├── EVOLUCAO_EDICAO_USUARIOS_ADMIN.md
+│   ├── EVOLUCAO_RECUPERACAO_SENHA.md
+│   ├── INICIO_REFATORACAO.md
+│   ├── STATUS_REFATORACAO.md
+│   ├── EVOLUCAO_CARRINHO_AVANCADO_v3.0.md
+│   ├── EVOLUCAO_MINHA_CONTA_COMPLETA.md
+│   ├── EVOLUCAO_PRODUTOS_PREMIUM.md
+│   └── ... (40+ evoluções)
+│
+├── 📁 melhorias/                 # ✨ NOVA - Melhorias e planos (5 documentos)
+│   ├── MELHORIAS_COMPATIBILIDADE_NAVEGADORES.md
+│   ├── MELHORIAS_NAVEGACAO_MOBILE.md
+│   ├── MELHORIAS_SAMSUNG_GALAXY.md
+│   ├── PLANO_ACAO_MELHORIAS.md
+│   └── PLANO_ACAO_PRIORITARIO.md
+│
+├── 📁 guias/                     # Guias práticos (28+ documentos)
+│   ├── DOCUMENTACAO_CADASTRO_PRODUTOS.md
+│   ├── INDICE_DOCUMENTACAO_CADASTRO.md
+│   ├── README_CADASTRO_PRODUTOS.md
+│   ├── README_REFATORACAO.md
+│   ├── PRÓXIMOS_PASSOS.md
+│   ├── CHANGELOG_CADASTRO_PRODUTOS.md
 │   ├── INICIO_RAPIDO.md
 │   ├── GUIA_DE_TESTES.md
-│   ├── COMO_CLONAR_WINDOWS.md
-│   ├── COMO_FAZER_BACKUP.md
-│   ├── COMO_USAR_GIT.md
-│   ├── MANUAL_WHATSAPP.md
-│   └── ... (15+ guias)
+│   └── ... (28+ guias)
 │
-├── 📁 correções/                 # Correções aplicadas (30+ documentos)
-│   ├── CORRECAO_IMAGENS_404.md
-│   ├── CORRECAO_ERROS_500.md
-│   ├── CORRECAO_WEBSOCKET.md
-│   ├── CORRECAO_MODULO_PEDIDOS.md
-│   └── ... (30+ correções)
+├── 📁 análises/                  # ✨ NOVA - Análises e relatórios (5 documentos)
+│   ├── ANALISE_PROJETO_COMPLETA.md
+│   ├── AVALIACAO_PROJETO.md
+│   ├── AVALIACAO_PROJETO_RESUMO.md
+│   ├── RELATORIO_OTIMIZACAO.md
+│   └── ESTRUTURA_VISUAL.md
+│
+├── 📁 planos/                    # ✨ NOVA - Planos e recomendações (3 documentos)
+│   ├── PLANO_REORGANIZACAO.md
+│   ├── CHECKLIST_MELHORIAS.md
+│   └── RECOMENDACOES_CORRECOES.md
+│
+├── 📁 soluções/                  # ✨ NOVA - Soluções implementadas (3 documentos)
+│   ├── SOLUCAO_DEFINITIVA_QUICK_ADD.md
+│   ├── SOLUCAO_FINAL_QUICK_ADD.md
+│   └── SOLUCAO_RECUPERACAO_SENHA.md
 │
 ├── 📁 funcionalidades/           # Funcionalidades e melhorias
 │   ├── FUNCIONALIDADE_BUSCA_CEP.md
 │   ├── FUNCIONALIDADES_01_NOV_2025.md
 │   ├── MENU_HEADER_MELHORADO.md
-│   ├── MENU_ADMIN_MELHORADO.md
-│   ├── HEADER_PREMIUM_UPGRADE.md
-│   └── ... (8 documentos)
+│   └── ... (8+ documentos)
 │
 ├── 📁 integrações/               # Integrações externas
 │   ├── INTEGRACAO_CUPONS_01_NOV_2025.md
@@ -334,22 +393,7 @@ docs/
 │
 ├── 📁 outros/                    # Documentos diversos
 │   ├── PAGINAS_LEGAIS_RODAPE.md
-│   ├── CONFIGURACOES_AVANCADAS_01_NOV_2025.md
-│   ├── README_CUPONS.md
-│   ├── LEIA_PRIMEIRO.md
-│   └── SOLUCAO_FINAL.md
-│
-├── 📁 evoluções/                 # Histórico de evoluções
-│   ├── EVOLUCAO_CARRINHO_AVANCADO_v3.0.md
-│   ├── EVOLUCAO_MINHA_CONTA_COMPLETA.md
-│   ├── EVOLUCAO_PRODUTOS_PREMIUM.md
-│   └── ... (20+ evoluções)
-│
-├── 📁 resumos/                   # Resumos executivos
-│   ├── RESUMO_FINAL_02_NOV_2025.md
-│   ├── RESUMO_ATUALIZACOES_NOV_2025.md
-│   ├── RESUMO_EVOLUCAO_CARRINHO_v3.0.md
-│   └── ... (15+ resumos)
+│   └── ... (outros documentos)
 │
 ├── 📁 obsoletos/                 # Docs desatualizados (manter para histórico)
 │
@@ -423,10 +467,10 @@ Não encontrou o que procura?
 
 ---
 
-**Última Atualização:** Reorganização Completa - Nov 2025  
-**Versão do Índice:** 2.0.0  
-**Total de Documentos:** 100+  
-**Nova Estrutura:** ✅ Documentação reorganizada e categorizada
+**Última Atualização:** Reorganização Completa - Janeiro 2025  
+**Versão do Índice:** 3.0.0  
+**Total de Documentos:** 200+  
+**Nova Estrutura:** ✅ Documentação completamente reorganizada e categorizada (Jan 2025)
 
 ---
 

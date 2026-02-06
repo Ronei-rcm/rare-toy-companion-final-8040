@@ -39,7 +39,8 @@ import {
   Headphones,
   FileText,
   Star,
-  Video as VideoIcon
+  Video as VideoIcon,
+  Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClearCacheButton } from './ClearCacheButton';
@@ -153,6 +154,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     
     // CONFIGURAÇÕES - Sistema e Integrações
     { name: 'Configurações', href: '/admin/configuracoes', icon: Settings, category: 'config' },
+    { name: 'Backup DB', href: '/admin/database-backup', icon: Database, category: 'config' },
     { name: 'Suporte', href: '/admin/suporte', icon: Headphones, category: 'config' },
     { name: 'Páginas', href: '/admin/paginas', icon: FileText, category: 'config' },
     { name: 'Recuperação', href: '/admin/recuperacao', icon: Mail, category: 'config' },

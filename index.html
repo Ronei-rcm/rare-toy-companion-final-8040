@@ -2,15 +2,44 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Viewport otimizado para todos os dispositivos (Edge, Safari iOS, Google App, Samsung Galaxy) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no" />
     
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#8B5CF6" />
+    <meta name="theme-color" content="#ff6600" />
     <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Apple iOS Meta Tags (Safari iOS) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MuhlStore" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- Microsoft Edge Meta Tags -->
+    <meta name="msapplication-TileColor" content="#ff6600" />
+    <meta name="msapplication-navbutton-color" content="#ff6600" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Google App / Chrome Mobile Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="MuhlStore" />
+    
+    <!-- Samsung Galaxy / Android Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#ff6600" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#ff6600" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    
+    <!-- Otimizações para Samsung Browser / Android -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- Prevenir problemas de renderização no Samsung Browser -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="renderer" content="webkit" />
     
     <!-- SEO Meta Tags -->
     <title>MuhlStore - Loja de Brinquedos Raros e Colecionáveis</title>

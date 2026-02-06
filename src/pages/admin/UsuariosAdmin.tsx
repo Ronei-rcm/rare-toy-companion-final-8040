@@ -93,6 +93,11 @@ const UsuariosAdmin = () => {
   });
   
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    feedback: string[];
+  }>({ score: 0, feedback: [] });
 
   // Permissões disponíveis
   const permissoesDisponiveis = [
@@ -213,6 +218,18 @@ const UsuariosAdmin = () => {
       if (!formData.senha) setFormData(prev => ({ ...prev, senha: senhaValue }));
     }
 
+    // Validação de senha ao editar (se fornecida)
+    if (showEditDialog && formData.senha) {
+      if (formData.senha.length < 6) {
+        toast.error('Senha muito curta (mínimo 6 caracteres)');
+        return;
+      }
+      if (formData.senha !== formData.confirmarSenha) {
+        toast.error('As senhas não coincidem');
+        return;
+      }
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       toast.error('Email inválido');
@@ -296,6 +313,31 @@ const UsuariosAdmin = () => {
         ? prev.permissoes.filter(p => p !== permissaoId)
         : [...prev.permissoes, permissaoId]
     }));
+  };
+
+  // Calcular força da senha
+  const calculatePasswordStrength = (password: string): { score: number; feedback: string[] } => {
+    let score = 0;
+    const feedback: string[] = [];
+
+    // Comprimento
+    if (password.length >= 8) score += 1;
+    else feedback.push('Use pelo menos 8 caracteres');
+    
+    if (password.length >= 12) score += 1;
+
+    // Caracteres variados
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
+    else feedback.push('Use letras maiúsculas e minúsculas');
+    
+    if (/[0-9]/.test(password)) score += 1;
+    else feedback.push('Adicione números');
+    
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    else feedback.push('Adicione símbolos (!@#$%...)');
+
+    // Retornar apenas feedbacks negativos
+    return { score, feedback: feedback.slice(0, 2) };
   };
 
   // Helpers de UI
@@ -609,47 +651,124 @@ const UsuariosAdmin = () => {
               </div>
             </div>
 
-            {/* Senha (apenas ao criar) */}
-            {showAddDialog && (
+            {/* Senha - Obrigatória ao criar, opcional ao editar */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">
+                  {showAddDialog ? 'Senha' : 'Alterar Senha'}
+                  {showAddDialog && <span className="text-red-500 ml-1">*</span>}
+                </Label>
+                {showEditDialog && (
+                  <span className="text-xs text-gray-500">Deixe em branco para manter a senha atual</span>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="senha">Senha *</Label>
+                  <Label htmlFor="senha" className="text-sm">
+                    Nova Senha {showAddDialog && <span className="text-red-500">*</span>}
+                  </Label>
                   <div className="relative">
                     <Input
                       id="senha"
                       type={showPassword ? 'text' : 'password'}
                       value={formData.senha}
-                      onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
+                      onChange={(e) => {
+                        const newPassword = e.target.value;
+                        setFormData({ ...formData, senha: newPassword });
+                        // Calcular força da senha em tempo real
+                        if (newPassword) {
+                          const strength = calculatePasswordStrength(newPassword);
+                          setPasswordStrength(strength);
+                        } else {
+                          setPasswordStrength({ score: 0, feedback: [] });
+                        }
+                      }}
                       onInput={(e) => setFormData({ ...formData, senha: (e.target as HTMLInputElement).value })}
                       autoComplete="new-password"
-                      placeholder="••••••••"
+                      placeholder={showEditDialog ? "Deixe em branco para não alterar" : "••••••••"}
+                      className="pr-10"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full"
+                      className="absolute right-0 top-0 h-full px-3"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
                   </div>
+                  
+                  {/* Indicador de força de senha */}
+                  {formData.senha && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Força da senha:</span>
+                        <span className={`font-medium ${
+                          passwordStrength.score <= 2 ? 'text-red-600' :
+                          passwordStrength.score <= 3 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {passwordStrength.score <= 2 ? 'Fraca' :
+                           passwordStrength.score <= 3 ? 'Média' :
+                           'Forte'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            passwordStrength.score <= 2 ? 'bg-red-500' :
+                            passwordStrength.score <= 3 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                          style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
-                  <Label htmlFor="confirmarSenha">Confirmar Senha *</Label>
-                  <Input
-                    id="confirmarSenha"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.confirmarSenha}
-                    onChange={(e) => setFormData({ ...formData, confirmarSenha: e.target.value })}
-                    onInput={(e) => setFormData({ ...formData, confirmarSenha: (e.target as HTMLInputElement).value })}
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                  />
+                  <Label htmlFor="confirmarSenha" className="text-sm">
+                    Confirmar Senha {showAddDialog && <span className="text-red-500">*</span>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmarSenha"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={formData.confirmarSenha}
+                      onChange={(e) => setFormData({ ...formData, confirmarSenha: e.target.value })}
+                      onInput={(e) => setFormData({ ...formData, confirmarSenha: (e.target as HTMLInputElement).value })}
+                      autoComplete="new-password"
+                      placeholder={showEditDialog ? "Confirme a nova senha" : "••••••••"}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {formData.senha && formData.confirmarSenha && formData.senha !== formData.confirmarSenha && (
+                    <p className="text-xs text-red-600 mt-1">As senhas não coincidem</p>
+                  )}
                 </div>
               </div>
-            )}
+              
+              {showEditDialog && (
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Key className="w-3 h-3" />
+                  A senha só será alterada se você preencher os campos acima
+                </p>
+              )}
+            </div>
 
             {/* Cargo e Status */}
             <div className="grid grid-cols-2 gap-4">

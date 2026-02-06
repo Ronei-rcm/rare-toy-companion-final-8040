@@ -5,7 +5,6 @@ const ordersController = require('../controllers/orders.controller.cjs');
 
 // Importar middlewares
 const { highFrequencyLimiter } = require('../../config/security.cjs');
-const ordersController = require('../controllers/orders.controller.cjs');
 
 // Middleware de autenticação simples
 const authenticateToken = (req, res, next) => {

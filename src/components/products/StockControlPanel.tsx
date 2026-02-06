@@ -343,7 +343,9 @@ export function StockControlPanel() {
         imagemUrl: productToEdit.imagemUrl,
         destaque: productToEdit.destaque || false,
         promocao: productToEdit.promocao || false,
-        lancamento: productToEdit.lancamento || false
+        lancamento: productToEdit.lancamento || false,
+        novo: productToEdit.novo || false,
+        seminovo: productToEdit.seminovo || false
       });
       
       if (result) {
@@ -623,11 +625,45 @@ export function StockControlPanel() {
                       {/* Informações */}
                       <div className="flex-1 space-y-3">
                         <div className="flex items-start justify-between">
-                          <div>
+                          <div className="flex-1">
                             <h3 className="font-semibold text-lg">{product.nome}</h3>
                             <p className="text-sm text-gray-600">{product.categoria}</p>
+                            
+                            {/* Badges de Produto */}
+                            <div className="flex gap-1 mt-2 flex-wrap">
+                              {product.destaque && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-700 bg-yellow-50">
+                                  <Star className="w-3 h-3 mr-1" />
+                                  Destaque
+                                </Badge>
+                              )}
+                              {product.promocao && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 border-red-500 text-red-700 bg-red-50">
+                                  <Tag className="w-3 h-3 mr-1" />
+                                  Promoção
+                                </Badge>
+                              )}
+                              {product.lancamento && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 border-blue-500 text-blue-700 bg-blue-50">
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  Lançamento
+                                </Badge>
+                              )}
+                              {product.novo && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 border-green-500 text-green-700 bg-green-50">
+                                  <Sparkles className="w-3 h-3 mr-1" />
+                                  Novo
+                                </Badge>
+                              )}
+                              {product.seminovo && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 border-orange-500 text-orange-700 bg-orange-50">
+                                  <Package className="w-3 h-3 mr-1" />
+                                  Seminovo
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <Badge className={cn('flex items-center gap-1', status.color)}>
+                          <Badge className={cn('flex items-center gap-1 ml-2', status.color)}>
                             <StatusIcon className="w-3 h-3" />
                             {status.label}
                           </Badge>
@@ -783,7 +819,16 @@ export function StockControlPanel() {
 
       {/* Dialog de Edição Rápida */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
+        <DialogContent 
+          className="max-w-md"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            margin: 0
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Ajustar Estoque</DialogTitle>
             <DialogDescription>
@@ -826,7 +871,16 @@ export function StockControlPanel() {
 
       {/* Dialog de Movimentação */}
       <Dialog open={showMovementDialog} onOpenChange={setShowMovementDialog}>
-        <DialogContent>
+        <DialogContent 
+          className="max-w-lg"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            margin: 0
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Movimentação de Estoque</DialogTitle>
             <DialogDescription>
@@ -914,7 +968,16 @@ export function StockControlPanel() {
 
       {/* Dialog de Edição Completa do Produto */}
       <Dialog open={showFullEditDialog} onOpenChange={setShowFullEditDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            margin: 0
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-purple-600">
               <Edit className="w-5 h-5" />
@@ -1089,6 +1152,48 @@ export function StockControlPanel() {
                       />
                     </div>
                   </Card>
+
+                  {/* Novo */}
+                  <Card className="p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <Sparkles className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Novo</p>
+                          <p className="text-xs text-gray-500">Produto novo</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={productToEdit.novo || false}
+                        onCheckedChange={(checked) => 
+                          setProductToEdit({ ...productToEdit, novo: checked })
+                        }
+                      />
+                    </div>
+                  </Card>
+
+                  {/* Seminovo */}
+                  <Card className="p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <Package className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Seminovo</p>
+                          <p className="text-xs text-gray-500">Produto seminovo</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={productToEdit.seminovo || false}
+                        onCheckedChange={(checked) => 
+                          setProductToEdit({ ...productToEdit, seminovo: checked })
+                        }
+                      />
+                    </div>
+                  </Card>
                 </div>
               </div>
 
@@ -1144,7 +1249,19 @@ export function StockControlPanel() {
                             Lançamento
                           </Badge>
                         )}
-                        {!productToEdit.destaque && !productToEdit.promocao && !productToEdit.lancamento && (
+                        {productToEdit.novo && (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Novo
+                          </Badge>
+                        )}
+                        {productToEdit.seminovo && (
+                          <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                            <Package className="w-3 h-3 mr-1" />
+                            Seminovo
+                          </Badge>
+                        )}
+                        {!productToEdit.destaque && !productToEdit.promocao && !productToEdit.lancamento && !productToEdit.novo && !productToEdit.seminovo && (
                           <span className="text-sm text-gray-400 italic">Nenhum badge ativo</span>
                         )}
                       </div>
@@ -1173,7 +1290,16 @@ export function StockControlPanel() {
 
       {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent 
+          className="max-w-lg"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            margin: 0
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />

@@ -16,6 +16,8 @@ export interface Produto {
   codigoBarras?: string;
   promocao?: boolean;
   lancamento?: boolean;
+  novo?: boolean;
+  seminovo?: boolean;
   colecoes?: string[];
   emEstoque?: boolean;
   imagens?: string[];

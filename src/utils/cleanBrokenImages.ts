@@ -826,11 +826,12 @@ export async function cleanBrokenImagesList(): Promise<number> {
   }
 }
 
+const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV === true;
+
 // Executar automaticamente ao carregar
 if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-  console.log('🔍 Verificando imagens quebradas no localStorage...');
-  
-  // Carregar lista de imagens quebradas do localStorage
+  if (isDev) console.log('🔍 Verificando imagens quebradas no localStorage...');
+
   try {
     const stored = localStorage.getItem('broken_images_list');
     if (stored) {
@@ -840,31 +841,26 @@ if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
           BROKEN_IMAGES.push(img);
         }
       });
-      console.log(`📋 ${list.length} imagens quebradas carregadas do localStorage`);
-      
-      // Verificar e limpar automaticamente imagens que existem (em background)
+      if (isDev) console.log(`📋 ${list.length} imagens quebradas carregadas do localStorage`);
+
       if (list.length > 0) {
         cleanBrokenImagesList().catch(e => {
-          console.warn('Erro ao limpar lista automaticamente:', e);
+          if (isDev) console.warn('Erro ao limpar lista automaticamente:', e);
         });
       }
     }
   } catch (e) {
-    console.warn('Erro ao carregar lista de imagens quebradas:', e);
+    if (isDev) console.warn('Erro ao carregar lista de imagens quebradas:', e);
   }
-  
+
   const cleaned = cleanBrokenImages();
-  if (cleaned) {
-    console.log('🎉 localStorage limpo! Recarregue a página se necessário.');
-  }
-  
-  // Interceptar tentativas de carregar imagens quebradas
+  if (cleaned && isDev) console.log('🎉 localStorage limpo! Recarregue a página se necessário.');
+
   interceptBrokenImageLoads();
-  
-  // Expor função global para limpar lista de imagens quebradas
+
   if (typeof window !== 'undefined') {
     (window as any).cleanBrokenImagesList = cleanBrokenImagesList;
-    console.log('💡 Dica: Use window.cleanBrokenImagesList() no console para limpar a lista de imagens quebradas');
+    if (isDev) console.log('💡 Dica: Use window.cleanBrokenImagesList() no console para limpar a lista de imagens quebradas');
   }
 }
 

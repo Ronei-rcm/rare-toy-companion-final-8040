@@ -531,8 +531,11 @@ export default function RecurringTransactionsManager() {
 
       {/* Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent
+          className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col p-6 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 !m-0"
+          style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', margin: 0, maxHeight: '90vh' }}
+        >
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editing ? 'Editar Transação Recorrente' : 'Nova Transação Recorrente'}
             </DialogTitle>
@@ -541,6 +544,7 @@ export default function RecurringTransactionsManager() {
             </DialogDescription>
           </DialogHeader>
 
+          <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-4">
             {/* Dados básicos */}
             <div className="grid grid-cols-2 gap-4">
@@ -704,8 +708,10 @@ export default function RecurringTransactionsManager() {
                 </Label>
               </div>
             </div>
+          </div>
+          </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex flex-shrink-0 justify-end gap-2 pt-4 border-t bg-background">
               <Button variant="outline" onClick={() => setShowModal(false)}>
                 Cancelar
               </Button>
@@ -713,7 +719,6 @@ export default function RecurringTransactionsManager() {
                 {editing ? 'Atualizar' : 'Criar'} Recorrência
               </Button>
             </div>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

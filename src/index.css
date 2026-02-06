@@ -6,6 +6,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ====================
+   OTIMIZAÇÕES PARA SAMSUNG GALAXY / ANDROID
+   ==================== */
+
+/* Prevenir zoom indesejado em double-tap (Samsung Browser) */
+* {
+  -webkit-tap-highlight-color: rgba(255, 102, 0, 0.2);
+  -webkit-touch-callout: none;
+}
+
+/* Melhorar scroll em Samsung Browser */
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+body {
+  /* Prevenir seleção de texto acidental em touch */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Permitir seleção em inputs e textareas */
+  -webkit-touch-callout: default;
+}
+
+/* Permitir seleção em campos de texto */
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Melhorar touch targets para Samsung (mínimo 48x48px recomendado) */
+button,
+a,
+[role="button"],
+[role="link"] {
+  min-height: 48px;
+  min-width: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 102, 0, 0.3);
+}
+
+/* Otimizar imagens para Samsung (evitar blur) */
+img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Melhorar performance de animações em Samsung */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    will-change: auto;
+  }
+  
+  /* Acelerar hardware para elementos animados */
+  [class*="animate"],
+  [class*="transition"] {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+}
+
+/* Safe area insets para Android (notch) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  header,
+  nav {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  
+  footer,
+  [class*="bottom"] {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
 @layer base {
   :root {
     --background: 32 25% 97%;

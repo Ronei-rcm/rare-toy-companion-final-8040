@@ -470,10 +470,115 @@ async function sendRecurringTransactionNotification(transactionData) {
   }
 }
 
+/**
+ * Template HTML para e-mail de recuperação de senha
+ */
+const getPasswordResetEmailTemplate = (customerName, resetUrl) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">🔐 Redefinição de Senha</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #eee;">
+        <p style="font-size: 16px; color: #333;">Olá${customerName ? ` ${customerName}` : ''},</p>
+        
+        <p style="font-size: 16px; color: #555; margin: 20px 0;">
+          Recebemos uma solicitação para redefinir a senha da sua conta na <strong>MuhlStore</strong>.
+        </p>
+        
+        <p style="font-size: 16px; color: #555; margin: 20px 0;">
+          Clique no botão abaixo para criar uma nova senha:
+        </p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+            Redefinir Senha
+          </a>
+        </div>
+        
+        <p style="font-size: 14px; color: #666; margin: 30px 0;">
+          Ou copie e cole o link abaixo no seu navegador:
+        </p>
+        
+        <p style="font-size: 12px; color: #999; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 20px 0;">
+          ${resetUrl}
+        </p>
+        
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="font-size: 14px; color: #856404; margin: 0;">
+            <strong>⚠️ Importante:</strong> Este link expira em <strong>1 hora</strong>. Se você não solicitou esta redefinição, ignore este email.
+          </p>
+        </div>
+        
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">
+          Se o botão não funcionar, copie o link acima e cole na barra de endereços do seu navegador.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          Este é um email automático, por favor não responda.<br/>
+          © ${new Date().getFullYear()} MuhlStore - Todos os direitos reservados.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+/**
+ * Enviar e-mail de recuperação de senha
+ */
+async function sendPasswordResetEmail(emailData) {
+  if (!transporter) {
+    logger.warn('Transporter não inicializado. E-mail não enviado.');
+    return { success: false, error: 'E-mail service not configured' };
+  }
+
+  try {
+    const { email, customerName, resetUrl } = emailData;
+
+    const template = getPasswordResetEmailTemplate(customerName, resetUrl);
+
+    const mailOptions = {
+      from: `"MuhlStore" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: '🔐 Redefinição de Senha - MuhlStore',
+      html: template,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    
+    logger.info('E-mail de recuperação de senha enviado', {
+      email,
+      messageId: info.messageId,
+    });
+
+    return {
+      success: true,
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    logger.logError(error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
 module.exports = {
   initializeEmailService,
   isEmailServiceAvailable,
   sendAbandonedCartEmail,
   sendOrderConfirmationEmail,
   sendRecurringTransactionNotification,
+  sendPasswordResetEmail,
 };

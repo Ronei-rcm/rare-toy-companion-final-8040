@@ -16,7 +16,7 @@ class GoogleCalendarService {
     this.pool = mysql.createPool({
       host: process.env.MYSQL_HOST || 'localhost',
       user: process.env.MYSQL_USER || 'root',
-      password: process.env.MYSQL_PASSWORD || 'RSM_Rg51gti66',
+      password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
       database: process.env.MYSQL_DATABASE || 'rare_toy_companion',
       port: parseInt(process.env.MYSQL_PORT || '3306'),
       waitForConnections: true,

@@ -10,7 +10,7 @@ require('dotenv').config();
 const config = {
   host: process.env.MYSQL_HOST || '127.0.0.1',
   user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'RSM_Rg51gti66',
+  password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
   port: parseInt(process.env.MYSQL_PORT || '3307'),
   charset: 'utf8mb4'
 };

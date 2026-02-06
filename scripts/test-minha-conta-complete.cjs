@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   host: '127.0.0.1',
   port: 3307,
   user: 'root',
-  password: 'RSM_Rg51gti66',
+  password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
   database: 'rare_toy_companion',
   waitForConnections: true,
   connectionLimit: 10,

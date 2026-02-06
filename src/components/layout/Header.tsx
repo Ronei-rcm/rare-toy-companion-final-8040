@@ -28,6 +28,7 @@ import CarrinhoDrawer from '@/components/loja/CarrinhoDrawer';
 import { useHomeConfig } from '@/contexts/HomeConfigContext';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import EmailNotifications from './EmailNotifications';
@@ -157,8 +158,14 @@ const Header = () => {
         className={cn(
           'fixed left-0 right-0 z-40 px-3 sm:px-6 py-3 transition-all duration-300 bg-white border-b',
           showTopBar ? 'mt-10' : 'mt-0',
-          isScrolled ? 'shadow-md' : ''
+          isScrolled ? 'shadow-md' : '',
+          'supports-[padding:env(safe-area-inset-top)]:pt-[calc(0.75rem+env(safe-area-inset-top))]'
         )}
+        style={{
+          paddingTop: showTopBar 
+            ? 'calc(2.5rem + env(safe-area-inset-top, 0px))'
+            : 'calc(0.75rem + env(safe-area-inset-top, 0px))'
+        }}
       >
         <div className="container max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-2">
@@ -283,19 +290,75 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="lg:hidden mt-4 pb-4 border-t pt-4">
-            <nav className="flex flex-col space-y-2">
-              <NavLinks 
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted transition-colors" 
-                onClick={toggleMenu}
-                isAdmin={isAdmin}
-                isLogged={Boolean(user)}
-              />
-            </nav>
-          </div>
-        )}
+        {/* Mobile Menu - Drawer Lateral */}
+        <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <SheetContent 
+            side="left" 
+            className="w-80 sm:w-96 p-0 overflow-y-auto"
+            style={{ 
+              paddingTop: 'env(safe-area-inset-top, 0px)',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+            }}
+          >
+            <SheetHeader className="p-4 border-b sticky top-0 bg-white z-10">
+              <SheetTitle className="flex items-center justify-between">
+                <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+                  Menu
+                </span>
+                <button
+                  onClick={toggleMenu}
+                  className="p-2 hover:bg-muted rounded-md transition-colors"
+                  aria-label="Fechar menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="flex flex-col h-[calc(100vh-73px)] overflow-y-auto">
+              {/* Informações do Usuário (se logado) */}
+              {user && (
+                <div className="p-4 border-b bg-gradient-to-r from-orange-50 to-pink-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                      {user.nome?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{user.nome || 'Usuário'}</p>
+                      <p className="text-sm text-gray-600 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Links de Navegação */}
+              <nav className="flex-1 p-4 space-y-1">
+                <NavLinks 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gradient-to-r hover:from-orange-50 hover:to-pink-50 transition-all active:scale-[0.98]" 
+                  onClick={toggleMenu}
+                  isAdmin={isAdmin}
+                  isLogged={Boolean(user)}
+                />
+              </nav>
+
+              {/* Footer do Menu (se logado) */}
+              {user && (
+                <div className="p-4 border-t bg-gray-50 space-y-2">
+                  <button
+                    onClick={async () => {
+                      await handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-gray-700 font-medium"
+                  >
+                    <Settings className="w-5 h-5" />
+                    <span>Sair</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
       </header>
 
       {/* Carrinho Drawer */}

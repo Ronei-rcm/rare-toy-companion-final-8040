@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import ProductQuickView from './ProductQuickView';
 import { useProductComparison } from '@/hooks/useProductComparison';
 import { cn } from '@/lib/utils';
+import ProductBadges from '@/components/products/ProductBadges';
+import type { CondicaoType, SpecialBadgeType } from '@/config/productBadges';
 
 interface ProdutoCardProps {
   produto: Produto;
@@ -149,15 +151,27 @@ const ProdutoCard: React.FC<ProdutoCardProps> = ({ produto }) => {
                 </button>
               </DialogTrigger>
 
-              {produto.promocao && (
-                <Badge className="absolute top-2 right-2 bg-red-500 shadow-sm">-{Math.min(30, Math.round((produto.descontoPercentual || 10)))}%</Badge>
-              )}
-              {produto.lancamento && (
-                <Badge className="absolute top-2 right-2 bg-blue-500 shadow-sm">Lançamento</Badge>
-              )}
-              {produto.destaque && !produto.promocao && !produto.lancamento && (
-                <Badge className="absolute top-2 right-2 bg-amber-500 shadow-sm">Destaque</Badge>
-              )}
+              {/* Badges no canto superior direito */}
+              <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                {produto.promocao && (
+                  <Badge className="bg-red-500 shadow-sm">-{Math.min(30, Math.round((produto.descontoPercentual || 10)))}%</Badge>
+                )}
+                {produto.lancamento && (
+                  <Badge className="bg-blue-500 shadow-sm">Lançamento</Badge>
+                )}
+                {produto.destaque && !produto.promocao && !produto.lancamento && (
+                  <Badge className="bg-amber-500 shadow-sm">Destaque</Badge>
+                )}
+              </div>
+
+              {/* Badges de condição no canto superior esquerdo */}
+              <div className="absolute top-2 left-2">
+                <ProductBadges 
+                  condicao={(produto as any).condicao as CondicaoType}
+                  badges={(produto as any).badges as SpecialBadgeType[]}
+                  size="sm"
+                />
+              </div>
             </AspectRatio>
           </div>
 

@@ -9,7 +9,6 @@ import {
   TrendingDown, 
   DollarSign, 
   BarChart, 
-  BarChart, 
   Calendar,
   Download,
   Filter,
@@ -18,7 +17,8 @@ import {
   Target,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  Percent
 } from 'lucide-react';
 import { toast } from 'sonner';
 import MetricCard from '@/components/admin/MetricCard';
@@ -29,6 +29,7 @@ interface FinancialData {
   totalEntradas: number;
   totalSaidas: number;
   saldoLiquido: number;
+  totalTaxas: number;
   transacoesPorMes: Array<{
     mes: string;
     entradas: number;
@@ -84,6 +85,14 @@ export default function AdvancedFinancialDashboard() {
 
       const saldoLiquido = totalEntradas - totalSaidas;
 
+      const totalTaxas = transacoes.reduce((sum: number, t: any) => {
+        const obs = t.observacoes || '';
+        const m = obs.match(/Taxa\s*\(R\$\):\s*([\d.,]+)/i);
+        if (!m) return sum;
+        const n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+        return sum + (isNaN(n) ? 0 : n);
+      }, 0);
+
       // Agrupar por mês
       const transacoesPorMes = transacoes.reduce((acc: any, transacao: any) => {
         const mes = new Date(transacao.data).toLocaleDateString('pt-BR', { 
@@ -136,6 +145,7 @@ export default function AdvancedFinancialDashboard() {
         totalEntradas,
         totalSaidas,
         saldoLiquido,
+        totalTaxas,
         transacoesPorMes: Object.values(transacoesPorMes),
         transacoesPorCategoria: Object.values(transacoesPorCategoria),
         transacoesRecentes,
@@ -165,7 +175,8 @@ export default function AdvancedFinancialDashboard() {
       resumo: {
         totalEntradas: data.totalEntradas,
         totalSaidas: data.totalSaidas,
-        saldoLiquido: data.saldoLiquido
+        saldoLiquido: data.saldoLiquido,
+        totalTaxas: data.totalTaxas
       },
       transacoesPorMes: data.transacoesPorMes,
       transacoesPorCategoria: data.transacoesPorCategoria,
@@ -238,7 +249,7 @@ export default function AdvancedFinancialDashboard() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         <MetricCard
           title="Total Entradas"
           value={data.totalEntradas}
@@ -264,6 +275,15 @@ export default function AdvancedFinancialDashboard() {
           color={data.saldoLiquido >= 0 ? 'green' : 'red'}
           icon={<DollarSign className="h-5 w-5" />}
           subtitle="Resultado líquido"
+        />
+        
+        <MetricCard
+          title="Total em taxas"
+          value={data.totalTaxas}
+          format="currency"
+          color="orange"
+          icon={<Percent className="h-5 w-5" />}
+          subtitle="Taxas (extratos importados)"
         />
         
         <Card className="min-h-[140px] hover:shadow-lg transition-all border-l-4 border-l-purple-500">

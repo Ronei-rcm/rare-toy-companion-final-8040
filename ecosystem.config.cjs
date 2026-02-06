@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "api",
+      name: "muhlstore_api",
       script: "./server/server.cjs",
       exec_mode: "fork",
       instances: 1,
@@ -22,7 +22,7 @@ module.exports = {
       max_memory_restart: "300M"
     },
     {
-      name: "web",
+      name: "muhlstore_web",
       script: "./server/proxy-debug.cjs",
       exec_mode: "fork",
       instances: 1,
@@ -37,7 +37,7 @@ module.exports = {
       max_memory_restart: "300M"
     },
     {
-      name: "whatsapp-webhook",
+      name: "muhlstore_whatsapp-webhook",
       script: "./server/whatsapp-webhook-server.cjs",
       exec_mode: "fork",
       instances: 1,

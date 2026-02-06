@@ -14,6 +14,8 @@ export interface CreateProductData {
   destaque?: boolean;
   promocao?: boolean;
   lancamento?: boolean;
+  novo?: boolean;
+  seminovo?: boolean;
   avaliacao?: number;
   totalAvaliacoes?: number;
   faixaEtaria?: string;

@@ -19,6 +19,7 @@ interface ParsedTransaction {
   hora?: string;
   descricao: string;
   valor: number;
+  valor_bruto?: number;
   tipo: 'credito' | 'debito';
   conta_id?: number;
   metodo_pagamento?: string;
@@ -43,12 +44,6 @@ export default function ImportBankStatementModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (selectedFile: File) => {
-    console.log('📄 Arquivo selecionado:', {
-      name: selectedFile.name,
-      type: selectedFile.type,
-      size: selectedFile.size
-    });
-
     // Validar tipo de arquivo
     const isCSV = selectedFile.name.toLowerCase().endsWith('.csv') || 
                   selectedFile.type === 'text/csv' ||
@@ -139,26 +134,7 @@ export default function ImportBankStatementModal({
       
       // Tentar fazer parse automático
       try {
-        console.log('🔄 Iniciando parse do arquivo...');
         const parsed = await parseFile(selectedFile);
-        console.log('✅ Parse concluído:', parsed.length, 'transações');
-        
-        // Log detalhado da primeira transação para debug
-        if (parsed.length > 0) {
-          console.log('🔍 PRIMEIRA TRANSAÇÃO PARSEADA (para verificação na tabela):', {
-            data: parsed[0].data,
-            hora: parsed[0].hora,
-            metodo_pagamento: parsed[0].metodo_pagamento,
-            origem: parsed[0].origem,
-            detalhe: parsed[0].detalhe,
-            descricao: parsed[0].descricao,
-            tipo: parsed[0].tipo,
-            valor: parsed[0].valor,
-            categoria: parsed[0].categoria,
-            observacoes: parsed[0].observacoes?.substring(0, 150)
-          });
-        }
-        
         setParsedData(parsed);
         setPreviewMode(true);
         toast.success(`${parsed.length} transações encontradas!`);
@@ -242,9 +218,6 @@ export default function ImportBankStatementModal({
 
           const lines = text.split(/\r?\n/).filter(line => line.trim());
           
-          console.log('📊 Total de linhas no arquivo:', lines.length);
-          console.log('📄 Primeiras 3 linhas:', lines.slice(0, 3));
-          
           if (lines.length === 0) {
             reject(new Error('Arquivo CSV vazio. Verifique se o arquivo foi salvo corretamente.'));
             return;
@@ -252,7 +225,6 @@ export default function ImportBankStatementModal({
           
           if (lines.length === 1) {
             const header = lines[0];
-            console.log('📋 Cabeçalho detectado:', header);
             reject(new Error(
               'Arquivo CSV contém apenas cabeçalho, sem dados de transações.\n\n' +
               'Como corrigir:\n' +
@@ -278,36 +250,58 @@ export default function ImportBankStatementModal({
             return;
           }
           
-          console.log('✅ Linhas de dados válidas encontradas:', dataLines.length);
-
           const transactions: ParsedTransaction[] = [];
 
-          // Detectar formato do arquivo (InfinitePay ou genérico)
-          const header = lines[0]?.toLowerCase() || '';
-          const isInfinitePayFormat = header.includes('data') && 
-                                     header.includes('hora') && 
-                                     header.includes('tipo de transa') &&
-                                     header.includes('nome') &&
-                                     header.includes('detalhe') &&
-                                     header.includes('valor');
+          // Helper: dividir linha CSV em colunas (vírgula, preservando aspas)
+          const splitCsvLine = (line: string, delim: string): string[] => {
+            if (delim === ',') {
+              const regex = /(".*?"|[^,]+)(?=\s*,|\s*$)/g;
+              const matches = line.match(regex);
+              if (matches) return matches.map(c => c.trim().replace(/^["']|["']$/g, '').trim());
+              return line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+            }
+            return line.split(delim).map(c => c.trim().replace(/^["']|["']$/g, ''));
+          };
 
-          console.log('📋 Formato detectado:', isInfinitePayFormat ? 'InfinitePay' : 'Genérico');
-          console.log('📋 Cabeçalho:', header);
+          // Detectar formato do arquivo (InfinitePay, Relatório CSV ou genérico com Valor/Líquido)
+          const headerLine = lines[0] || '';
+          const headerLower = headerLine.toLowerCase();
+          const isInfinitePayFormat = headerLower.includes('data') &&
+                                     headerLower.includes('hora') &&
+                                     headerLower.includes('tipo de transa') &&
+                                     headerLower.includes('nome') &&
+                                     headerLower.includes('detalhe') &&
+                                     headerLower.includes('valor');
+          // Formato "Relatório CSV - InfinitePay": pode ter "Data e hora", "Valor bruto", "Valor líquido", "Descrição", etc.
+          const isRelatorioFormat = (headerLower.includes('relatório') || headerLower.includes('relatorio')) ||
+            (headerLower.includes('valor') && (headerLower.includes('líquido') || headerLower.includes('liquido') || headerLower.includes('bruto')));
+
+          // Para CSV com colunas nomeadas: detectar "Valor (R$)" e "Líquido (R$)" (e variantes de encoding)
+          const commaCountH = (headerLine.match(/,/g) || []).length;
+          const semicolonCountH = (headerLine.match(/;/g) || []).length;
+          const delimiterHeader = semicolonCountH > commaCountH ? ';' : ',';
+          const headerColumns = splitCsvLine(headerLine, delimiterHeader);
+          const normalizeHeaderName = (name: string) =>
+            name.toLowerCase()
+              .replace(/\s+/g, ' ')
+              .replace(/Ã­/g, 'í').replace(/Ã£o/g, 'ão').replace(/Ã§/g, 'ç')
+              .replace(/Ã©/g, 'é').replace(/Ã /g, 'à')
+              .replace(/lÃ.quido/g, 'liquido').replace(/lÃ­quido/g, 'liquido');
+          const headerNamesNorm = headerColumns.map(normalizeHeaderName);
+          const idxLiquido = headerNamesNorm.findIndex(n =>
+            (n.includes('liquido') || n.includes('líquido')) && (n.includes('r$') || n.includes('valor') || n.length < 20)
+          );
+          const idxValor = headerNamesNorm.findIndex(n =>
+            n.includes('valor') && (n.includes('r$') || n.includes('(r$)')) && !n.includes('liquido') && !n.includes('líquido')
+          );
+          const hasValorLiquidoColumns = idxLiquido >= 0 || idxValor >= 0;
 
           // Processar linhas de dados (pular header na linha 0)
-          console.log(`🔄 Processando ${lines.length - 1} linhas de dados...`);
-          let linhasProcessadas = 0;
-          let linhasIgnoradas = 0;
-          
           for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
-            if (!line.trim()) {
-              linhasIgnoradas++;
-              continue;
-            }
+            if (!line.trim()) continue;
 
             try {
-              linhasProcessadas++;
               // Detectar delimitador (vírgula ou ponto e vírgula)
               // Contar qual delimitador aparece mais
               const commaCount = (line.match(/,/g) || []).length;
@@ -339,39 +333,54 @@ export default function ImportBankStatementModal({
                 continue;
               }
 
-              // Função auxiliar para extrair valor numérico de uma string (suporta sinal + ou -)
+              // Função auxiliar para extrair valor numérico (suporta BR, US, centavos e corrige valores absurdos)
               const extractValue = (str: string): { valor: number; sinal: '+' | '-' } => {
                 if (!str) return { valor: 0, sinal: '+' };
-                
-                // Detectar sinal no início
-                const temSinalPositivo = str.trim().startsWith('+');
-                const temSinalNegativo = str.trim().startsWith('-');
-                const sinal: '+' | '-' = temSinalNegativo ? '-' : '+';
-                
-                const cleaned = str
-                  .replace(/^[+\-]/g, '') // Remover sinal do início
-                  .replace(/R\$/g, '')
+                // Valor líquido pode vir composto: "57,21 '-0,79" — usar só o primeiro número
+                let strVal = str.trim();
+                const firstNumMatch = strVal.match(/^([+\-]?\s*R?\$?\s*[\d.,]+)/);
+                if (firstNumMatch) strVal = firstNumMatch[1];
+                const sinal: '+' | '-' = strVal.trim().startsWith('-') ? '-' : '+';
+                // Normalizar: remover R$, espaços Unicode, manter só dígitos e , . -
+                const cleaned = strVal
+                  .replace(/^[+\-]/g, '')
+                  .replace(/R\$/gi, '')
+                  .replace(/\s/g, '')
                   .replace(/[^\d,.-]/g, '')
                   .trim();
-                
-                if (!cleaned || cleaned === '-' || cleaned === '0') {
-                  return { valor: 0, sinal: '+' };
-                }
-                
+                if (!cleaned || cleaned === '-' || cleaned === '0') return { valor: 0, sinal: '+' };
+
                 let valor = 0;
-                // Formato brasileiro: 1.234,56 ou 80,00
-                if (cleaned.includes('.') && cleaned.includes(',')) {
-                  // Formato: 1.234,56
-                  valor = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
-                } else if (cleaned.includes(',')) {
-                  // Formato: 80,00 ou 1234,56
+                const temVirgula = cleaned.includes(',');
+                const temPonto = cleaned.includes('.');
+                // BR: 1.234,56 ou 80,00 — vírgula é decimal
+                if (temPonto && temVirgula) {
+                  const br = cleaned.replace(/\./g, '').replace(',', '.');
+                  valor = parseFloat(br);
+                } else if (temVirgula) {
                   valor = parseFloat(cleaned.replace(',', '.'));
+                } else if (temPonto) {
+                  // US: 1,234.56 — ponto é decimal; vírgulas são milhares
+                  valor = parseFloat(cleaned.replace(/,/g, ''));
                 } else {
-                  // Formato: 1234.56 ou 1234
-                  valor = parseFloat(cleaned);
+                  // Só dígitos: pode ser inteiro em reais ou em centavos
+                  const num = parseFloat(cleaned);
+                  valor = num;
                 }
-                
-                return { valor: isNaN(valor) ? 0 : valor, sinal };
+
+                if (isNaN(valor)) return { valor: 0, sinal: '+' };
+                // Corrigir valores absurdos (> 10M): relatórios às vezes vêm em centavos ou com decimal errado
+                const LIMITE_RAZOAVEL = 10_000_000;
+                if (valor > LIMITE_RAZOAVEL) {
+                  for (const div of [100, 1000, 10000, 100000]) {
+                    const corrigido = valor / div;
+                    if (corrigido <= LIMITE_RAZOAVEL && corrigido >= 0.01) {
+                      valor = Math.round(corrigido * 100) / 100;
+                      break;
+                    }
+                  }
+                }
+                return { valor, sinal };
               };
 
               let data = '';
@@ -384,7 +393,6 @@ export default function ImportBankStatementModal({
 
               if (isInfinitePayFormat) {
                 // Formato InfinitePay: Data,Hora,Tipo de transação,Nome,Detalhe,Valor (R$)
-                // Exemplo: 2025-12-12,20:03:19,Pix,Pix KAUAN SELAU SZCZESNY,Recebido,"+R$ 80,00"
                 data = columns[0]?.trim() || '';
                 hora = columns[1]?.trim() || '';
                 tipoTransacao = columns[2]?.trim() || '';
@@ -392,11 +400,38 @@ export default function ImportBankStatementModal({
                 detalhe = columns[4]?.trim() || '';
                 valorStr = columns[5]?.trim() || '';
                 valorColIndex = 5;
+              } else if (hasValorLiquidoColumns && (idxLiquido >= 0 || idxValor >= 0)) {
+                // CSV com colunas Valor (R$) e Líquido (R$): preferir Líquido como valor da transação
+                valorStr = (idxLiquido >= 0 && columns[idxLiquido]?.trim()) ? columns[idxLiquido].trim() : (columns[idxValor]?.trim() || '');
+                valorColIndex = idxLiquido >= 0 ? idxLiquido : idxValor;
+                const idxData = headerNamesNorm.findIndex(n => n.includes('data') && (n.includes('hora') || n.includes('e hora')));
+                const idxHora = headerNamesNorm.findIndex(n => n === 'hora' || n.includes('hora'));
+                const idxTipo = headerNamesNorm.findIndex(n => n.includes('meio') || n.includes('tipo') || n.includes('bandeira'));
+                const idxNome = headerNamesNorm.findIndex(n => n.includes('origem') || n.includes('nome') || n.includes('par') || n.includes('descri'));
+                const idxDetalhe = headerNamesNorm.findIndex(n => n.includes('detalhe') || n.includes('descri'));
+                if (idxData >= 0 && columns[idxData]) {
+                  const dataHora = columns[idxData].trim();
+                  if (dataHora.includes(' ')) {
+                    const [d, h] = dataHora.split(/\s+/);
+                    data = (d || '').trim();
+                    hora = (h || '').trim();
+                  } else {
+                    data = dataHora;
+                  }
+                } else {
+                  data = columns[0]?.trim() || '';
+                  if (data.includes(' ')) {
+                    const parts = data.split(/\s+/);
+                    data = parts[0] || '';
+                    hora = parts[1] || '';
+                  }
+                }
+                if (idxTipo >= 0 && columns[idxTipo]) tipoTransacao = columns[idxTipo].trim();
+                if (idxNome >= 0 && columns[idxNome]) nome = columns[idxNome].trim();
+                if (idxDetalhe >= 0 && columns[idxDetalhe]) detalhe = columns[idxDetalhe].trim();
               } else {
                 // Formato genérico - tentar detectar automaticamente
                 data = columns[0]?.trim() || '';
-                
-                // Tentar extrair hora da primeira coluna se tiver formato "DD/MM/YYYY HH:MM"
                 if (data.includes(' ')) {
                   const parts = data.split(' ');
                   if (parts.length > 1) {
@@ -404,15 +439,12 @@ export default function ImportBankStatementModal({
                     data = parts[0] || '';
                   }
                 }
-                
                 tipoTransacao = columns.length > 2 ? columns[2]?.trim() : '';
                 nome = columns.length > 3 ? columns[3]?.trim() : '';
                 detalhe = columns.length > 4 ? columns[4]?.trim() : '';
-                
-                // Procurar valor na última coluna ou em colunas posteriores
                 for (let j = columns.length - 1; j >= 0; j--) {
                   const col = columns[j]?.trim() || '';
-                  if (col.includes('R$') || col.match(/^[+\-]?[\d.,]+$/)) {
+                  if (col.includes('R$') || col.match(/^[+\-]?[\d.,\s']+$/)) {
                     valorStr = col;
                     valorColIndex = j;
                     break;
@@ -425,12 +457,25 @@ export default function ImportBankStatementModal({
                 continue;
               }
 
-              // Parse do valor
+              // Parse do valor (líquido quando há coluna Líquido)
               const { valor, sinal } = extractValue(valorStr);
 
               if (isNaN(valor) || valor === 0) {
                 console.warn(`Linha ${i + 1} ignorada: valor inválido (${valorStr})`);
                 continue;
+              }
+
+              // Quando há Valor (R$) e Líquido (R$), calcular taxa e guardar valor_bruto para a transação
+              let taxaValor = 0;
+              let valorBrutoNum: number | undefined;
+              if (hasValorLiquidoColumns && idxLiquido >= 0 && idxValor >= 0 && idxValor !== idxLiquido) {
+                const valorBrutoStr = columns[idxValor]?.trim() || '';
+                const { valor: valorBruto } = extractValue(valorBrutoStr);
+                if (!isNaN(valorBruto) && valorBruto > 0) {
+                  valorBrutoNum = Math.abs(valorBruto);
+                  taxaValor = Math.round((valorBrutoNum - Math.abs(valor)) * 100) / 100;
+                  if (taxaValor < 0) taxaValor = 0;
+                }
               }
 
               // Determinar tipo de transação
@@ -494,13 +539,13 @@ export default function ImportBankStatementModal({
                 hora: hora || undefined,
                 descricao: descricao,
                 valor: Math.abs(valor),
+                ...(valorBrutoNum != null && valorBrutoNum > 0 && { valor_bruto: valorBrutoNum }),
                 tipo: tipo,
                 conta_id: contaId,
-                detalhe: detalhe || '', // Campo detalhe para exibição
-                // SEMPRE preencher método e origem
+                detalhe: detalhe || '',
                 metodo_pagamento: tipoTransacao || 'PIX',
                 origem: nome || 'Extrato Bancário',
-                categoria: 'Outros' // Será ajustado abaixo se necessário
+                categoria: 'Outros'
               };
 
               // Categorizar baseado no tipo de transação (para InfinitePay ou genérico)
@@ -522,32 +567,11 @@ export default function ImportBankStatementModal({
               if (nome) obsParts.push(`Nome: ${nome}`);
               if (detalhe) obsParts.push(`Detalhe: ${detalhe}`);
               obsParts.push(`Valor original: ${valorStr}`);
+              if (hasValorLiquidoColumns && idxLiquido >= 0) obsParts.push('Usado: Valor Líquido (R$)');
+              if (taxaValor > 0) obsParts.push(`Taxa (R$): ${taxaValor.toFixed(2).replace('.', ',')}`);
               obsParts.push(`Importado em: ${new Date().toLocaleString('pt-BR')}`);
               
               transactionData.observacoes = obsParts.join(' | ');
-              
-              // Log para debug - verificar se todos os campos estão preenchidos
-              console.log('📝 Transação parseada (TODOS os campos):', {
-                data: transactionData.data,
-                hora: transactionData.hora || 'N/A',
-                metodo_pagamento: transactionData.metodo_pagamento || 'N/A',
-                origem: transactionData.origem || 'N/A',
-                categoria: transactionData.categoria || 'N/A',
-                tipo: transactionData.tipo,
-                valor: transactionData.valor,
-                detalhe: transactionData.detalhe || 'N/A',
-                observacoes: transactionData.observacoes?.substring(0, 100) || 'N/A',
-                // Campos originais do CSV para verificação
-                csv_original: {
-                  data_raw: data,
-                  hora_raw: hora,
-                  tipoTransacao_raw: tipoTransacao,
-                  nome_raw: nome,
-                  detalhe_raw: detalhe,
-                  valorStr_raw: valorStr
-                }
-              });
-
               transactions.push(transactionData);
             } catch (err: any) {
               console.warn(`Erro ao processar linha ${i + 1}:`, err.message || err);
@@ -555,17 +579,11 @@ export default function ImportBankStatementModal({
             }
           }
 
-          console.log(`📊 Estatísticas do parse:`);
-          console.log(`   - Linhas processadas: ${linhasProcessadas}`);
-          console.log(`   - Linhas ignoradas: ${linhasIgnoradas}`);
-          console.log(`   - Transações válidas: ${transactions.length}`);
-
           if (transactions.length === 0) {
             reject(new Error('Nenhuma transação válida encontrada no arquivo. Verifique o formato do CSV.'));
             return;
           }
 
-          console.log('✅ Transações parseadas:', transactions.length);
           resolve(transactions);
         } catch (error: any) {
           console.error('❌ Erro no parse:', error);
@@ -585,7 +603,6 @@ export default function ImportBankStatementModal({
       };
 
       // Iniciar leitura com UTF-8
-      console.log(`🔄 Tentando codificação: ${tryEncodings[encodingIndex]}`);
       reader.readAsText(file, tryEncodings[encodingIndex] as any);
     });
   };
@@ -685,9 +702,26 @@ export default function ImportBankStatementModal({
       }
 
       const result = await response.json();
-      
-      toast.success(`✅ ${result.imported || parsedData.length} transações importadas com sucesso!`);
-      
+      const totalEnviadas = parsedData.length;
+      const importadas = result.imported ?? 0;
+      const jaExistiam = result.skippedDuplicates ?? 0;
+      const erros = result.errors ?? [];
+
+      if (importadas < totalEnviadas && erros.length > 0) {
+        toast.warning(
+          `${importadas} importadas, ${jaExistiam} já existiam. ${erros.length} falha(s).`,
+          { description: erros.slice(0, 3).join(' • ') }
+        );
+      } else if (jaExistiam > 0 && importadas > 0) {
+        toast.success(`✅ ${importadas} importada(s), ${jaExistiam} já existiam (não duplicadas).`);
+      } else if (jaExistiam === totalEnviadas) {
+        toast.info(`ℹ️ Todas as ${totalEnviadas} transações já estavam no sistema (nada novo importado).`);
+      } else if (importadas === totalEnviadas) {
+        toast.success(`✅ Todas as ${importadas} transações foram importadas com sucesso!`);
+      } else {
+        toast.success(`✅ ${importadas} transação(ões) importada(s) com sucesso!`);
+      }
+
       // Resetar estado
       setFile(null);
       setParsedData([]);
@@ -746,23 +780,25 @@ export default function ImportBankStatementModal({
   };
 
   // Debug
-  useEffect(() => {
-    console.log('🔍 ImportBankStatementModal - isOpen:', isOpen);
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      console.log('🔍 Dialog onOpenChange chamado com:', open);
-      if (!open) {
-        handleClose();
-      } else {
-        console.log('🔍 Modal abrindo...');
-      }
+      if (!open) handleClose();
     }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      {/* Posição forçada por inline para não depender de zoom/parent: sempre centralizado no viewport */}
+      <DialogContent
+        className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col p-6 data-[state=open]:!translate-x-[-50%] data-[state=open]:!translate-y-[-50%] data-[state=closed]:!translate-x-[-50%] data-[state=closed]:!translate-y-[-50%]"
+        style={{
+          position: 'fixed',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          margin: 0,
+          maxHeight: '90vh'
+        }}
+      >
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
             Importar Extrato Bancário
@@ -776,7 +812,9 @@ export default function ImportBankStatementModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="flex flex-col flex-1 min-h-0 space-y-4 py-4">
+          {/* Área rolável: upload ou tabela */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
           {/* Upload Area */}
           {!previewMode && (
             <div
@@ -861,7 +899,8 @@ export default function ImportBankStatementModal({
                         <th className="p-2 text-left border-b font-semibold text-gray-700 whitespace-nowrap min-w-[120px]">Detalhe</th>
                         <th className="p-2 text-left border-b font-semibold text-gray-700 whitespace-nowrap min-w-[200px]">Descrição</th>
                         <th className="p-2 text-left border-b font-semibold text-gray-700 whitespace-nowrap min-w-[80px]">Tipo</th>
-                        <th className="p-2 text-right border-b font-semibold text-gray-700 whitespace-nowrap min-w-[100px]">Valor</th>
+                        <th className="p-2 text-right border-b font-semibold text-gray-700 whitespace-nowrap min-w-[100px]">Valor Bruto (R$)</th>
+                        <th className="p-2 text-right border-b font-semibold text-gray-700 whitespace-nowrap min-w-[100px]">Valor Líquido (R$)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -871,20 +910,6 @@ export default function ImportBankStatementModal({
                         if (!detalheExibido || detalheExibido === '-') {
                           const detalheFromObs = trans.observacoes?.split('|').find((o: string) => o.includes('Detalhe:'))?.replace('Detalhe:', '').trim();
                           if (detalheFromObs) detalheExibido = detalheFromObs;
-                        }
-                        
-                        // Log para debug
-                        if (index === 0) {
-                          console.log('🔍 Primeira transação na tabela:', {
-                            data: trans.data,
-                            hora: trans.hora,
-                            metodo_pagamento: trans.metodo_pagamento,
-                            origem: trans.origem,
-                            detalhe: trans.detalhe,
-                            descricao: trans.descricao,
-                            tipo: trans.tipo,
-                            valor: trans.valor
-                          });
                         }
                         
                         return (
@@ -922,6 +947,13 @@ export default function ImportBankStatementModal({
                                 {trans.tipo === 'credito' ? 'Crédito' : 'Débito'}
                               </span>
                             </td>
+                            <td className="p-2 text-right text-gray-600 whitespace-nowrap">
+                              {trans.valor_bruto != null ? (
+                                <>R$ {trans.valor_bruto.toFixed(2).replace('.', ',')}</>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
                             <td className="p-2 text-right font-semibold whitespace-nowrap">
                               <span className={trans.tipo === 'credito' ? 'text-green-600' : 'text-red-600'}>
                                 {trans.tipo === 'credito' ? '+' : '-'}R$ {trans.valor.toFixed(2).replace('.', ',')}
@@ -946,9 +978,10 @@ export default function ImportBankStatementModal({
               )}
             </div>
           )}
+          </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          {/* Actions - sempre visível no rodapé do modal */}
+          <div className="flex flex-shrink-0 justify-end gap-2 pt-4 border-t bg-background">
             <Button variant="outline" onClick={handleClose} disabled={loading}>
               Cancelar
             </Button>

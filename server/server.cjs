@@ -628,7 +628,7 @@ app.get('/api/carousel/active', async (req, res) => {
   try {
     // CORRIGIDO: coluna é 'active', não 'is_active'
     const [rows] = await pool.execute(
-      'SELECT * FROM carousel_items WHERE active = 1 ORDER BY order_index ASC, created_at ASC'
+      'SELECT * FROM carousel_items WHERE is_active = 1 ORDER BY order_index ASC, created_at ASC'
     );
     const items = rows.map(row => transformCarouselItem(row, req));
     res.json(items);
@@ -1312,7 +1312,8 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
         `SELECT id, nome, descricao, preco, imagem_url as imagemUrl, categoria, estoque,
                 status, destaque, promocao, lancamento, avaliacao, total_avaliacoes as totalAvaliacoes,
                 faixa_etaria as faixaEtaria, peso, dimensoes, material, marca, origem, fornecedor,
-                codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt
+                codigo_barras as codigoBarras, data_lancamento as dataLancamento, condicao,
+                created_at as createdAt, updated_at as updatedAt
            FROM produtos ${whereSql}
            ORDER BY ${orderBy}`,
         params
@@ -1339,9 +1340,10 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
     // Usar valores diretos para LIMIT e OFFSET (são seguros pois são números validados)
     const [rows] = await pool.execute(
       `SELECT id, nome, descricao, preco, imagem_url as imagemUrl, categoria, estoque,
-              status, destaque, promocao, lancamento, avaliacao, total_avaliacoes as totalAvaliacoes,
+              status, destaque, promocao, lancamento, novo, seminovo, avaliacao, total_avaliacoes as totalAvaliacoes,
               faixa_etaria as faixaEtaria, peso, dimensoes, material, marca, origem, fornecedor,
-              codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt
+              codigo_barras as codigoBarras, data_lancamento as dataLancamento, condicao,
+              created_at as createdAt, updated_at as updatedAt
          FROM produtos ${whereSql}
          ORDER BY ${orderBy}
          LIMIT ${limitInt} OFFSET ${offsetInt}`,
@@ -1368,7 +1370,7 @@ app.get('/api/produtos/destaque', async (req, res) => {
     console.log('🔄 Buscando produtos em destaque...');
     
     const [rows] = await pool.execute(
-      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt FROM produtos WHERE destaque = true ORDER BY created_at DESC'
+      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt, novo, seminovo FROM produtos WHERE destaque = true ORDER BY created_at DESC'
     );
     
     console.log(`✅ ${rows.length} produtos em destaque encontrados`);
@@ -1981,7 +1983,7 @@ app.get('/api/produtos/:id', async (req, res) => {
     console.log(`🔄 Buscando produto ID: ${id}`);
     
     const [rows] = await pool.execute(
-      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt FROM produtos WHERE id = ?',
+      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt, novo, seminovo FROM produtos WHERE id = ?',
       [id]
     );
     
@@ -2408,6 +2410,14 @@ app.put('/api/produtos/:id', async (req, res) => {
     if (produtoData.lancamento !== undefined) {
       fields.push('lancamento = ?');
       values.push(produtoData.lancamento);
+    }
+    if (produtoData.novo !== undefined) {
+      fields.push('novo = ?');
+      values.push(produtoData.novo);
+    }
+    if (produtoData.seminovo !== undefined) {
+      fields.push('seminovo = ?');
+      values.push(produtoData.seminovo);
     }
     if (produtoData.avaliacao !== undefined) {
       fields.push('avaliacao = ?');
@@ -4331,30 +4341,101 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
       // Verificar em qual tabela o usuário foi encontrado e atualizar
       const [checkUsers] = await pool.execute('SELECT id FROM `rare_toy_companion`.`users` WHERE id = ? LIMIT 1', [userId]);
       if (checkUsers && checkUsers.length > 0) {
-        await pool.execute(
-          'UPDATE `rare_toy_companion`.`users` SET reset_token = ?, reset_expires = ? WHERE id = ?',
-          [token, expires, userId]
-        );
-        console.log('✅ Token salvo em users');
+        try {
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`users` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+            [token, expires, userId]
+          );
+          console.log('✅ Token salvo em users');
+        } catch (updateError) {
+          // Se colunas não existem, criar dinamicamente
+          if (updateError.message && updateError.message.includes('Unknown column')) {
+            console.warn('⚠️ Colunas reset_token/reset_expires não existem em users. Execute: node scripts/check-reset-password-tables.cjs');
+            // Tentar adicionar colunas dinamicamente
+            try {
+              await pool.execute('ALTER TABLE `rare_toy_companion`.`users` ADD COLUMN IF NOT EXISTS `reset_token` VARCHAR(255) NULL DEFAULT NULL');
+              await pool.execute('ALTER TABLE `rare_toy_companion`.`users` ADD COLUMN IF NOT EXISTS `reset_expires` DATETIME NULL DEFAULT NULL');
+              // Tentar novamente
+              await pool.execute(
+                'UPDATE `rare_toy_companion`.`users` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+                [token, expires, userId]
+              );
+              console.log('✅ Colunas criadas e token salvo em users');
+            } catch (alterError) {
+              console.error('❌ Erro ao criar colunas:', alterError.message);
+              throw alterError;
+            }
+          } else {
+            throw updateError;
+          }
+        }
       } else {
-        await pool.execute(
-          'UPDATE `rare_toy_companion`.`customers` SET reset_token = ?, reset_expires = ? WHERE id = ?',
-          [token, expires, userId]
-        );
-        console.log('✅ Token salvo em customers');
+        try {
+          await pool.execute(
+            'UPDATE `rare_toy_companion`.`customers` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+            [token, expires, userId]
+          );
+          console.log('✅ Token salvo em customers');
+        } catch (updateError) {
+          // Se colunas não existem, criar dinamicamente
+          if (updateError.message && updateError.message.includes('Unknown column')) {
+            console.warn('⚠️ Colunas reset_token/reset_expires não existem em customers. Execute: node scripts/check-reset-password-tables.cjs');
+            // Tentar adicionar colunas dinamicamente
+            try {
+              await pool.execute('ALTER TABLE `rare_toy_companion`.`customers` ADD COLUMN IF NOT EXISTS `reset_token` VARCHAR(255) NULL DEFAULT NULL');
+              await pool.execute('ALTER TABLE `rare_toy_companion`.`customers` ADD COLUMN IF NOT EXISTS `reset_expires` DATETIME NULL DEFAULT NULL');
+              // Tentar novamente
+              await pool.execute(
+                'UPDATE `rare_toy_companion`.`customers` SET reset_token = ?, reset_expires = ? WHERE id = ?',
+                [token, expires, userId]
+              );
+              console.log('✅ Colunas criadas e token salvo em customers');
+            } catch (alterError) {
+              console.error('❌ Erro ao criar colunas:', alterError.message);
+              throw alterError;
+            }
+          } else {
+            throw updateError;
+          }
+        }
       }
       
       console.log('✅ Token de reset gerado para:', mail);
       
-      // TODO: Enviar email com link de reset
-      // Por enquanto, apenas logar o token (em produção, enviar por email)
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
-      console.log('🔐 Link de reset (NÃO ENVIAR EM PRODUÇÃO):', resetUrl);
+      // Construir URL de reset
+      const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
+      
+      // Enviar email com link de reset
+      try {
+        const { sendPasswordResetEmail } = require('../config/emailService.cjs');
+        const emailResult = await sendPasswordResetEmail({
+          email: userEmail,
+          customerName: null, // Pode buscar o nome do usuário se necessário
+          resetUrl: resetUrl,
+        });
+        
+        if (emailResult.success) {
+          console.log('✅ Email de recuperação de senha enviado para:', mail);
+        } else {
+          console.warn('⚠️ Falha ao enviar email de recuperação:', emailResult.error);
+          // Em desenvolvimento, ainda retornar URL no log
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔐 Link de reset (DESENVOLVIMENTO):', resetUrl);
+          }
+        }
+      } catch (emailError) {
+        console.error('❌ Erro ao enviar email de recuperação:', emailError);
+        // Em desenvolvimento, ainda logar o link
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 Link de reset (DESENVOLVIMENTO):', resetUrl);
+        }
+      }
       
       return res.json({ 
         ok: true, 
         message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-        // Remover em produção - apenas para desenvolvimento
+        // Apenas em desenvolvimento retornar URL e token
         ...(process.env.NODE_ENV === 'development' && { resetUrl, token })
       });
     } catch (e) {
@@ -4368,6 +4449,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
     console.error('❌ Erro em forgot-password:', e);
     res.json({ 
       ok: true, 
+      message: 'Se o email existir, você receberá um link para redefinir sua senha.'
     });
   }
 });
@@ -4942,103 +5024,9 @@ app.post('/api/admin/customers/sync-users', authenticateAdmin, async (req, res) 
   }
 });
 
-// ==================== ESQUECI MINHA SENHA (CLIENTES) ====================
-
-// Esqueci minha senha - Gerar token de reset
-app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
-  try {
-    const { email } = req.body || {};
-    const mail = String(email || '').trim().toLowerCase();
-    
-    if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'invalid_email',
-        message: 'Email inválido'
-      });
-    }
-    
-    console.log('🔐 Solicitação de reset de senha para:', mail);
-    
-    // Buscar usuário em users ou customers
-    let userId = null;
-    let userEmail = null;
-    
-    try {
-      const [users] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', [mail]);
-      if (users && users.length > 0) {
-        userId = users[0].id;
-        userEmail = users[0].email;
-        console.log('✅ Usuário encontrado em users:', userId);
-      } else {
-        const [customers] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', [mail]);
-        if (customers && customers.length > 0) {
-          userId = customers[0].id;
-          userEmail = customers[0].email;
-          console.log('✅ Usuário encontrado em customers:', userId);
-        }
-      }
-    } catch (e) {
-      console.error('❌ Erro ao buscar usuário:', e);
-    }
-    
-    // Sempre retornar sucesso (não revelar se email existe)
-    if (!userId) {
-      console.log('⚠️ Email não encontrado (não revelando para segurança):', mail);
-      return res.json({ 
-        ok: true, 
-        message: 'Se o email existir, você receberá um link para redefinir sua senha.'
-      });
-    }
-    
-    // Gerar token de reset
-    const token = require('crypto').randomUUID();
-    const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
-    
-    // Salvar token no banco (usar tabela users ou customers conforme encontrado)
-    try {
-      // Tentar atualizar em users primeiro
-      const [updateUsers] = await pool.execute(
-        'UPDATE `rare_toy_companion`.`users` SET reset_token = ?, reset_expires = ? WHERE id = ?',
-        [token, expires, userId]
-      );
-      
-      // Se não atualizou em users, tentar customers
-      if (updateUsers.affectedRows === 0) {
-        await pool.execute(
-          'UPDATE `rare_toy_companion`.`customers` SET reset_token = ?, reset_expires = ? WHERE id = ?',
-          [token, expires, userId]
-        );
-      }
-      
-      console.log('✅ Token de reset gerado para:', mail);
-      
-      // TODO: Enviar email com link de reset
-      // Por enquanto, apenas logar o token (em produção, enviar por email)
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
-      console.log('🔐 Link de reset (NÃO ENVIAR EM PRODUÇÃO):', resetUrl);
-      
-      return res.json({ 
-        ok: true, 
-        message: 'Se o email existir, você receberá um link para redefinir sua senha.',
-        // Remover em produção - apenas para desenvolvimento
-        ...(process.env.NODE_ENV === 'development' && { resetUrl, token })
-      });
-    } catch (e) {
-      console.error('❌ Erro ao salvar token:', e);
-      return res.json({ 
-        ok: true, 
-        message: 'Se o email existir, você receberá um link para redefinir sua senha.'
-      });
-    }
-  } catch (e) {
-    console.error('❌ Erro em forgot-password:', e);
-    res.json({ 
-      ok: true, 
-      message: 'Se o email existir, você receberá um link para redefinir sua senha.'
-    });
-  }
-});
+// NOTA: Endpoint duplicado de forgot-password removido
+// Usar apenas o endpoint em /api/auth/forgot-password (linha ~4279) que já foi evoluído
+// com envio de email e funcionalidades completas
 
 // Resetar senha via token
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
@@ -13443,10 +13431,10 @@ app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, 
         o.total,
         o.status,
         o.created_at,
-        COALESCE(o.payment_method, 'Não informado') as payment_method,
-        (SELECT COUNT(*) FROM \`rare_toy_companion\`.\`order_items\` WHERE order_id = o.id) as itens_count
-      FROM \`rare_toy_companion\`.\`orders\` o
-      LEFT JOIN \`rare_toy_companion\`.\`users\` u ON o.user_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci
+        COALESCE(o.metodo_pagamento, 'Não informado') as payment_method,
+        (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as itens_count
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
       WHERE o.status NOT IN ('cancelled', 'canceled', 'cancelado')
       ORDER BY o.created_at DESC
       LIMIT 10
@@ -14698,10 +14686,17 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
     
     // Se senha foi fornecida, atualizar também
     if (senha) {
-      const crypto = require('crypto');
-      const senhaHash = crypto.createHash('sha256').update(senha).digest('hex');
+      // Validar comprimento mínimo
+      if (senha.length < 6) {
+        return res.status(400).json({ error: 'Senha muito curta. Mínimo 6 caracteres.' });
+      }
+      
+      // Usar hash seguro (bcrypt) ao invés de SHA256
+      const { hashPassword } = require('./utils/security.cjs');
+      const senhaHash = await hashPassword(senha);
       query += ', senha_hash = ?';
       params.push(senhaHash);
+      console.log(`🔐 Senha atualizada para usuário ID: ${id}`);
     }
     
     query += ' WHERE id = ?';
@@ -14808,45 +14803,91 @@ app.put('/api/admin/usuarios/:id/toggle-status', async (req, res) => {
 
 // ==================== FINANCIAL TRANSACTIONS API ====================
 
-// Buscar todas as transações financeiras
-app.get('/api/financial/transactions', async (req, res) => {
-  try {
-    const [rows] = await pool.execute(`
-      SELECT 
-        id,
-        data,
-        hora,
-        descricao,
-        categoria,
-        origem,
-        tipo,
-        valor,
-        status,
-        forma_pagamento as metodo_pagamento,
-        observacoes,
-        created_at,
-        updated_at
-      FROM financial_transactions 
-      ORDER BY data DESC, hora DESC, created_at DESC
-    `);
-    
-    // Normalizar tipos para minúsculo e sem acentos
-    const transacoesNormalizadas = rows.map(transacao => ({
-      ...transacao,
-      tipo: transacao.tipo ? transacao.tipo.toLowerCase().replace('saída', 'saida').replace('entrada', 'entrada') : transacao.tipo
-    }));
+// Normalizar uma linha de financial_transactions para o formato da API (evita erros de serialização)
+function normalizeFinancialRow(r) {
+  if (!r || typeof r !== 'object') return null;
+  const tipoRaw = r.tipo != null ? String(r.tipo) : '';
+  const tipo = tipoRaw.toLowerCase().replace('saída', 'saida').replace('saida', 'saida').replace('entrada', 'entrada');
+  return {
+    id: r.id,
+    data: r.data,
+    hora: r.hora ?? null,
+    descricao: r.descricao ?? '',
+    categoria: r.categoria ?? '',
+    origem: r.origem ?? '',
+    tipo: tipo || r.tipo,
+    valor: r.valor != null ? Number(r.valor) : 0,
+    valor_bruto: r.valor_bruto != null ? Number(r.valor_bruto) : null,
+    status: r.status ?? 'Pago',
+    metodo_pagamento: r.metodo_pagamento ?? r.forma_pagamento ?? '',
+    observacoes: r.observacoes ?? '',
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
 
-    logger.info('Transações financeiras carregadas', { count: rows.length });
-    res.json({ transactions: transacoesNormalizadas, total: rows.length });
+// Buscar todas as transações financeiras
+app.get('/api/financial/transactions', authenticateAdmin, async (req, res) => {
+  try {
+    let rows = [];
+    try {
+      const [r] = await pool.execute(`
+        SELECT id, data, hora, descricao, categoria, origem, tipo, valor, valor_bruto,
+          status, metodo_pagamento, observacoes, created_at, updated_at
+        FROM financial_transactions
+        ORDER BY data DESC, hora DESC, created_at DESC
+      `);
+      rows = r || [];
+    } catch (schemaErr) {
+      const msg = (schemaErr.message || '').toLowerCase();
+      if (msg.includes('unknown column')) {
+        try {
+          const [r2] = await pool.execute(`
+            SELECT id, data, descricao, categoria, origem, tipo, valor, status,
+              metodo_pagamento, observacoes, created_at, updated_at
+            FROM financial_transactions
+            ORDER BY data DESC, created_at DESC
+          `);
+          rows = (r2 || []).map(r => ({ ...r, hora: null, valor_bruto: null }));
+        } catch (e2) {
+          try {
+            const [r3] = await pool.execute(`
+              SELECT id, data, descricao, categoria, origem, tipo, valor, status,
+                forma_pagamento AS metodo_pagamento, observacoes, created_at, updated_at
+              FROM financial_transactions
+              ORDER BY data DESC, created_at DESC
+            `);
+            rows = (r3 || []).map(r => ({ ...r, hora: null, valor_bruto: null }));
+          } catch (e3) {
+            const [r4] = await pool.execute(`
+              SELECT * FROM financial_transactions ORDER BY data DESC, created_at DESC
+            `);
+            rows = (r4 || []).map(r => ({
+              ...r,
+              metodo_pagamento: r.metodo_pagamento ?? r.forma_pagamento ?? null,
+              hora: r.hora ?? null,
+              valor_bruto: r.valor_bruto ?? null
+            }));
+          }
+        }
+      } else {
+        throw schemaErr;
+      }
+    }
+
+    const transacoesNormalizadas = rows.map(normalizeFinancialRow).filter(Boolean);
+    logger.info('Transações financeiras carregadas', { count: transacoesNormalizadas.length });
+    res.json({ transactions: transacoesNormalizadas, total: transacoesNormalizadas.length });
   } catch (error) {
     logger.logError(error, req);
+    console.error('GET /api/financial/transactions erro:', error.message);
     res.status(500).json({ error: 'Erro ao buscar transações financeiras' });
   }
 });
 
 
 // Atualizar transação financeira (com ID no body)
-app.put('/api/financial/transactions', async (req, res) => {
+app.put('/api/financial/transactions', authenticateAdmin, async (req, res) => {
   try {
     const { id, descricao, categoria, tipo, valor, status, data, origem, observacoes } = req.body;
 
@@ -14872,20 +14913,31 @@ app.put('/api/financial/transactions', async (req, res) => {
       return res.status(404).json({ error: 'Transação não encontrada' });
     }
 
-    // Tratar hora se fornecida
     const hora = req.body.hora || null;
-    
-    // Extrair metodo_pagamento do body (pode vir como metodo_pagamento ou forma_pagamento)
     const metodoPagamento = req.body.metodo_pagamento || req.body.forma_pagamento || null;
-    
-    // Atualizar transação
-    const [result] = await pool.execute(`
-      UPDATE financial_transactions
-      SET descricao = ?, categoria = ?, tipo = ?, valor = ?, status = ?,
-          data = ?, hora = ?, origem = ?, forma_pagamento = ?, observacoes = ?, updated_at = NOW()
-      WHERE id = ?
-    `, [descricao, categoria, tipoNormalizado, valor, status || 'Pago', 
-        data || new Date().toISOString().split('T')[0], hora, origem || '', metodoPagamento, observacoes || '', id]);
+
+    let result;
+    try {
+      [result] = await pool.execute(`
+        UPDATE financial_transactions
+        SET descricao = ?, categoria = ?, tipo = ?, valor = ?, status = ?,
+            data = ?, hora = ?, origem = ?, metodo_pagamento = ?, observacoes = ?, updated_at = NOW()
+        WHERE id = ?
+      `, [descricao, categoria, tipoNormalizado, valor, status || 'Pago',
+          data || new Date().toISOString().split('T')[0], hora, origem || '', metodoPagamento, observacoes || '', id]);
+    } catch (schemaErr) {
+      if ((schemaErr.message || '').toLowerCase().includes('unknown column') && (schemaErr.message || '').includes('hora')) {
+        [result] = await pool.execute(`
+          UPDATE financial_transactions
+          SET descricao = ?, categoria = ?, tipo = ?, valor = ?, status = ?,
+              data = ?, origem = ?, metodo_pagamento = ?, observacoes = ?, updated_at = NOW()
+          WHERE id = ?
+        `, [descricao, categoria, tipoNormalizado, valor, status || 'Pago',
+            data || new Date().toISOString().split('T')[0], origem || '', metodoPagamento, observacoes || '', id]);
+      } else {
+        throw schemaErr;
+      }
+    }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transação não encontrada' });
@@ -14910,12 +14962,12 @@ app.put('/api/financial/transactions', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao atualizar transação:', error);
-    res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
 
 // Atualizar transação financeira (com ID na URL)
-app.put('/api/financial/transactions/:id', async (req, res) => {
+app.put('/api/financial/transactions/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -14931,16 +14983,28 @@ app.put('/api/financial/transactions/:id', async (req, res) => {
     } = req.body;
 
     const hora = req.body.hora || null;
-    // Extrair metodo_pagamento do body (pode vir como metodo_pagamento ou forma_pagamento)
     const metodoPagamento = req.body.metodo_pagamento || req.body.forma_pagamento || metodo_pagamento || null;
-    
-    const [result] = await pool.execute(`
-      UPDATE financial_transactions 
-      SET data = ?, hora = ?, descricao = ?, categoria = ?, tipo = ?, valor = ?, 
-          status = ?, forma_pagamento = ?, origem = ?, observacoes = ?, 
-          updated_at = NOW()
-      WHERE id = ?
-    `, [data, hora, descricao, categoria, tipo, valor, status, metodoPagamento, origem, observacoes, id]);
+
+    let result;
+    try {
+      [result] = await pool.execute(`
+        UPDATE financial_transactions
+        SET data = ?, hora = ?, descricao = ?, categoria = ?, tipo = ?, valor = ?,
+            status = ?, metodo_pagamento = ?, origem = ?, observacoes = ?, updated_at = NOW()
+        WHERE id = ?
+      `, [data, hora, descricao, categoria, tipo, valor, status, metodoPagamento, origem, observacoes, id]);
+    } catch (schemaErr) {
+      if ((schemaErr.message || '').toLowerCase().includes('unknown column') && (schemaErr.message || '').includes('hora')) {
+        [result] = await pool.execute(`
+          UPDATE financial_transactions
+          SET data = ?, descricao = ?, categoria = ?, tipo = ?, valor = ?,
+              status = ?, metodo_pagamento = ?, origem = ?, observacoes = ?, updated_at = NOW()
+          WHERE id = ?
+        `, [data, descricao, categoria, tipo, valor, status, metodoPagamento, origem, observacoes, id]);
+      } else {
+        throw schemaErr;
+      }
+    }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Transação não encontrada' });
@@ -14955,7 +15019,7 @@ app.put('/api/financial/transactions/:id', async (req, res) => {
 });
 
 // Deletar transação financeira
-app.delete('/api/financial/transactions/:id', async (req, res) => {
+app.delete('/api/financial/transactions/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -14977,7 +15041,7 @@ app.delete('/api/financial/transactions/:id', async (req, res) => {
 });
 
 // Estornar transação financeira
-app.post('/api/financial/transactions/:id/reverse', async (req, res) => {
+app.post('/api/financial/transactions/:id/reverse', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { motivo } = req.body;
@@ -15037,7 +15101,7 @@ app.post('/api/financial/transactions/:id/reverse', async (req, res) => {
 });
 
 // Deletar múltiplas transações
-app.post('/api/financial/transactions/bulk-delete', async (req, res) => {
+app.post('/api/financial/transactions/bulk-delete', authenticateAdmin, async (req, res) => {
   try {
     const { ids } = req.body;
 
@@ -15064,7 +15128,7 @@ app.post('/api/financial/transactions/bulk-delete', async (req, res) => {
 });
 
 // Atualizar status de múltiplas transações
-app.post('/api/financial/transactions/bulk-update-status', async (req, res) => {
+app.post('/api/financial/transactions/bulk-update-status', authenticateAdmin, async (req, res) => {
   try {
     const { ids, status } = req.body;
 
@@ -15095,7 +15159,7 @@ app.post('/api/financial/transactions/bulk-update-status', async (req, res) => {
 });
 
 // Criar transação financeira
-app.post('/api/financial/transactions', async (req, res) => {
+app.post('/api/financial/transactions', authenticateAdmin, async (req, res) => {
   try {
     const { descricao, categoria, tipo, valor, status, metodo_pagamento, data, origem, observacoes } = req.body;
     
@@ -15110,47 +15174,84 @@ app.post('/api/financial/transactions', async (req, res) => {
       return res.status(400).json({ error: 'Valor deve ser maior que zero' });
     }
 
-    // Normalizar tipo para minúsculo
-    const tipoNormalizado = tipo.toLowerCase();
-    
-    // Validar tipo
-    if (!['entrada', 'saida'].includes(tipoNormalizado)) {
+    // Normalizar tipo para minúsculo e mapear para ENUM do banco ('Entrada' / 'Saída')
+    const tipoLower = (tipo || '').toLowerCase();
+    if (!['entrada', 'saida'].includes(tipoLower)) {
       return res.status(400).json({ error: 'Tipo deve ser "entrada" ou "saida"' });
     }
-    
+    const tipoEnum = tipoLower === 'entrada' ? 'Entrada' : 'Saída';
+
     // Tratar valores undefined como null
     const safeStatus = status || 'Pendente';
     const safeMetodoPagamento = metodo_pagamento || 'Não informado';
     const safeData = data || new Date().toISOString().split('T')[0];
     const safeOrigem = origem || null;
     const safeObservacoes = observacoes || null;
-    
-    // Tratar hora se fornecida
     const safeHora = req.body.hora || null;
-    
-    // Inserir transação - created_at e updated_at são gerados automaticamente
-    // Usar forma_pagamento (nome correto da coluna no MySQL)
-    const [result] = await pool.execute(`
-      INSERT INTO financial_transactions (
-        descricao, categoria, tipo, valor, status, 
-        forma_pagamento, data, hora, origem, observacoes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      descricao, categoria, tipoNormalizado, valor, safeStatus,
-      safeMetodoPagamento, safeData, safeHora, safeOrigem, safeObservacoes
-    ]);
-    
+
+    let result;
+    try {
+      [result] = await pool.execute(`
+        INSERT INTO financial_transactions (
+          descricao, categoria, tipo, valor, status,
+          metodo_pagamento, data, hora, origem, observacoes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        descricao, categoria, tipoEnum, valor, safeStatus,
+        safeMetodoPagamento, safeData, safeHora, safeOrigem, safeObservacoes
+      ]);
+    } catch (schemaErr) {
+      const msg = (schemaErr.message || '').toLowerCase();
+      if (msg.includes('unknown column') && msg.includes('hora')) {
+        [result] = await pool.execute(`
+          INSERT INTO financial_transactions (
+            descricao, categoria, tipo, valor, status,
+            metodo_pagamento, data, origem, observacoes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          descricao, categoria, tipoEnum, valor, safeStatus,
+          safeMetodoPagamento, safeData, safeOrigem, safeObservacoes
+        ]);
+      } else if (msg.includes('unknown column') && msg.includes('metodo_pagamento')) {
+        [result] = await pool.execute(`
+          INSERT INTO financial_transactions (
+            descricao, categoria, tipo, valor, status,
+            forma_pagamento, data, hora, origem, observacoes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          descricao, categoria, tipoEnum, valor, safeStatus,
+          safeMetodoPagamento, safeData, safeHora, safeOrigem, safeObservacoes
+        ]);
+      } else if (msg.includes('unknown column')) {
+        try {
+          [result] = await pool.execute(`
+            INSERT INTO financial_transactions (
+              descricao, categoria, tipo, valor, status,
+              forma_pagamento, data, origem, observacoes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            descricao, categoria, tipoEnum, valor, safeStatus,
+            safeMetodoPagamento, safeData, safeOrigem, safeObservacoes
+          ]);
+        } catch (e2) {
+          throw schemaErr;
+        }
+      } else {
+        throw schemaErr;
+      }
+    }
+
     const insertedId = result.insertId;
     
     logger.info('Transação financeira criada', { id: insertedId });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Transação criada com sucesso',
       transaction: {
         id: insertedId,
         descricao,
         categoria,
-        tipo: tipoNormalizado,
+        tipo: tipoEnum,
         valor,
         status: safeStatus,
         metodo_pagamento: safeMetodoPagamento,
@@ -15161,24 +15262,43 @@ app.post('/api/financial/transactions', async (req, res) => {
     });
   } catch (error) {
     logger.logError(error, req);
-    res.status(500).json({ error: 'Erro ao criar transação financeira', details: error.message });
+    res.status(500).json({ error: 'Erro ao criar transação financeira', ...(process.env.NODE_ENV !== 'production' && { details: error.message }) });
   }
 });
 
-// Buscar transação por ID
-app.get('/api/financial/transactions/:id', async (req, res) => {
+// Buscar transação por ID (resiliente a schema sem hora/valor_bruto)
+app.get('/api/financial/transactions/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.execute(
-      `SELECT 
-        id, data, hora, descricao, categoria, origem, tipo, valor, 
-        status, forma_pagamento as metodo_pagamento, observacoes, 
-        created_at, updated_at
-       FROM financial_transactions WHERE id = ?`,
-      [id]
-    );
+    let rows;
+    try {
+      [rows] = await pool.execute(
+        `SELECT id, data, hora, descricao, categoria, origem, tipo, valor, valor_bruto,
+         status, metodo_pagamento, observacoes, created_at, updated_at
+         FROM financial_transactions WHERE id = ?`,
+        [id]
+      );
+    } catch (schemaErr) {
+      if (!(schemaErr.message || '').toLowerCase().includes('unknown column')) throw schemaErr;
+      try {
+        [rows] = await pool.execute(
+          `SELECT id, data, descricao, categoria, origem, tipo, valor, status,
+           metodo_pagamento, observacoes, created_at, updated_at
+           FROM financial_transactions WHERE id = ?`,
+          [id]
+        );
+      } catch (e2) {
+        [rows] = await pool.execute(
+          `SELECT id, data, descricao, categoria, origem, tipo, valor, status,
+           forma_pagamento AS metodo_pagamento, observacoes, created_at, updated_at
+           FROM financial_transactions WHERE id = ?`,
+          [id]
+        );
+      }
+      rows = (rows || []).map(r => ({ ...r, hora: r.hora || null, valor_bruto: r.valor_bruto ?? null }));
+    }
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ error: 'Transação não encontrada' });
     }
 
@@ -15191,119 +15311,166 @@ app.get('/api/financial/transactions/:id', async (req, res) => {
 
 // Importar extrato bancário
 const bankStatementUpload = multer({ dest: 'uploads/' });
-app.post('/api/financial/bank-statements/import', bankStatementUpload.single('file'), async (req, res) => {
+app.post('/api/financial/bank-statements/import', authenticateAdmin, bankStatementUpload.single('file'), async (req, res) => {
   try {
-    if (!req.file && !req.body.transactions) {
-      return res.status(400).json({ error: 'Arquivo ou dados de transações são obrigatórios' });
-    }
-
     let transactions = [];
-    
-    // Se vieram dados parseados do frontend
-    if (req.body.transactions) {
-      try {
-        transactions = JSON.parse(req.body.transactions);
-      } catch (e) {
-        return res.status(400).json({ error: 'Erro ao processar dados das transações' });
-      }
-    } else {
-      // Processar arquivo CSV aqui se necessário
-      // Por enquanto, usamos apenas dados parseados do frontend
-      return res.status(400).json({ error: 'Dados parseados são obrigatórios' });
-    }
 
+    if (req.body && req.body.transactions) {
+      try {
+        const raw = req.body.transactions;
+        transactions = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
+      } catch (e) {
+        console.error('Parse transactions:', e.message);
+        return res.status(400).json({ error: 'Erro ao processar dados das transações. Verifique o formato.' });
+      }
+    }
     if (!Array.isArray(transactions) || transactions.length === 0) {
-      return res.status(400).json({ error: 'Nenhuma transação encontrada para importar' });
+      return res.status(400).json({
+        error: 'Nenhuma transação para importar. Envie o arquivo CSV e confirme no preview antes de importar.'
+      });
     }
 
     const contaId = req.body.conta_id ? parseInt(req.body.conta_id) : null;
     let imported = 0;
+    let skippedDuplicates = 0;
     let errors = [];
+    let useMinimalSchema = false;
+    let useFormaPagamentoColumn = false;
+    let duplicateCheckQuery = null; // preenchido na primeira verificação (com ou sem hora)
 
-    // Inserir transações no banco
+    // ENUM na tabela é ('Entrada','Saída') — usar valor exato
+    const toTipoEnum = (t) => (t === 'credito' || (typeof t === 'string' && t.toLowerCase() === 'entrada')) ? 'Entrada' : 'Saída';
+
+    const toDate = (d) => {
+      if (!d) return null;
+      if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+    };
+
+    // Verificar se transação já existe (mesma data, hora, valor e descrição) para evitar duplicatas entre CSVs
+    const isDuplicate = async (data, hora, valor, descricao) => {
+      const desc = (descricao || '').substring(0, 255);
+      if (duplicateCheckQuery === 'with_hora') {
+        const [rows] = await pool.execute(
+          `SELECT id FROM financial_transactions WHERE data = ? AND (hora <=> ?) AND ABS(valor - ?) < 0.01 AND descricao = ? LIMIT 1`,
+          [data, hora || null, valor, desc]
+        );
+        return rows.length > 0;
+      }
+      if (duplicateCheckQuery === 'no_hora') {
+        const [rows] = await pool.execute(
+          `SELECT id FROM financial_transactions WHERE data = ? AND ABS(valor - ?) < 0.01 AND descricao = ? LIMIT 1`,
+          [data, valor, desc]
+        );
+        return rows.length > 0;
+      }
+      try {
+        const [rows] = await pool.execute(
+          `SELECT id FROM financial_transactions WHERE data = ? AND (hora <=> ?) AND ABS(valor - ?) < 0.01 AND descricao = ? LIMIT 1`,
+          [data, hora || null, valor, desc]
+        );
+        duplicateCheckQuery = 'with_hora';
+        return rows.length > 0;
+      } catch (e) {
+        if ((e.message || '').toLowerCase().includes('unknown column') && (e.message || '').includes('hora')) {
+          duplicateCheckQuery = 'no_hora';
+          const [rows] = await pool.execute(
+            `SELECT id FROM financial_transactions WHERE data = ? AND ABS(valor - ?) < 0.01 AND descricao = ? LIMIT 1`,
+            [data, valor, desc]
+          );
+          return rows.length > 0;
+        }
+        throw e;
+      }
+    };
+
     console.log(`📥 Importando ${transactions.length} transações...`);
     for (const trans of transactions) {
       try {
-        // Verificar se já existe transação similar (evitar duplicatas)
-        // Usar uma verificação mais flexível para não bloquear transações legítimas
-        const [existing] = await pool.execute(`
-          SELECT id FROM financial_transactions 
-          WHERE data = ? 
-            AND descricao LIKE ? 
-            AND ABS(valor - ?) < 0.01
-            AND origem = ?
-            AND forma_pagamento = ?
-          LIMIT 1
-        `, [
-          trans.data, 
-          `%${trans.descricao.substring(0, 50)}%`, 
-          trans.valor,
-          trans.origem || 'Extrato Bancário',
-          trans.metodo_pagamento || 'PIX'
-        ]);
-
-        if (existing.length > 0) {
-          console.log(`⚠️ Transação duplicada ignorada: ${trans.descricao.substring(0, 30)}... - ${trans.data} - R$ ${trans.valor}`);
-          errors.push(`Transação duplicada ignorada: ${trans.descricao.substring(0, 30)}...`);
+        const tipo = toTipoEnum(trans.tipo);
+        const metodoPagamento = (trans.metodo_pagamento && trans.metodo_pagamento !== 'N/A')
+          ? String(trans.metodo_pagamento).substring(0, 50)
+          : (contaId ? `Conta: ${contaId}` : 'PIX');
+        const origem = (trans.origem && trans.origem !== 'N/A' && trans.origem !== 'Extrato Bancário')
+          ? String(trans.origem).substring(0, 255)
+          : (trans.origem ? String(trans.origem).substring(0, 255) : 'Extrato Bancário');
+        const observacoes = trans.observacoes
+          ? String(trans.observacoes).substring(0, 65535)
+          : `Importado automaticamente em ${new Date().toLocaleString('pt-BR')}`;
+        const data = toDate(trans.data) || new Date().toISOString().slice(0, 10);
+        const valor = Number(trans.valor);
+        if (isNaN(valor) || valor <= 0) {
+          errors.push(`Valor inválido: ${trans.descricao || 'linha'}`);
           continue;
         }
 
-        // Determinar tipo e status
-        const tipo = trans.tipo === 'credito' ? 'entrada' : 'saida';
-        
-        // Extrair método de pagamento e origem dos dados parseados
-        // GARANTIR que sempre tenha valores, mesmo que vazios
-        const metodoPagamento = (trans.metodo_pagamento && trans.metodo_pagamento !== 'N/A') 
-                               ? trans.metodo_pagamento 
-                               : (contaId ? `Conta: ${contaId}` : 'PIX');
-        const origem = (trans.origem && trans.origem !== 'N/A' && trans.origem !== 'Extrato Bancário')
-                      ? trans.origem 
-                      : (trans.origem || 'Extrato Bancário');
-        const observacoes = trans.observacoes || 
-                           `Importado automaticamente em ${new Date().toLocaleString('pt-BR')}`;
+        const descricaoNorm = (trans.descricao || 'Transação importada').substring(0, 255);
+        if (await isDuplicate(data, trans.hora || null, valor, descricaoNorm)) {
+          skippedDuplicates++;
+          continue;
+        }
 
-        // Inserir transação com todos os campos do CSV
-        // GARANTIR que todos os campos sejam preenchidos
-        const dadosInsert = {
-          descricao: trans.descricao || 'Transação importada',
-          categoria: trans.categoria || 'Outros',
-          tipo: tipo,
-          valor: trans.valor,
-          data: trans.data,
-          hora: trans.hora || null,
-          origem: origem,
-          metodo_pagamento: metodoPagamento,
-          observacoes: observacoes
-        };
-        
-        console.log('💾 Inserindo transação com TODOS os campos:', dadosInsert);
-        
-        await pool.execute(`
-          INSERT INTO financial_transactions 
-          (descricao, categoria, tipo, valor, status, data, hora, origem, forma_pagamento, observacoes, created_at, updated_at)
-          VALUES (?, ?, ?, ?, 'Pago', ?, ?, ?, ?, ?, NOW(), NOW())
-        `, [
-          dadosInsert.descricao,
-          dadosInsert.categoria,
-          dadosInsert.tipo,
-          dadosInsert.valor,
-          dadosInsert.data,
-          dadosInsert.hora,
-          dadosInsert.origem,
-          dadosInsert.metodo_pagamento,
-          dadosInsert.observacoes
-        ]);
-        
-        console.log('✅ Transação inserida com sucesso - Campos salvos:', {
-          metodo_pagamento: dadosInsert.metodo_pagamento,
-          origem: dadosInsert.origem,
-          hora: dadosInsert.hora
-        });
+        if (!useMinimalSchema) {
+          const valorBruto = trans.valor_bruto != null && trans.valor_bruto !== '' ? Number(trans.valor_bruto) : null;
+          try {
+            await pool.execute(`
+              INSERT INTO financial_transactions 
+              (descricao, categoria, tipo, valor, valor_bruto, status, data, hora, origem, metodo_pagamento, observacoes, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, 'Pago', ?, ?, ?, ?, ?, NOW(), NOW())
+            `, [
+              descricaoNorm,
+              (trans.categoria || 'Outros').substring(0, 100),
+              tipo,
+              valor,
+              valorBruto,
+              data,
+              trans.hora || null,
+              origem,
+              metodoPagamento,
+              observacoes
+            ]);
+            imported++;
+            continue;
+          } catch (schemaErr) {
+            if ((schemaErr.message || '').toLowerCase().includes('unknown column')) {
+              useMinimalSchema = true;
+            } else {
+              throw schemaErr;
+            }
+          }
+        }
 
-        imported++;
+        if (useMinimalSchema) {
+          const insertMinimal = (colPagamento) => pool.execute(`
+            INSERT INTO financial_transactions 
+            (descricao, categoria, tipo, valor, status, data, origem, ${colPagamento}, observacoes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 'Pago', ?, ?, ?, ?, NOW(), NOW())
+          `, [
+            descricaoNorm,
+            (trans.categoria || 'Outros').substring(0, 100),
+            tipo,
+            valor,
+            data,
+            origem,
+            metodoPagamento,
+            observacoes
+          ]);
+          try {
+            await insertMinimal(useFormaPagamentoColumn ? 'forma_pagamento' : 'metodo_pagamento');
+          } catch (colErr) {
+            if (!useFormaPagamentoColumn && (colErr.message || '').toLowerCase().includes('unknown column') && (colErr.message || '').includes('metodo_pagamento')) {
+              useFormaPagamentoColumn = true;
+              await insertMinimal('forma_pagamento');
+            } else {
+              throw colErr;
+            }
+          }
+          imported++;
+        }
       } catch (error) {
         console.error('Erro ao importar transação:', error);
-        errors.push(`Erro ao importar: ${trans.descricao} - ${error.message}`);
+        errors.push(`Erro ao importar: ${(trans.descricao || 'linha').substring(0, 40)} - ${error.message}`);
       }
     }
 
@@ -15312,26 +15479,31 @@ app.post('/api/financial/bank-statements/import', bankStatementUpload.single('fi
       fs.unlinkSync(req.file.path);
     }
 
-    logger.info('Extrato bancário importado', { imported, total: transactions.length, errors: errors.length });
+    logger.info('Extrato bancário importado', { imported, skippedDuplicates, total: transactions.length, errors: errors.length });
+
+    const msgParts = [];
+    if (imported > 0) msgParts.push(`${imported} importada(s)`);
+    if (skippedDuplicates > 0) msgParts.push(`${skippedDuplicates} já existiam (não duplicadas)`);
+    if (errors.length > 0) msgParts.push(`${errors.length} falha(s)`);
+    const message = msgParts.length ? msgParts.join(', ') + '.' : 'Nenhuma transação nova para importar.';
 
     res.json({
       success: true,
       imported,
+      skippedDuplicates,
       total: transactions.length,
-      errors: errors.length > 0 ? errors.slice(0, 10) : [], // Limitar erros retornados
-      message: `${imported} transações importadas com sucesso${errors.length > 0 ? ` (${errors.length} erros)` : ''}`
+      errors: errors.length > 0 ? errors.slice(0, 15) : [],
+      message
     });
   } catch (error) {
     logger.logError(error, req);
-    res.status(500).json({ 
-      error: 'Erro ao importar extrato bancário', 
-      details: error.message 
-    });
+    console.error('Import extrato erro:', error.message);
+    res.status(500).json({ error: 'Erro ao importar extrato bancário' });
   }
 });
 
 // Importar extrato bancário PDF (formato InfinitePay mensal)
-app.post('/api/financial/bank-statements/import-pdf', bankStatementUpload.single('file'), async (req, res) => {
+app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankStatementUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Arquivo PDF é obrigatório' });
@@ -15640,17 +15812,8 @@ app.post('/api/financial/bank-statements/import-pdf', bankStatementUpload.single
     // Inserir transações no banco
     for (const trans of transactions) {
       try {
-        // Verificar se já existe transação similar (evitar duplicatas)
-        const [existing] = await pool.execute(`
-          SELECT id FROM financial_transactions 
-          WHERE data = ? AND descricao LIKE ? AND ABS(valor - ?) < 0.01
-          LIMIT 1
-        `, [trans.data, `%${trans.descricao.substring(0, 50)}%`, trans.valor]);
-
-        if (existing.length > 0) {
-          errors.push(`Transação duplicada ignorada: ${trans.descricao}`);
-          continue;
-        }
+        // Não tratar como duplicata: vendas com mesmo valor/data/descrição são transações distintas.
+        // Todas as linhas do PDF são importadas de forma fiel.
 
         // Determinar tipo e status
         const tipo = trans.tipo === 'credito' ? 'entrada' : 'saida';
@@ -18461,135 +18624,126 @@ app.get('/api/test-all-tables', async (req, res) => {
 
 // ========== ENDPOINTS DE CATEGORIAS FINANCEIRAS ==========
 
+// Criar tabela categorias_financeiras se não existir (idempotente)
+async function ensureCategoriasFinanceirasTable() {
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS categorias_financeiras (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL UNIQUE,
+      descricao TEXT,
+      cor VARCHAR(50) DEFAULT '#3B82F6',
+      icone VARCHAR(50) DEFAULT '📁',
+      tipo VARCHAR(20) DEFAULT 'ambos',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_nome (nome)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
 // GET - Buscar todas as categorias financeiras
-app.get('/api/financial/categorias', async (req, res) => {
+app.get('/api/financial/categorias', authenticateAdmin, async (req, res) => {
   try {
+    await ensureCategoriasFinanceirasTable();
     console.log('✅ Buscando categorias financeiras...');
     
-    // Criar um novo pool temporário para resolver problema de cache
-    // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
-    const tempPool = mysql.createPool({
-      host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
-      user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
-      password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
-      database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
-      port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
-    
-    const [rows] = await tempPool.execute('SELECT * FROM categorias_financeiras ORDER BY nome');
-    await tempPool.end();
+    const [rows] = await pool.execute('SELECT * FROM categorias_financeiras ORDER BY nome');
     
     console.log(`✅ ${rows.length} categorias financeiras encontradas`);
     res.json({ success: true, categorias: rows, total: rows.length });
   } catch (error) {
     console.error('❌ Erro ao buscar categorias financeiras:', error);
-    res.status(500).json({ error: 'Erro ao buscar categorias financeiras', details: error.message });
+    res.status(500).json({ error: 'Erro ao buscar categorias financeiras', ...(process.env.NODE_ENV !== 'production' && { details: error.message }) });
   }
 });
 
 // POST - Criar nova categoria financeira
-app.post('/api/financial/categorias', async (req, res) => {
-  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
-  const tempPool = mysql.createPool({
-    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
-    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
-    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-  
+app.post('/api/financial/categorias', authenticateAdmin, async (req, res) => {
   try {
+    await ensureCategoriasFinanceirasTable();
     const { nome, descricao, cor, icone, tipo } = req.body;
+    
+    if (!nome || !nome.trim()) {
+      return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
+    }
     
     console.log('✅ Criando nova categoria financeira:', nome);
     
-    const [result] = await tempPool.execute(`
+    const [result] = await pool.execute(`
       INSERT INTO categorias_financeiras (nome, descricao, cor, icone, tipo)
       VALUES (?, ?, ?, ?, ?)
-    `, [nome, descricao || null, cor || '#3B82F6', icone || '📁', tipo || 'ambos']);
-    
-    await tempPool.end();
+    `, [nome.trim(), descricao || null, cor || '#3B82F6', icone || '📁', tipo || 'ambos']);
     
     console.log(`✅ Categoria financeira criada com ID: ${result.insertId}`);
     res.json({ success: true, id: result.insertId, message: 'Categoria financeira criada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao criar categoria financeira:', error);
-    await tempPool.end();
-    res.status(500).json({ error: 'Erro ao criar categoria financeira', details: error.message });
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Já existe uma categoria com este nome' });
+    }
+    res.status(500).json({ error: 'Erro ao criar categoria financeira', ...(process.env.NODE_ENV !== 'production' && { details: error.message }) });
   }
 });
 
 // PUT - Atualizar categoria financeira
-app.put('/api/financial/categorias/:id', async (req, res) => {
-  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
-  const tempPool = mysql.createPool({
-    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
-    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
-    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-  
+app.put('/api/financial/categorias/:id', authenticateAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    await ensureCategoriasFinanceirasTable();
+    const id = req.params.id;
     const { nome, descricao, cor, icone, tipo } = req.body;
-    
-    console.log(`✅ Atualizando categoria financeira ID: ${id}`);
-    
-    await tempPool.execute(`
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    if (!nome || !nome.trim()) {
+      return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
+    }
+    const [result] = await pool.execute(`
       UPDATE categorias_financeiras 
       SET nome = ?, descricao = ?, cor = ?, icone = ?, tipo = ?
       WHERE id = ?
-    `, [nome, descricao || null, cor || '#3B82F6', icone || '📁', tipo || 'ambos', id]);
-    
-    await tempPool.end();
-    
-    console.log(`✅ Categoria financeira ${id} atualizada`);
+    `, [nome.trim(), descricao || null, cor || '#3B82F6', icone || '📁', tipo || 'ambos', id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Categoria financeira não encontrada' });
+    }
     res.json({ success: true, message: 'Categoria financeira atualizada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar categoria financeira:', error);
-    await tempPool.end();
-    res.status(500).json({ error: 'Erro ao atualizar categoria financeira', details: error.message });
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Já existe uma categoria com este nome' });
+    }
+    res.status(500).json({ error: 'Erro ao atualizar categoria financeira', ...(process.env.NODE_ENV !== 'production' && { details: error.message }) });
   }
 });
 
-// DELETE - Excluir categoria financeira
-app.delete('/api/financial/categorias/:id', async (req, res) => {
-  // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
-  const tempPool = mysql.createPool({
-    host: process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1',
-    user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion',
-    port: parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306'),
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-  
+// DELETE - Excluir categoria financeira (bloqueia se houver transações usando a categoria)
+app.delete('/api/financial/categorias/:id', authenticateAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    console.log(`✅ Excluindo categoria financeira ID: ${id}`);
-    
-    await tempPool.execute('DELETE FROM categorias_financeiras WHERE id = ?', [id]);
-    await tempPool.end();
-    
-    console.log(`✅ Categoria financeira ${id} excluída`);
+    await ensureCategoriasFinanceirasTable();
+    const id = req.params.id;
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    const [cat] = await pool.execute('SELECT nome FROM categorias_financeiras WHERE id = ?', [id]);
+    if (!cat || cat.length === 0) {
+      return res.status(404).json({ error: 'Categoria financeira não encontrada' });
+    }
+    const nomeCategoria = cat[0].nome;
+    const [count] = await pool.execute(
+      'SELECT COUNT(*) as total FROM financial_transactions WHERE categoria = ?',
+      [nomeCategoria]
+    );
+    const emUso = (count[0] && count[0].total) ? Number(count[0].total) : 0;
+    if (emUso > 0) {
+      return res.status(409).json({
+        error: 'Não é possível excluir esta categoria',
+        message: `Existem ${emUso} transação(ões) usando esta categoria. Altere ou remova-as antes de excluir.`
+      });
+    }
+    await pool.execute('DELETE FROM categorias_financeiras WHERE id = ?', [id]);
     res.json({ success: true, message: 'Categoria financeira excluída com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao excluir categoria financeira:', error);
-    await tempPool.end();
-    res.status(500).json({ error: 'Erro ao excluir categoria financeira', details: error.message });
+    res.status(500).json({ error: 'Erro ao excluir categoria financeira', ...(process.env.NODE_ENV !== 'production' && { details: error.message }) });
   }
 });
 
@@ -19738,6 +19892,247 @@ app.delete('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => 
 
 // ==================== END LEGAL PAGES ENDPOINTS ====================
 
+// ==================== DATABASE BACKUP & RESTORE ENDPOINTS ====================
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+
+// Diretório para armazenar backups
+const BACKUP_DIR = path.join(__dirname, '../backups');
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
+
+// GET /api/admin/database/backups - Listar todos os backups
+app.get('/api/admin/database/backups', authenticateAdmin, async (req, res) => {
+  try {
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(file => file.endsWith('.sql'))
+      .map(file => {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = fs.statSync(filePath);
+        return {
+          filename: file,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime,
+          sizeFormatted: formatBytes(stats.size)
+        };
+      })
+      .sort((a, b) => b.created - a.created);
+
+    res.json({ backups: files });
+  } catch (error) {
+    console.error('❌ Erro ao listar backups:', error);
+    res.status(500).json({ error: 'Erro ao listar backups', message: error.message });
+  }
+});
+
+// POST /api/admin/database/backup - Criar backup do banco de dados
+app.post('/api/admin/database/backup', authenticateAdmin, async (req, res) => {
+  try {
+    const { description } = req.body || {};
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const dbName = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion';
+    const dbUser = process.env.MYSQL_USER || process.env.DB_USER || 'root';
+    const dbPassword = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '';
+    const dbHost = process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1';
+    const dbPort = process.env.MYSQL_PORT || process.env.DB_PORT || '3306';
+    
+    const backupFilename = `backup_${dbName}_${timestamp}${description ? '_' + description.replace(/[^a-zA-Z0-9]/g, '_') : ''}.sql`;
+    const backupPath = path.join(BACKUP_DIR, backupFilename);
+
+    // Comando mysqldump - usando variável de ambiente para senha (mais seguro)
+    // Montar o comando sem a senha no comando diretamente para evitar problemas
+    const dumpCommand = dbPassword 
+      ? `MYSQL_PWD="${dbPassword}" mysqldump -h ${dbHost} -P ${dbPort} -u ${dbUser} --single-transaction --quick --lock-tables=false ${dbName} > "${backupPath}" 2>&1`
+      : `mysqldump -h ${dbHost} -P ${dbPort} -u ${dbUser} --single-transaction --quick --lock-tables=false ${dbName} > "${backupPath}" 2>&1`;
+
+    console.log(`💾 Iniciando backup: ${backupFilename}`);
+    console.log(`📊 Banco: ${dbName}, Host: ${dbHost}, Porta: ${dbPort}, User: ${dbUser}`);
+    
+    const { stdout, stderr } = await execAsync(dumpCommand, {
+      maxBuffer: 1024 * 1024 * 50, // 50MB buffer para bancos maiores
+      shell: '/bin/bash',
+      env: { ...process.env, MYSQL_PWD: dbPassword || '' }
+    });
+
+    // Verificar erros no stderr
+    if (stderr) {
+      // mysqldump envia warnings para stderr, mas alguns são normais
+      if (stderr.includes('mysqldump: [Warning]')) {
+        console.warn('⚠️ Aviso no backup (não crítico):', stderr);
+      } else if (stderr.includes('Access denied') || stderr.includes('ERROR')) {
+        throw new Error(`Erro de acesso ao banco: ${stderr}`);
+      } else {
+        console.warn('⚠️ Aviso no backup:', stderr);
+      }
+    }
+
+    // Aguardar um pouco para garantir que o arquivo foi escrito
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Verificar se o arquivo foi criado e não está vazio
+    if (!fs.existsSync(backupPath)) {
+      const errorMsg = `Arquivo de backup não foi criado. Comando: ${dumpCommand.replace(dbPassword || '', '***')}`;
+      console.error('❌', errorMsg);
+      if (stdout) console.error('Stdout:', stdout);
+      if (stderr) console.error('Stderr:', stderr);
+      throw new Error(errorMsg);
+    }
+
+    const stats = fs.statSync(backupPath);
+    if (stats.size === 0) {
+      // Tentar ler o conteúdo para ver se há mensagem de erro
+      const content = fs.readFileSync(backupPath, 'utf8');
+      if (content.includes('ERROR') || content.includes('Access denied')) {
+        throw new Error(`Erro no backup: ${content}`);
+      }
+    }
+
+    console.log(`✅ Backup criado: ${backupFilename} (${formatBytes(stats.size)})`);
+
+    res.json({
+      success: true,
+      backup: {
+        filename: backupFilename,
+        size: stats.size,
+        sizeFormatted: formatBytes(stats.size),
+        created: stats.birthtime,
+        path: backupPath
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao criar backup:', error);
+    res.status(500).json({ 
+      error: 'Erro ao criar backup', 
+      message: error.message,
+      details: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
+  }
+});
+
+// POST /api/admin/database/restore - Restaurar backup do banco de dados
+app.post('/api/admin/database/restore', authenticateAdmin, async (req, res) => {
+  try {
+    const { filename } = req.body;
+    
+    if (!filename || !filename.endsWith('.sql')) {
+      return res.status(400).json({ error: 'Nome de arquivo inválido' });
+    }
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+    
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ error: 'Arquivo de backup não encontrado' });
+    }
+
+    const dbName = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion';
+    const dbUser = process.env.MYSQL_USER || process.env.DB_USER || 'root';
+    const dbPassword = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '';
+    const dbHost = process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1';
+    const dbPort = process.env.MYSQL_PORT || process.env.DB_PORT || '3306';
+
+    // Comando mysql para restaurar
+    const passwordArg = dbPassword ? `-p${dbPassword}` : '';
+    const restoreCommand = `mysql -h ${dbHost} -P ${dbPort} -u ${dbUser} ${passwordArg} ${dbName} < "${backupPath}" 2>&1`;
+
+    console.log(`🔄 Iniciando restauração: ${filename}`);
+    
+    const { stdout, stderr } = await execAsync(restoreCommand, {
+      maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+      shell: '/bin/bash'
+    });
+
+    if (stderr && !stderr.includes('[Warning]')) {
+      console.warn('⚠️ Aviso na restauração:', stderr);
+    }
+
+    console.log(`✅ Restauração concluída: ${filename}`);
+
+    // Limpar cache Redis após restauração
+    if (redisCache.isAvailable()) {
+      try {
+        await redisCache.flushAll();
+        console.log('🧹 Cache Redis limpo após restauração');
+      } catch (cacheError) {
+        console.warn('⚠️ Erro ao limpar cache Redis:', cacheError);
+      }
+    }
+
+    res.json({ success: true, message: 'Backup restaurado com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao restaurar backup:', error);
+    res.status(500).json({ 
+      error: 'Erro ao restaurar backup', 
+      message: error.message,
+      details: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
+  }
+});
+
+// DELETE /api/admin/database/backup/:filename - Deletar backup
+app.delete('/api/admin/database/backup/:filename', authenticateAdmin, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    if (!filename || !filename.endsWith('.sql')) {
+      return res.status(400).json({ error: 'Nome de arquivo inválido' });
+    }
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+    
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ error: 'Arquivo de backup não encontrado' });
+    }
+
+    fs.unlinkSync(backupPath);
+    console.log(`🗑️ Backup deletado: ${filename}`);
+
+    res.json({ success: true, message: 'Backup deletado com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao deletar backup:', error);
+    res.status(500).json({ error: 'Erro ao deletar backup', message: error.message });
+  }
+});
+
+// GET /api/admin/database/backup/download/:filename - Download backup
+app.get('/api/admin/database/backup/download/:filename', authenticateAdmin, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    if (!filename || !filename.endsWith('.sql')) {
+      return res.status(400).json({ error: 'Nome de arquivo inválido' });
+    }
+
+    const backupPath = path.join(BACKUP_DIR, filename);
+    
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ error: 'Arquivo de backup não encontrado' });
+    }
+
+    res.setHeader('Content-Type', 'application/sql');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    
+    const fileStream = fs.createReadStream(backupPath);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error('❌ Erro ao baixar backup:', error);
+    res.status(500).json({ error: 'Erro ao baixar backup', message: error.message });
+  }
+});
+
+// Função auxiliar para formatar bytes
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// ==================== END DATABASE BACKUP & RESTORE ENDPOINTS ====================
+
 // Scheduler para executar automações diariamente às 9h
 const runDailyAutomations = async () => {
   const now = new Date();
@@ -19859,6 +20254,123 @@ app.post('/api/analytics/web-vitals', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao processar métricas' });
+  }
+});
+
+// ==========================================
+// 🏷️ ENDPOINTS DE BADGES DE PRODUTOS
+// ==========================================
+
+// GET /api/badges - Listar todos os badges disponíveis
+app.get('/api/badges', async (req, res) => {
+  try {
+    console.log('🏷️ Buscando badges...');
+    
+    const [rows] = await pool.execute(
+      'SELECT * FROM product_badges WHERE ativo = 1 ORDER BY ordem ASC'
+    );
+    
+    console.log(`✅ ${rows.length} badges encontrados`);
+    res.json(rows);
+  } catch (error) {
+    console.error('❌ Erro ao buscar badges:', error);
+    res.status(500).json({ error: 'Erro ao buscar badges' });
+  }
+});
+
+// GET /api/produtos/:id/badges - Listar badges de um produto específico
+app.get('/api/produtos/:id/badges', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🏷️ Buscando badges do produto ${id}...`);
+    
+    const [rows] = await pool.execute(
+      `SELECT pb.* 
+       FROM product_badges pb
+       INNER JOIN produto_badge ppb ON pb.id = ppb.badge_id
+       WHERE ppb.produto_id = ? AND pb.ativo = 1
+       ORDER BY pb.ordem ASC`,
+      [id]
+    );
+    
+    console.log(`✅ ${rows.length} badges encontrados para o produto ${id}`);
+    res.json(rows);
+  } catch (error) {
+    console.error(`❌ Erro ao buscar badges do produto:`, error);
+    res.status(500).json({ error: 'Erro ao buscar badges do produto' });
+  }
+});
+
+// POST /api/produtos/:id/badges - Adicionar badge a um produto
+app.post('/api/produtos/:id/badges', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { badge_id } = req.body;
+    
+    if (!badge_id) {
+      return res.status(400).json({ error: 'badge_id é obrigatório' });
+    }
+    
+    console.log(`🏷️ Adicionando badge ${badge_id} ao produto ${id}...`);
+    
+    await pool.execute(
+      'INSERT IGNORE INTO produto_badge (produto_id, badge_id) VALUES (?, ?)',
+      [id, badge_id]
+    );
+    
+    console.log(`✅ Badge adicionado ao produto ${id}`);
+    res.json({ success: true, message: 'Badge adicionado' });
+  } catch (error) {
+    console.error(`❌ Erro ao adicionar badge ao produto:`, error);
+    res.status(500).json({ error: 'Erro ao adicionar badge' });
+  }
+});
+
+// DELETE /api/produtos/:id/badges/:badge_id - Remover badge de um produto
+app.delete('/api/produtos/:id/badges/:badge_id', async (req, res) => {
+  try {
+    const { id, badge_id } = req.params;
+    
+    console.log(`🏷️ Removendo badge ${badge_id} do produto ${id}...`);
+    
+    await pool.execute(
+      'DELETE FROM produto_badge WHERE produto_id = ? AND badge_id = ?',
+      [id, badge_id]
+    );
+    
+    console.log(`✅ Badge removido do produto ${id}`);
+    res.json({ success: true, message: 'Badge removido' });
+  } catch (error) {
+    console.error(`❌ Erro ao remover badge do produto:`, error);
+    res.status(500).json({ error: 'Erro ao remover badge' });
+  }
+});
+
+// PUT /api/produtos/:id/condicao - Atualizar condição do produto
+app.put('/api/produtos/:id/condicao', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { condicao } = req.body;
+    
+    const condicoesValidas = ['novo', 'seminovo', 'colecionavel', 'usado'];
+    if (!condicao || !condicoesValidas.includes(condicao)) {
+      return res.status(400).json({ 
+        error: 'Condição inválida. Use: novo, seminovo, colecionavel ou usado' 
+      });
+    }
+    
+    console.log(`🏷️ Atualizando condição do produto ${id} para: ${condicao}...`);
+    
+    await pool.execute(
+      'UPDATE produtos SET condicao = ? WHERE id = ?',
+      [condicao, id]
+    );
+    
+    console.log(`✅ Condição do produto ${id} atualizada`);
+    res.json({ success: true, message: 'Condição atualizada', condicao });
+  } catch (error) {
+    console.error(`❌ Erro ao atualizar condição do produto:`, error);
+    res.status(500).json({ error: 'Erro ao atualizar condição' });
   }
 });
 

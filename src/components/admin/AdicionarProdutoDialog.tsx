@@ -55,6 +55,8 @@ interface AdicionarProdutoDialogProps {
 const AdicionarProdutoDialog = ({ open, onOpenChange }: AdicionarProdutoDialogProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('basico');
+  const [selectedCondicao, setSelectedCondicao] = useState<string>('novo');
+  const [selectedBadges, setSelectedBadges] = useState<number[]>([]);
 
   // Inicializar o formulário com react-hook-form e zod
   const form = useForm<z.infer<typeof produtoSchema>>({
@@ -232,6 +234,15 @@ const AdicionarProdutoDialog = ({ open, onOpenChange }: AdicionarProdutoDialogPr
               {/* Tab Detalhes */}
               <TabsContent value="detalhes" className="space-y-3 mt-4">
                 <div className="grid grid-cols-1 gap-3">
+                  
+                  {/* Condição e Badges */}
+                  <BadgeSelector
+                    selectedCondicao={selectedCondicao}
+                    selectedBadges={selectedBadges}
+                    onCondicaoChange={setSelectedCondicao}
+                    onBadgesChange={setSelectedBadges}
+                  />
+                  
                   <FormField
                     control={form.control}
                     name="idadeRecomendada"

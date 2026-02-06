@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ReportBuilder from '@/components/admin/ReportBuilder';
@@ -49,8 +48,7 @@ const Relatorios = () => {
   };
 
   return (
-    <AdminLayout>
-      <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Relatórios</h1>
           <p className="text-gray-600 mt-1">
@@ -109,7 +107,6 @@ const Relatorios = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </AdminLayout>
   );
 };
 

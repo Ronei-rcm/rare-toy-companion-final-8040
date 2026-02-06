@@ -1,0 +1,284 @@
+// Componente ProductForm melhorado - para substituir no ProductsManager.tsx
+
+/*
+MELHORIAS IMPLEMENTADAS:
+1. ✅ Seções organizadas com títulos e ícones
+2. ✅ Background diferenciado para cada seção
+3. ✅ Grid responsivo (1 col mobile, 2-3 cols desktop)
+4. ✅ Espaçamento consistente
+5. ✅ Labels claras e placeholders úteis
+6. ✅ Botões com ícones e estados
+7. ✅ Modal maior (max-w-4xl) com scroll suave
+8. ✅ Agrupamento lógico dos campos
+
+ESTRUTURA:
+- Seção 1: Informações Básicas (nome, categoria, descrição)
+- Seção 2: Preço e Estoque (preço, estoque, status)
+- Seção 3: Condição e Badges (novo sistema de badges)
+- Seção 4: Imagens (imagem principal + galeria)
+- Seção 5: Detalhes Adicionais (marca, peso, dimensões, etc)
+- Seção 6: Opções Especiais (destaque, promoção, lançamento)
+
+SUBSTITUIR EM ProductsManager.tsx:
+- Linha 272: const ProductForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+- Até linha 462: );
+
+- Linha 614: className="max-w-2xl"
+- Substituir por: className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+
+- Adicionar ao DialogHeader:
+  className="flex-shrink-0"
+
+- Envolver ProductForm em:
+  <div className="flex-1 overflow-y-auto px-1">
+    <ProductForm isEdit />
+  </div>
+*/
+
+const ProductForm = ({ isEdit = false }: { isEdit?: boolean }) => (
+  <div className="space-y-4 py-2">
+    {/* Seção 1: Informações Básicas */}
+    <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+        <Package className="w-4 h-4" />
+        Informações Básicas
+      </h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="nome">Nome do Produto *</Label>
+          <Input
+            id="nome"
+            value={formData.nome}
+            onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
+            placeholder="Ex: Boneca Barbie Dreamhouse"
+            className={formErrors.nome ? 'border-red-500' : undefined}
+          />
+          {formErrors.nome && <p className="text-xs text-red-600">{formErrors.nome}</p>}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="categoria">Categoria *</Label>
+          <Select value={formData.categoria} onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              {categorias.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {formErrors.categoria && <p className="text-xs text-red-600">{formErrors.categoria}</p>}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="descricao">Descrição</Label>
+        <Textarea
+          id="descricao"
+          value={formData.descricao}
+          onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
+          placeholder="Descreva o produto de forma atrativa..."
+          rows={3}
+          className="resize-none"
+        />
+      </div>
+    </div>
+
+    {/* Seção 2: Preço e Estoque */}
+    <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        💰 Preço e Estoque
+      </h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="preco">Preço (R$) *</Label>
+          <Input
+            id="preco"
+            type="number"
+            step="0.01"
+            value={formData.preco}
+            onChange={(e) => setFormData(prev => ({ ...prev, preco: parseFloat(e.target.value) || 0 }))}
+            placeholder="0.00"
+            className={formErrors.preco ? 'border-red-500' : undefined}
+          />
+          {formErrors.preco && <p className="text-xs text-red-600">{formErrors.preco}</p>}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="estoque">Estoque (unidades)</Label>
+          <Input
+            id="estoque"
+            type="number"
+            value={formData.estoque}
+            onChange={(e) => setFormData(prev => ({ ...prev, estoque: parseInt(e.target.value) || 0 }))}
+            placeholder="0"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+              <SelectItem value="esgotado">Esgotado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+
+    {/* Seção 3: Condição e Badges */}
+    <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        🏷️ Condição e Badges
+      </h3>
+      
+      <BadgeSelector
+        selectedCondicao={selectedCondicao}
+        selectedBadges={selectedBadges}
+        onCondicaoChange={setSelectedCondicao}
+        onBadgesChange={setSelectedBadges}
+      />
+    </div>
+
+    {/* Seção 4: Imagens */}
+    <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        📸 Imagens do Produto
+      </h3>
+      
+      <EnhancedImageUpload
+        label="Imagem Principal"
+        value={formData.imagemUrl}
+        onChange={(url) => setFormData(prev => ({ ...prev, imagemUrl: url }))}
+        placeholder="Cole uma URL ou faça upload de uma imagem"
+        showPreview={true}
+        maxSize={10}
+      />
+      {formErrors.imagemUrl && <p className="text-xs text-red-600">{formErrors.imagemUrl}</p>}
+
+      <div className="space-y-2">
+        <Label>Galeria de imagens (capa + extras)</Label>
+        <p className="text-xs text-muted-foreground">A primeira imagem será a capa do produto</p>
+        <ImageGalleryUpload
+          images={galleryImages}
+          onChange={(imgs) => {
+            setGalleryImages(imgs);
+            const sanitized = imgs.filter(i => i.url && !i.url.startsWith('blob:'));
+            const main = sanitized.find(img => img.isMain)?.url || sanitized[0]?.url || formData.imagemUrl;
+            setFormData(prev => ({ ...prev, imagemUrl: main || prev.imagemUrl, imagens: sanitized.map(i => i.url) }));
+          }}
+          maxImages={8}
+          maxSizePerImage={8}
+          allowMainImage
+          allowReorder
+        />
+      </div>
+    </div>
+
+    {/* Seção 5: Detalhes Adicionais */}
+    <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        ℹ️ Detalhes Adicionais
+      </h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="marca">Marca</Label>
+          <Input
+            id="marca"
+            value={formData.marca}
+            onChange={(e) => setFormData(prev => ({ ...prev, marca: e.target.value }))}
+            placeholder="Ex: Mattel"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="material">Material</Label>
+          <Input
+            id="material"
+            value={formData.material}
+            onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
+            placeholder="Ex: Plástico"
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* Seção 6: Opções Especiais */}
+    <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        ⭐ Opções Especiais
+      </h3>
+      
+      <div className="flex flex-wrap gap-4">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="destaque"
+            checked={formData.destaque}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, destaque: checked }))}
+          />
+          <Label htmlFor="destaque" className="cursor-pointer">Produto em Destaque</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="promocao"
+            checked={formData.promocao}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, promocao: checked }))}
+          />
+          <Label htmlFor="promocao" className="cursor-pointer">Em Promoção</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="lancamento"
+            checked={formData.lancamento}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, lancamento: checked }))}
+          />
+          <Label htmlFor="lancamento" className="cursor-pointer">Lançamento</Label>
+        </div>
+      </div>
+    </div>
+
+    {/* Botões de Ação */}
+    <div className="flex justify-end space-x-2 pt-4 border-t">
+      <Button
+        variant="outline"
+        onClick={() => {
+          if (isEdit) {
+            setIsEditDialogOpen(false);
+            setEditingProduct(null);
+          } else {
+            setIsCreateDialogOpen(false);
+          }
+          resetForm();
+        }}
+        disabled={submitting}
+      >
+        Cancelar
+      </Button>
+      <Button
+        onClick={isEdit ? handleUpdateProduct : handleCreateProduct}
+        disabled={submitting || !formData.nome || !formData.categoria || !!Object.keys(formErrors).length}
+      >
+        {submitting ? (
+          <>
+            <Package className="h-4 w-4 mr-2 animate-spin" />
+            {isEdit ? 'Atualizando...' : 'Criando...'}
+          </>
+        ) : (
+          <>
+            {isEdit ? <Edit className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+            {isEdit ? 'Atualizar' : 'Criar'} Produto
+          </>
+        )}
+      </Button>
+    </div>
+  </div>
+);

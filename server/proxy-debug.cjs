@@ -1,79 +1,85 @@
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const http = require('http');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 8040;
+const API_TARGET = 'http://localhost:3001';
 
-console.log('🚀 Starting debug proxy server...');
+console.log('🚀 Starting MANUAL proxy server (v2)...');
 
-// Middleware de debug para TODAS as requisições
-app.use((req, res, next) => {
-  console.log(`🔍 ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers)}`);
-  next();
+// Proxy manual para /api (COM SUPORTE A POST/PUT)
+app.use('/api', (req, res) => {
+  console.log(`🔄 Manual proxy: ${req.method} ${req.url}`);
+  
+  const options = {
+    hostname: 'localhost',
+    port: 3001,
+    path: `/api${req.url}`,
+    method: req.method,
+    headers: req.headers
+  };
+  
+  const proxyReq = http.request(options, (proxyRes) => {
+    console.log(`✅ Response: ${proxyRes.statusCode} for ${req.url}`);
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+  
+  proxyReq.on('error', (err) => {
+    console.error(`❌ Proxy error:`, err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Proxy error' });
+    }
+  });
+  
+  // IMPORTANTE: Usar pipe para passar o corpo da requisição
+  req.pipe(proxyReq);
 });
 
-// Proxy para API - DEVE vir PRIMEIRO
-app.use('/api', (req, res, next) => {
-  console.log(`🔄 Intercepting API request: ${req.method} ${req.url}`);
-  next();
-}, createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true,
-  secure: false,
-  logLevel: 'debug',
-  onError: (err, req, res) => {
-    console.error('❌ Proxy error:', err.message);
-    res.status(500).json({ error: 'Proxy error', message: err.message });
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    console.log(`🔄 Proxying ${req.method} ${req.url} to http://localhost:3001${req.url}`);
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    console.log(`✅ Response ${proxyRes.statusCode} for ${req.url}`);
-  }
-}));
-
 // Proxy para uploads
-app.use('/lovable-uploads', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true,
-  secure: false
-}));
+app.use('/lovable-uploads', (req, res) => {
+  const options = {
+    hostname: 'localhost',
+    port: 3001,
+    path: `/lovable-uploads${req.url}`,
+    method: req.method,
+    headers: req.headers
+  };
+  
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+  
+  proxyReq.on('error', (err) => {
+    if (!res.headersSent) {
+      res.status(502).send('Upload proxy error');
+    }
+  });
+  
+  req.pipe(proxyReq);
+});
 
-// Servir arquivos estáticos do build
-// IMPORTANTE: express.static deve vir ANTES do fallback para servir arquivos como favicon.ico
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, '../dist'), {
-  // Configurar headers para arquivos estáticos
   setHeaders: (res, filePath) => {
-    // Headers de cache para arquivos estáticos
-    if (filePath.endsWith('.ico') || filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.svg')) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 ano
-    } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 dia
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
     }
   },
-  // Não servir index.html para arquivos estáticos
   index: false
 }));
 
-// Fallback para SPA - APENAS para rotas que não são arquivos estáticos
-app.use((req, res, next) => {
-  // Se a requisição tem extensão de arquivo, não é uma rota SPA
-  const hasExtension = /\.\w+$/.test(req.path);
-  if (hasExtension) {
-    // Arquivo não encontrado
-    console.log(`❌ Arquivo não encontrado: ${req.url}`);
-    return res.status(404).send('Arquivo não encontrado');
-  }
-  
-  // É uma rota SPA, servir index.html
-  console.log(`📄 Fallback: serving index.html for ${req.url}`);
+// Fallback SPA
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Debug proxy server running on port ${PORT}`);
-  console.log(`📁 Serving static files from: ${path.join(__dirname, '../dist')}`);
-  console.log(`🔄 Proxying /api requests to: http://localhost:3001`);
+  console.log(`✅ Manual proxy server (v2) on :${PORT}`);
+  console.log(`   🔄 /api/* -> ${API_TARGET}`);
+  console.log(`   ✨ Suporte completo a POST/PUT/DELETE`);
 });

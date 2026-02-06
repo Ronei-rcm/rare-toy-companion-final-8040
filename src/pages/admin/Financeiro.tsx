@@ -43,7 +43,8 @@ import {
   Inbox,
   Wallet,
   Link2,
-  Loader2
+  Loader2,
+  Percent
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -70,6 +71,7 @@ interface Transacao {
   categoria: string;
   tipo: 'entrada' | 'saida';
   valor: number;
+  valor_bruto?: number | null;
   status: 'Pago' | 'Pendente' | 'Atrasado';
   metodo_pagamento: string;
   data: string;
@@ -110,6 +112,7 @@ export default function FinanceiroCompleto() {
   const [filterTipo, setFilterTipo] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategoria, setFilterCategoria] = useState<string>('all');
+  const [filterComTaxa, setFilterComTaxa] = useState<string>('all');
   const [periodo, setPeriodo] = useState<string>('all');
   const [dataInicio, setDataInicio] = useState<string>('');
   const [dataFim, setDataFim] = useState<string>('');
@@ -130,6 +133,7 @@ export default function FinanceiroCompleto() {
     data: ''
   });
   const [batchSaving, setBatchSaving] = useState(false);
+  const [saldoBancoConciliacao, setSaldoBancoConciliacao] = useState<string>('');
 
   const parseDateSafe = useCallback((value: string | null | undefined) => {
     if (!value) return null;
@@ -168,36 +172,15 @@ export default function FinanceiroCompleto() {
   const carregarTransacoes = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Carregando transações...');
-      
       const response = await fetch('/api/financial/transactions');
       if (!response.ok) throw new Error('Erro ao carregar');
       
       const data = await response.json();
       const transacoesCarregadas = data.transactions || [];
-      
-      // Log para debug - verificar campos retornados
-      if (transacoesCarregadas.length > 0) {
-        console.log('📊 Primeira transação (exemplo):', {
-          id: transacoesCarregadas[0].id,
-          data: transacoesCarregadas[0].data,
-          hora: transacoesCarregadas[0].hora,
-          descricao: transacoesCarregadas[0].descricao,
-          metodo_pagamento: transacoesCarregadas[0].metodo_pagamento,
-          origem: transacoesCarregadas[0].origem,
-          categoria: transacoesCarregadas[0].categoria,
-          tipo: transacoesCarregadas[0].tipo,
-          valor: transacoesCarregadas[0].valor
-        });
-      }
-      
       setTransacoes(transacoesCarregadas);
       
-      // Extrair categorias únicas
       const categoriasUnicas = Array.from(new Set(transacoesCarregadas.map((t: Transacao) => t.categoria).filter(Boolean)));
       setCategorias(categoriasUnicas.sort());
-      
-      console.log('✅ Transações carregadas:', transacoesCarregadas.length);
     } catch (error) {
       console.error('❌ Erro:', error);
       toast.error('Erro ao carregar transações');
@@ -232,6 +215,8 @@ export default function FinanceiroCompleto() {
     if (tiposValidos.includes(tipoParam || '')) setFilterTipo(tipoParam as string);
     if (statusValidos.includes(statusParam || '')) setFilterStatus(statusParam as string);
     if (catParam) setFilterCategoria(catParam);
+    const taxasParam = params.get('taxas');
+    if (taxasParam && ['all', 'com_taxa', 'sem_taxa'].includes(taxasParam)) setFilterComTaxa(taxasParam);
     if (periodosValidos.includes(periodoParam || '')) setPeriodo(periodoParam as string);
     if (searchParam) setSearchTerm(searchParam);
     if (dataInicioParam) setDataInicio(dataInicioParam);
@@ -262,6 +247,7 @@ export default function FinanceiroCompleto() {
     setOrDelete('tipo', filterTipo, filterTipo === 'all');
     setOrDelete('status', filterStatus, filterStatus === 'all');
     setOrDelete('categoria', filterCategoria, filterCategoria === 'all');
+    setOrDelete('taxas', filterComTaxa, filterComTaxa === 'all');
     setOrDelete('periodo', periodo, periodo === 'all' || hasCustomDate);
     setOrDelete('dataInicio', dataInicio, dataInicio === '');
     setOrDelete('dataFim', dataFim, dataFim === '');
@@ -278,6 +264,7 @@ export default function FinanceiroCompleto() {
     filterTipo,
     filterStatus,
     filterCategoria,
+    filterComTaxa,
     periodo,
     dataInicio,
     dataFim,
@@ -318,6 +305,11 @@ export default function FinanceiroCompleto() {
     if (filterCategoria !== 'all') {
       filtered = filtered.filter(t => t.categoria === filterCategoria);
     }
+
+    // Filtro por taxa (transações com Taxa (R$) nas observações = extrato importado com taxa)
+    const temTaxa = (t: Transacao) => /Taxa\s*\(R\$\):\s*[\d.,]+/i.test(t.observacoes || '');
+    if (filterComTaxa === 'com_taxa') filtered = filtered.filter(temTaxa);
+    if (filterComTaxa === 'sem_taxa') filtered = filtered.filter(t => !temTaxa(t));
 
     // Filtro por período
     if (!hasCustomDate && periodo !== 'all') {
@@ -491,6 +483,15 @@ export default function FinanceiroCompleto() {
     }
   };
 
+  // Helper: extrair taxa das observações (importação bancária)
+  const extrairTaxaObservacoes = (obs: string): string => {
+    if (!obs) return '-';
+    const m = obs.match(/Taxa\s*\(R\$\):\s*([\d.,]+)/i);
+    if (!m) return '-';
+    const n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+    return isNaN(n) ? '-' : n.toFixed(2).replace('.', ',');
+  };
+
   // Exportar dados
   const exportarDados = (formato: 'csv' | 'json') => {
     const dados = transacoesFiltradas.map(t => ({
@@ -499,7 +500,9 @@ export default function FinanceiroCompleto() {
       Descrição: t.descricao,
       Categoria: t.categoria,
       Tipo: t.tipo === 'entrada' ? 'Entrada' : 'Saída',
-      Valor: Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      'Valor Bruto (R$)': t.valor_bruto != null ? Number(t.valor_bruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-',
+      'Valor Líquido (R$)': Number(t.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+      'Taxa (R$)': extrairTaxaObservacoes(t.observacoes || ''),
       'Método Pagamento': t.metodo_pagamento || 'N/A',
       Origem: t.origem || 'N/A',
       Status: t.status,
@@ -562,7 +565,6 @@ export default function FinanceiroCompleto() {
       }
 
       const result = await response.json();
-      console.log('✅ Transação salva:', result);
 
       // Recarregar transações
       await carregarTransacoes();
@@ -606,8 +608,6 @@ export default function FinanceiroCompleto() {
         observacoes: formData.observacoes
       };
 
-      console.log('💾 Salvando:', dados);
-
       const response = await fetch('/api/financial/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -617,7 +617,6 @@ export default function FinanceiroCompleto() {
       if (!response.ok) throw new Error('Erro ao salvar');
 
       const result = await response.json();
-      console.log('✅ Salvo:', result);
 
       toast.success(`Transação criada! ID: ${result.id}`);
       setShowModal(false);
@@ -645,6 +644,32 @@ export default function FinanceiroCompleto() {
     } catch (error) {
       console.error('❌ Erro:', error);
       toast.error('Erro ao excluir');
+    }
+  };
+
+  // Excluir em lote
+  const excluirEmLote = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('Selecione pelo menos uma transação');
+      return;
+    }
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.length} transação(ões)? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    try {
+      const response = await fetch('/api/financial/transactions/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      if (!response.ok) throw new Error('Erro ao excluir transações');
+      const data = await response.json();
+      toast.success(data.message || `${selectedIds.length} transações excluídas`);
+      setSelectedIds([]);
+      await carregarTransacoes();
+    } catch (error) {
+      console.error('❌ Erro ao excluir em lote:', error);
+      toast.error('Erro ao excluir transações em lote');
     }
   };
 
@@ -685,28 +710,29 @@ export default function FinanceiroCompleto() {
     });
   };
 
-  // Calcular resumo (usando transações filtradas)
+  // Calcular resumo (usando transações filtradas) e total em taxas (importação bancária)
   const resumo = useMemo(() => {
     const entradas = transacoesFiltradas.filter(t => t.tipo === 'entrada').reduce((sum, t) => sum + Number(t.valor), 0);
     const saidas = transacoesFiltradas.filter(t => t.tipo === 'saida').reduce((sum, t) => sum + Number(t.valor), 0);
+    const totalTaxas = transacoesFiltradas.reduce((sum, t) => {
+      const obs = t.observacoes || '';
+      const match = obs.match(/Taxa\s*\(R\$\):\s*([\d.,]+)/i);
+      if (match) {
+        const num = parseFloat(match[1].replace('.', '').replace(',', '.'));
+        return sum + (isNaN(num) ? 0 : num);
+      }
+      return sum;
+    }, 0);
     return {
       totalEntradas: entradas,
       totalSaidas: saidas,
       saldoLiquido: entradas - saidas,
       totalTransacoes: transacoesFiltradas.length,
       pendentes: transacoesFiltradas.filter(t => t.status === 'Pendente').length,
-      atrasados: transacoesFiltradas.filter(t => t.status === 'Atrasado').length
+      atrasados: transacoesFiltradas.filter(t => t.status === 'Atrasado').length,
+      totalTaxas
     };
   }, [transacoesFiltradas]);
-
-  // Debug do resumo
-  console.log('📊 Resumo calculado:', {
-    totalEntradas: resumo.totalEntradas,
-    totalSaidas: resumo.totalSaidas,
-    saldoLiquido: resumo.saldoLiquido,
-    totalTransacoes: resumo.totalTransacoes,
-    transacoes: transacoes.map(t => ({ id: t.id, tipo: t.tipo, valor: t.valor }))
-  });
 
   useEffect(() => {
     carregarTransacoes();
@@ -826,7 +852,7 @@ export default function FinanceiroCompleto() {
           {loading ? (
             <SkeletonLoader type="metric" count={4} />
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <MetricCard
               title="Total Entradas"
               value={resumo.totalEntradas}
@@ -859,8 +885,78 @@ export default function FinanceiroCompleto() {
               icon={<FileText className="h-5 w-5" />}
               subtitle={`${resumo.pendentes} pendentes, ${resumo.atrasados} atrasadas`}
             />
+            <MetricCard
+              title="Total em taxas"
+              value={resumo.totalTaxas}
+              format="currency"
+              color="orange"
+              icon={<Percent className="h-5 w-5" />}
+              subtitle="Taxas pagas (extratos importados)"
+            />
           </div>
           )}
+
+          {/* Conciliação com o banco (ex.: InfinitePay) */}
+          <Card className="shadow-sm border-dashed border-2 border-blue-200 bg-blue-50/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <span className="text-blue-700">Conferir saldo com o banco</span>
+              </CardTitle>
+              <CardDescription>
+                Informe o saldo exibido no app do InfinitePay (ex.: extrato) para comparar com o saldo calculado pelas transações importadas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-end gap-4">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Saldo do banco (R$)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Ex.: 278,88"
+                    value={saldoBancoConciliacao}
+                    onChange={(e) => setSaldoBancoConciliacao(e.target.value.replace(/[^\d,.-]/g, ''))}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              {saldoBancoConciliacao && (() => {
+                const str = saldoBancoConciliacao.replace(/\s/g, '').trim();
+                const normalized = str.includes(',') ? str.replace(/\./g, '').replace(',', '.') : str;
+                const saldoBancoNum = parseFloat(normalized);
+                if (isNaN(saldoBancoNum)) return null;
+                const dif = resumo.saldoLiquido - saldoBancoNum;
+                const difArred = Math.round(dif * 100) / 100;
+                const bate = Math.abs(difArred) < 0.02;
+                return (
+                  <div className="text-sm space-y-1 pt-2 border-t border-blue-200">
+                    <p className="flex justify-between gap-2">
+                      <span className="text-gray-600">Saldo calculado (sistema):</span>
+                      <span className="font-medium">R$ {resumo.saldoLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </p>
+                    <p className="flex justify-between gap-2">
+                      <span className="text-gray-600">Saldo informado (banco):</span>
+                      <span className="font-medium">R$ {saldoBancoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </p>
+                    <p className={`flex justify-between gap-2 font-medium ${bate ? 'text-green-700' : 'text-amber-700'}`}>
+                      <span>Diferença:</span>
+                      <span>{bate ? '✓ Bate' : `R$ ${difArred.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>
+                    </p>
+                    {!bate && Math.abs(difArred - resumo.totalTaxas) < 0.02 && (
+                      <p className="text-xs text-amber-700 mt-1">
+                        A diferença é próxima do total em taxas. O banco pode estar exibindo valor bruto; confira se o extrato usa valor líquido.
+                      </p>
+                    )}
+                    {!bate && Math.abs(difArred - resumo.totalTaxas) >= 0.02 && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        Confira se todas as transações do período foram importadas e se os tipos (entrada/saída) estão corretos.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
 
           {/* Filtros e Busca */}
           <Card className="shadow-sm bg-gradient-to-r from-gray-50 to-white border-gray-200">
@@ -925,6 +1021,14 @@ export default function FinanceiroCompleto() {
                     <Badge variant="secondary" className="flex items-center gap-2">
                       Categoria: {filterCategoria}
                       <button aria-label="Limpar categoria" onClick={() => { setFilterCategoria('all'); setCurrentPage(1); }}>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {filterComTaxa !== 'all' && (
+                    <Badge variant="secondary" className="flex items-center gap-2">
+                      Taxa: {filterComTaxa === 'com_taxa' ? 'Com taxa' : 'Sem taxa'}
+                      <button aria-label="Limpar filtro taxa" onClick={() => { setFilterComTaxa('all'); setCurrentPage(1); }}>
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
@@ -1016,6 +1120,21 @@ export default function FinanceiroCompleto() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label htmlFor="taxas" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Taxa (extrato)
+                    </Label>
+                    <Select value={filterComTaxa} onValueChange={(value) => { setFilterComTaxa(value); setCurrentPage(1); }}>
+                      <SelectTrigger id="taxas" className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="com_taxa">Com taxa</SelectItem>
+                        <SelectItem value="sem_taxa">Sem taxa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="lg:col-span-2">
                     <Label className="text-sm font-medium text-gray-700 mb-2 block">
                       Data específica ou intervalo
@@ -1093,6 +1212,7 @@ export default function FinanceiroCompleto() {
                           setFilterTipo('all');
                           setFilterStatus('all');
                           setFilterCategoria('all');
+                          setFilterComTaxa('all');
                           setPeriodo('all');
                           setDataInicio('');
                           setDataFim('');
@@ -1146,14 +1266,23 @@ export default function FinanceiroCompleto() {
                     <Edit className="h-4 w-4 mr-2" />
                     Editar em lote
                   </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={selectedCount === 0}
+                    onClick={excluirEmLote}
+                    title="Excluir transações selecionadas"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir em lote ({selectedCount})
+                  </Button>
                   {selectedCount > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedIds([])}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-muted-foreground hover:text-foreground"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
                       Limpar seleção
                     </Button>
                   )}
@@ -1223,6 +1352,10 @@ export default function FinanceiroCompleto() {
                           <span className="sr-only">Tipo</span>
                           Tipo
                         </TableHead>
+                        <TableHead className="font-semibold text-right">
+                          <span className="sr-only">Valor Bruto</span>
+                          Valor Bruto (R$)
+                        </TableHead>
                         <TableHead className="font-semibold">
                           <Button 
                             variant="ghost" 
@@ -1231,9 +1364,13 @@ export default function FinanceiroCompleto() {
                             className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
                             aria-label={`Ordenar por valor ${sortField === 'valor' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
                           >
-                            Valor
+                            Valor Líquido (R$)
                             <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
                           </Button>
+                        </TableHead>
+                        <TableHead className="font-semibold text-orange-700">
+                          <span className="sr-only">Taxa</span>
+                          Taxa
                         </TableHead>
                         <TableHead className="font-semibold">
                           <span className="sr-only">Método</span>
@@ -1256,7 +1393,7 @@ export default function FinanceiroCompleto() {
                     <TableBody>
                       {transacoesPaginadas.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="p-0">
+                          <TableCell colSpan={11} className="p-0">
                             <EmptyState
                               icon={Inbox}
                               title="Nenhuma transação corresponde aos filtros"
@@ -1322,8 +1459,26 @@ export default function FinanceiroCompleto() {
                                 {transacao.tipo === 'entrada' ? '💰 Entrada' : '💸 Saída'}
                               </Badge>
                             </TableCell>
-                            <TableCell className={`font-semibold ${transacao.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
+                            <TableCell className="text-right text-gray-600">
+                              {transacao.valor_bruto != null ? (
+                                <>R$ {Number(transacao.valor_bruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className={`font-semibold text-right ${transacao.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
                               {transacao.tipo === 'entrada' ? '+' : '-'}R$ {Number(transacao.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </TableCell>
+                            <TableCell className="text-orange-600 text-sm">
+                              {(() => {
+                                const obs = transacao.observacoes || '';
+                                const m = obs.match(/Taxa\s*\(R\$\):\s*([\d.,]+)/i);
+                                if (!m) return <span className="text-gray-400">-</span>;
+                                const n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+                                return isNaN(n) ? <span className="text-gray-400">-</span> : (
+                                  <span title="Taxa paga (extrato importado)">R$ {n.toFixed(2).replace('.', ',')}</span>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-xs">

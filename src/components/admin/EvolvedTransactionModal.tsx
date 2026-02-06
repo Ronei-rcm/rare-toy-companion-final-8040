@@ -346,8 +346,11 @@ const EvolvedTransactionModal: React.FC<EvolvedTransactionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent
+        className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col p-6 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 !m-0"
+        style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', margin: 0, maxHeight: '90vh' }}
+      >
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
             {mode === 'edit' ? 'Editar Transação' : mode === 'duplicate' ? 'Duplicar Transação' : 'Nova Transação'}
@@ -357,7 +360,8 @@ const EvolvedTransactionModal: React.FC<EvolvedTransactionModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basico" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -852,8 +856,9 @@ const EvolvedTransactionModal: React.FC<EvolvedTransactionModalProps> = ({
             </div>
           </TabsContent>
         </Tabs>
+        </div>
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex flex-shrink-0 justify-end gap-2 pt-4 border-t bg-background">
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
