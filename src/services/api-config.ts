@@ -31,6 +31,10 @@ export class ApiError extends Error {
  * Helper para processar respostas da API
  * Lança ApiError se a resposta não for ok
  */
+/**
+ * Helper para processar respostas da API
+ * Lança ApiError se a resposta não for ok
+ */
 export async function handleApiResponse<T>(response: Response, defaultErrorMessage: string = 'Erro na requisição'): Promise<T> {
     if (!response.ok) {
         let errorData;
@@ -60,5 +64,42 @@ export async function handleApiResponse<T>(response: Response, defaultErrorMessa
     } catch (e) {
         console.error('Erro ao fazer parse do JSON:', e);
         throw new ApiError('Resposta inválida do servidor (formato inválido)', response.status);
+    }
+}
+
+/**
+ * Função helper para realizar requisições HTTP padronizadas.
+ * Automaticamente adiciona a URL base, credenciais e headers padrão.
+ */
+export async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+    const headers: HeadersInit = {
+        ...options.headers,
+    };
+
+    // Adiciona Content-Type: application/json se não for FormData e não estiver definido
+    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+        (headers as any)['Content-Type'] = 'application/json';
+    }
+
+    const config: RequestInit = {
+        ...options,
+        headers,
+        credentials: 'include', // Sempre envia cookies
+    };
+
+    try {
+        const response = await fetch(url, config);
+        return handleApiResponse<T>(response);
+    } catch (error) {
+        // Se já for ApiError, repassa. Se for erro de rede (TypeError), empacota.
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            error instanceof Error ? error.message : 'Erro desconhecido na requisição',
+            0 // Status 0 indica erro de rede/cliente
+        );
     }
 }

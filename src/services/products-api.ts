@@ -1,5 +1,5 @@
 import { Produto } from '@/types/produto';
-import { API_BASE_URL, handleApiResponse } from './api-config';
+import { request } from './api-config';
 
 export interface CreateProductData {
   nome: string;
@@ -37,9 +37,7 @@ export const productsApi = {
   async getProducts(): Promise<Produto[]> {
     try {
       console.log('🔄 Buscando produtos...');
-      const response = await fetch(`${API_BASE_URL}/produtos`, { credentials: 'include' });
-
-      const data = await handleApiResponse<Produto[]>(response, 'Erro ao buscar produtos');
+      const data = await request<Produto[]>('/produtos');
       console.log('✅ Produtos carregados:', data.length);
       return data;
     } catch (error) {
@@ -71,9 +69,7 @@ export const productsApi = {
     if (params.featured) qs.set('featured', 'true');
     if (params.novo) qs.set('novo', 'true');
 
-    const url = `${API_BASE_URL}/produtos?${qs.toString()}`;
-    const response = await fetch(url, { credentials: 'include' });
-    const data = await handleApiResponse<any>(response);
+    const data = await request<any>(`/produtos?${qs.toString()}`);
     // Se o backend retornar array (fallback), embrulhar no formato paginado
     if (Array.isArray(data)) {
       return {
@@ -90,9 +86,7 @@ export const productsApi = {
   async getProduct(id: string): Promise<Produto> {
     try {
       console.log('🔄 Buscando produto:', id);
-      const response = await fetch(`${API_BASE_URL}/produtos/${id}`, { credentials: 'include' });
-
-      const data = await handleApiResponse<Produto>(response, 'Erro ao buscar produto');
+      const data = await request<Produto>(`/produtos/${id}`);
       console.log('✅ Produto carregado:', data);
       return data;
     } catch (error) {
@@ -105,15 +99,10 @@ export const productsApi = {
   async createProduct(productData: CreateProductData): Promise<Produto> {
     try {
       console.log('🔄 Criando produto:', productData.nome);
-      const response = await fetch(`${API_BASE_URL}/produtos`, {
+      const data = await request<Produto>('/produtos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(productData),
       });
-
-      const data = await handleApiResponse<Produto>(response, 'Erro ao criar produto');
       console.log('✅ Produto criado:', data);
       return data;
     } catch (error) {
@@ -126,15 +115,10 @@ export const productsApi = {
   async updateProduct(id: string, productData: Partial<CreateProductData>): Promise<Produto> {
     try {
       console.log('🔄 Atualizando produto:', id);
-      const response = await fetch(`${API_BASE_URL}/produtos/${id}`, {
+      const data = await request<Produto>(`/produtos/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(productData),
       });
-
-      const data = await handleApiResponse<Produto>(response, 'Erro ao atualizar produto');
       console.log('✅ Produto atualizado:', data);
       return data;
     } catch (error) {
@@ -147,12 +131,9 @@ export const productsApi = {
   async deleteProduct(id: string): Promise<void> {
     try {
       console.log('🔄 Deletando produto:', id);
-      const response = await fetch(`${API_BASE_URL}/produtos/${id}`, {
+      await request<void>(`/produtos/${id}`, {
         method: 'DELETE',
       });
-
-      await handleApiResponse<void>(response, 'Erro ao deletar produto');
-
       console.log('✅ Produto deletado:', id);
     } catch (error) {
       console.error('❌ Erro ao deletar produto:', error);
@@ -164,9 +145,7 @@ export const productsApi = {
   async getProductsByCategory(categoria: string): Promise<Produto[]> {
     try {
       console.log('🔄 Buscando produtos por categoria:', categoria);
-      const response = await fetch(`${API_BASE_URL}/produtos/categoria/${encodeURIComponent(categoria)}`);
-
-      const data = await handleApiResponse<Produto[]>(response, 'Erro ao buscar produtos por categoria');
+      const data = await request<Produto[]>(`/produtos/categoria/${encodeURIComponent(categoria)}`);
       console.log('✅ Produtos por categoria carregados:', data.length);
       return data;
     } catch (error) {
@@ -179,9 +158,7 @@ export const productsApi = {
   async getFeaturedProducts(): Promise<Produto[]> {
     try {
       console.log('🔄 Buscando produtos em destaque...');
-      const response = await fetch(`${API_BASE_URL}/produtos/destaque`);
-
-      const data = await handleApiResponse<Produto[]>(response, 'Erro ao buscar produtos em destaque');
+      const data = await request<Produto[]>('/produtos/destaque');
       console.log('✅ Produtos em destaque carregados:', data.length);
       return data;
     } catch (error) {
