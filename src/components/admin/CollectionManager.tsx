@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useCollections } from '@/hooks/useCollections';
-import { uploadCollectionImage, patchCollectionToggles, getCollectionProducts, addCollectionProduct, removeCollectionProduct, reorderCollectionProducts, CollectionLink } from '@/api/collections-api';
+import { uploadCollectionImage, patchCollectionToggles, getCollectionProducts, addCollectionProduct, removeCollectionProduct, reorderCollectionProducts, CollectionLink } from '@/services/collections-api';
 import resolveImage from '@/utils/resolveImage';
 import { productsApi } from '@/services/products-api';
 import { Collection, CreateCollectionData } from '@/types/collection';
@@ -24,7 +24,7 @@ import { uploadApi } from '@/services/upload-api';
 const CollectionManager = () => {
   const { collections, loading, error, createCollection, updateCollection, deleteCollection, reorderCollections, page, hasMore, setPage, setQuery } = useCollections() as any;
   const { toast } = useToast();
-  
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
@@ -32,7 +32,7 @@ const CollectionManager = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'ativo' | 'inativo'>('all');
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  
+
   const [formData, setFormData] = useState<CreateCollectionData>({
     nome: '',
     descricao: '',
@@ -57,7 +57,7 @@ const CollectionManager = () => {
   // Filtrar coleções
   const filteredCollections = collections.filter(collection => {
     const matchesSearch = collection.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         collection.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+      collection.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || collection.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -81,10 +81,10 @@ const CollectionManager = () => {
           ativo: formData.status === 'ativo',
           destaque: !!formData.destaque,
         });
-      } catch {}
+      } catch { }
       setIsCreateDialogOpen(false);
       resetForm();
-      
+
       // Emitir evento para atualizar outras páginas
       window.dispatchEvent(new CustomEvent('collectionUpdated'));
     } catch (error) {
@@ -117,11 +117,11 @@ const CollectionManager = () => {
           ativo: formData.status === 'ativo',
           destaque: !!formData.destaque,
         });
-      } catch {}
+      } catch { }
       setIsEditDialogOpen(false);
       setEditingCollection(null);
       resetForm();
-      
+
       // Emitir evento para atualizar outras páginas
       window.dispatchEvent(new CustomEvent('collectionUpdated'));
     } catch (error) {
@@ -138,7 +138,7 @@ const CollectionManager = () => {
   const handleDeleteCollection = async (id: string) => {
     try {
       await deleteCollection(id);
-      
+
       // Emitir evento para atualizar outras páginas
       window.dispatchEvent(new CustomEvent('collectionUpdated'));
     } catch (error) {
@@ -181,7 +181,7 @@ const CollectionManager = () => {
 
   const handleImageUpload = async (file: File | null, previewUrl?: string) => {
     setImageFile(file);
-    
+
     if (file) {
       try {
         setUploadingImage(true);
@@ -253,7 +253,7 @@ const CollectionManager = () => {
 
     try {
       await reorderCollections(newOrder.map(item => item.id));
-      
+
       // Emitir evento para atualizar outras páginas
       window.dispatchEvent(new CustomEvent('collectionUpdated'));
     } catch (error) {
@@ -363,7 +363,7 @@ const CollectionManager = () => {
                               >
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                               </div>
-                              
+
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2">
                                   <h3 className="font-semibold truncate">{collection.nome}</h3>
@@ -401,7 +401,7 @@ const CollectionManager = () => {
                                   )}
                                 </div>
                               </div>
-                              
+
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="outline"
@@ -440,7 +440,7 @@ const CollectionManager = () => {
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Tem certeza que deseja deletar a coleção "{collection.nome}"? 
+                                        Tem certeza que deseja deletar a coleção "{collection.nome}"?
                                         Esta ação não pode ser desfeita.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
@@ -474,7 +474,7 @@ const CollectionManager = () => {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground mb-4">
-              {searchTerm || statusFilter !== 'all' 
+              {searchTerm || statusFilter !== 'all'
                 ? 'Nenhuma coleção encontrada com os filtros aplicados'
                 : 'Nenhuma coleção cadastrada ainda'
               }

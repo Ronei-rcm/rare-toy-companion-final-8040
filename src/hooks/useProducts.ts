@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Produto } from '@/types/produto';
 import { productsApi, CreateProductData, UpdateProductData } from '@/services/products-api';
 import { productsService } from '@/services/products';
-import { getCollectionProducts } from '@/api/collections-api';
+import { getCollectionProducts } from '@/services/collections-api';
 
 export const useProducts = () => {
   const [products, setProducts] = useState<Produto[]>([]);
@@ -57,8 +57,8 @@ export const useProducts = () => {
       setLoading(true);
       setError(null);
       const updatedProduct = await productsApi.updateProduct(id, productData);
-      setProducts(prev => 
-        prev.map(product => 
+      setProducts(prev =>
+        prev.map(product =>
           product.id === id ? updatedProduct : product
         )
       );

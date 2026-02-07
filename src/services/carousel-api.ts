@@ -1,3 +1,5 @@
+import { request } from './api-config';
+
 export interface CarouselItem {
   id: string;
   nome: string;
@@ -10,7 +12,6 @@ export interface CarouselItem {
   button_link?: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const BADGE_STORAGE_KEY = 'carousel_badges';
 
 const resolveImageUrl = (url: string | undefined): string => {
@@ -48,7 +49,7 @@ function getBadgeMap(): Record<string, string> {
 function setBadgeMap(map: Record<string, string>) {
   try {
     localStorage.setItem(BADGE_STORAGE_KEY, JSON.stringify(map));
-  } catch {}
+  } catch { }
 }
 
 function upsertBadge(id: string, badge: string | undefined) {
@@ -115,11 +116,7 @@ export const generateLocalDescription = (imageUrl: string, productName: string):
 export const carouselService = {
   async getCarouselItems(): Promise<CarouselItem[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/carousel`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await request<CarouselItem[]>('/carousel');
       return normalizeItems(data);
     } catch (error) {
       return [
@@ -140,11 +137,7 @@ export const carouselService = {
 
   async getActiveCarouselItems(): Promise<CarouselItem[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/carousel/active`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await request<CarouselItem[]>('/carousel/active');
       return normalizeItems(data);
     } catch (error) {
       // Fallback: tentar buscar todos e filtrar por ativo
@@ -171,92 +164,46 @@ export const carouselService = {
   },
 
   async createCarouselItem(item: Omit<CarouselItem, 'id'>): Promise<CarouselItem | null> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/carousel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data: CarouselItem = await response.json();
-      upsertBadge(data.id, item.badge);
-      return { ...data, badge: item.badge || data.badge };
-    } catch (error) {
-      throw error;
-    }
+    const data = await request<CarouselItem>('/carousel', {
+      method: 'POST',
+      body: JSON.stringify(item),
+    });
+    upsertBadge(data.id, item.badge);
+    return { ...data, badge: item.badge || data.badge };
   },
 
   async updateCarouselItem(id: string, item: Partial<CarouselItem>): Promise<CarouselItem | null> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/carousel/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data: CarouselItem = await response.json();
-      if (item.badge) upsertBadge(id, item.badge);
-      const badgeMap = getBadgeMap();
-      return { ...data, badge: item.badge || badgeMap[id] || data.badge };
-    } catch (error) {
-      throw error;
-    }
+    const data = await request<CarouselItem>(`/carousel/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item),
+    });
+    if (item.badge) upsertBadge(id, item.badge);
+    const badgeMap = getBadgeMap();
+    return { ...data, badge: item.badge || badgeMap[id] || data.badge };
   },
 
   async deleteCarouselItem(id: string): Promise<boolean> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/carousel/${id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      removeBadge(id);
-      return true;
-    } catch (error) {
-      throw error;
-    }
+    await request<void>(`/carousel/${id}`, { method: 'DELETE' });
+    removeBadge(id);
+    return true;
   },
 
   async toggleCarouselItem(id: string, ativo: boolean): Promise<CarouselItem | null> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/carousel/${id}/toggle`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ativo }),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      throw error;
-    }
+    return request<CarouselItem>(`/carousel/${id}/toggle`, {
+      method: 'PUT',
+      body: JSON.stringify({ ativo }),
+    });
   },
 
   async saveCarouselItems(items: CarouselItem[]): Promise<boolean> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/carousel/bulk`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(items),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return true;
-    } catch (error) {
-      throw error;
-    }
+    await request<void>('/carousel/bulk', {
+      method: 'POST',
+      body: JSON.stringify(items),
+    });
+    return true;
   },
 
   async healthCheck(): Promise<{ status: string; database: string }> {
-    const response = await fetch(`${API_BASE_URL}/health`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return await response.json();
+    return request<{ status: string; database: string }>('/health');
   }
 };

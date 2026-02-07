@@ -39,36 +39,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useCollections } from '@/hooks/useCollections';
 import { productsApi } from '@/services/products-api';
-import { getCollectionProducts, addCollectionProduct, removeCollectionProduct } from '@/api/collections-api';
+import { getCollectionProducts, addCollectionProduct, removeCollectionProduct } from '@/services/collections-api';
 import { uploadApi } from '@/services/upload-api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export function AdvancedCollectionsView() {
   const { collections, loading, createCollection, updateCollection, deleteCollection, refetch } = useCollections() as any;
-  
+
   // Estados
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'ativo' | 'inativo'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'products-desc' | 'date-desc'>('name-asc');
-  
+
   // Dialogs
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProductsDialog, setShowProductsDialog] = useState(false);
-  
+
   // Seleções
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
   const [collectionToDelete, setCollectionToDelete] = useState<any>(null);
-  
+
   // Produtos da coleção
   const [collectionProducts, setCollectionProducts] = useState<any[]>([]);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
-  
+
   // Form data
   const [formData, setFormData] = useState({
     nome: '',
@@ -79,7 +79,7 @@ export function AdvancedCollectionsView() {
     tags: [] as string[],
     ordem: 0
   });
-  
+
   const [newTag, setNewTag] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -107,7 +107,7 @@ export function AdvancedCollectionsView() {
         avgProducts: 0
       };
     }
-    
+
     const total = collections.length;
     const active = collections.filter((c: any) => c.status === 'ativo').length;
     const featured = collections.filter((c: any) => c.destaque).length;
@@ -132,10 +132,10 @@ export function AdvancedCollectionsView() {
     if (!collections || !Array.isArray(collections)) {
       return [];
     }
-    
+
     let filtered = collections.filter((collection: any) => {
       const matchesSearch = collection.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           collection.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
+        collection.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || collection.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -253,19 +253,19 @@ export function AdvancedCollectionsView() {
       // Carregar produtos da coleção
       const collectionProds = await getCollectionProducts(collection.id);
       console.log('🔍 Produtos da coleção recebidos:', collectionProds);
-      
+
       // Mapear os dados para o formato esperado
       const mappedProducts = (collectionProds || []).map((link: any) => {
         const product = link.product || {};
         const productId = link.product_id || product.id || link.id;
-        
+
         console.log('🔍 Mapeando produto:', {
           link_product_id: link.product_id,
           product_id: product.id,
           link_id: link.id,
           final_id: productId
         });
-        
+
         return {
           id: productId,
           product_id: link.product_id, // Manter referência original
@@ -276,7 +276,7 @@ export function AdvancedCollectionsView() {
           categoria: product.categoria || product.category || 'Sem categoria'
         };
       });
-      
+
       console.log('🔄 Produtos mapeados:', mappedProducts);
       setCollectionProducts(mappedProducts);
 
@@ -295,13 +295,13 @@ export function AdvancedCollectionsView() {
     try {
       toast.loading('Adicionando produto...', { id: 'add-product' });
       await addCollectionProduct(selectedCollection.id, selectedProductId);
-      
+
       // Recarregar produtos com mapeamento correto
       const collectionProds = await getCollectionProducts(selectedCollection.id);
       const mappedProducts = (collectionProds || []).map((link: any) => {
         const product = link.product || {};
         const productId = link.product_id || product.id || link.id;
-        
+
         return {
           id: productId,
           product_id: link.product_id, // Manter referência original
@@ -313,7 +313,7 @@ export function AdvancedCollectionsView() {
         };
       });
       setCollectionProducts(mappedProducts);
-      
+
       setSelectedProductId('');
       toast.success('✅ Produto adicionado!', { id: 'add-product' });
     } catch (error) {
@@ -335,7 +335,7 @@ export function AdvancedCollectionsView() {
     try {
       // Validar o productId (pode ser UUID ou número)
       const finalProductId = String(productId).trim();
-      
+
       if (!finalProductId || finalProductId === 'undefined' || finalProductId === 'null') {
         toast.error('ID do produto inválido');
         console.error('❌ ID inválido:', productId);
@@ -348,16 +348,16 @@ export function AdvancedCollectionsView() {
       });
 
       toast.loading('Removendo produto...', { id: 'remove-product' });
-      
+
       // Remover usando o productId como string (UUID)
       await removeCollectionProduct(selectedCollection.id, finalProductId);
-      
+
       // Recarregar produtos com mapeamento correto
       const collectionProds = await getCollectionProducts(selectedCollection.id);
       const mappedProducts = (collectionProds || []).map((link: any) => {
         const product = link.product || {};
         const productId = link.product_id || product.id || link.id;
-        
+
         return {
           id: productId,
           product_id: link.product_id, // Manter referência original
@@ -369,14 +369,14 @@ export function AdvancedCollectionsView() {
         };
       });
       setCollectionProducts(mappedProducts);
-      
+
       toast.success('✅ Produto removido com sucesso!', { id: 'remove-product' });
-      
+
       console.log('✅ Produto removido. Produtos restantes:', mappedProducts.length);
     } catch (error: any) {
       console.error('❌ Erro ao remover produto:', error);
       toast.error(
-        error?.message || 'Erro ao remover produto. Tente novamente.', 
+        error?.message || 'Erro ao remover produto. Tente novamente.',
         { id: 'remove-product' }
       );
     }
@@ -405,14 +405,14 @@ export function AdvancedCollectionsView() {
       toast.loading('Fazendo upload da imagem...', { id: 'upload-image' });
 
       const response = await uploadApi.uploadImage(file);
-      
+
       // O uploadApi retorna { imageUrl, fullUrl, filename }
       // Usar fullUrl para exibição pública
       const imageUrl = response.fullUrl || response.imageUrl || response;
-      
+
       console.log('📤 Upload response:', response);
       console.log('🖼️ Image URL salva:', imageUrl);
-      
+
       setFormData({ ...formData, imagem: imageUrl });
       toast.success(`✅ Imagem "${response.filename}" enviada com sucesso!`, { id: 'upload-image' });
     } catch (error) {
@@ -755,7 +755,7 @@ export function AdvancedCollectionsView() {
               {showEditDialog ? 'Editar Coleção' : 'Nova Coleção'}
             </DialogTitle>
             <DialogDescription>
-              {showEditDialog 
+              {showEditDialog
                 ? 'Edite as informações da coleção e adicione/remova produtos'
                 : 'Crie uma nova coleção para organizar seus produtos'}
             </DialogDescription>
@@ -786,7 +786,7 @@ export function AdvancedCollectionsView() {
             {/* Upload de Imagem */}
             <div className="space-y-3">
               <Label>Imagem da Coleção</Label>
-              
+
               {!formData.imagem ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-400 transition-colors">
                   <input
@@ -940,7 +940,7 @@ export function AdvancedCollectionsView() {
                   <Sparkles className="w-4 h-4" />
                   Preview da Coleção:
                 </p>
-                
+
                 {/* Simulação do Card como vai aparecer */}
                 <Card className="overflow-hidden border-2">
                   <div className="flex flex-col">
@@ -983,7 +983,7 @@ export function AdvancedCollectionsView() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Conteúdo do Card */}
                     <div className="p-3">
                       <h3 className="font-bold text-base mb-1 line-clamp-2">
@@ -992,7 +992,7 @@ export function AdvancedCollectionsView() {
                       <p className="text-xs text-gray-600 mb-2 line-clamp-2">
                         {formData.descricao || 'Descrição da coleção...'}
                       </p>
-                      
+
                       {/* Tags Preview */}
                       {formData.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-2">
@@ -1009,7 +1009,7 @@ export function AdvancedCollectionsView() {
                           )}
                         </div>
                       )}
-                      
+
                       {/* Info */}
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Package className="w-3 h-3" />
@@ -1131,7 +1131,7 @@ export function AdvancedCollectionsView() {
                   collectionProducts.map(product => {
                     // Usar product_id se disponível, senão usar id
                     const productIdToRemove = product.product_id || product.id;
-                    
+
                     return (
                       <Card key={product.id || product.product_id} className="p-4 flex items-center gap-4">
                         <img

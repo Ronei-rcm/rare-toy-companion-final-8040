@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCollections, reorderCollections, createCollection as apiCreate, updateCollection as apiUpdate, deleteCollection as apiDelete } from '../api/collections-api';
+import { getCollections, reorderCollections, createCollection as apiCreate, updateCollection as apiUpdate, deleteCollection as apiDelete } from '@/services/collections-api';
 
 export function useCollections() {
   const qc = useQueryClient();

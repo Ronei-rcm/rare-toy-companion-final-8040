@@ -1,3 +1,5 @@
+import { request } from './api-config';
+
 export interface VideoItem {
   id: string;
   titulo: string;
@@ -12,8 +14,6 @@ export interface VideoItem {
   created_at?: string;
   updated_at?: string;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const resolveVideoUrl = (url: string | undefined): string => {
   if (!url) return '';
@@ -123,11 +123,7 @@ export const getThumbnailUrl = (url: string): string => {
 export const videoGalleryService = {
   async getVideos(): Promise<VideoItem[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await request<VideoItem[]>('/videos');
       return normalizeVideos(data);
     } catch (error) {
       console.error('Error fetching videos:', error);
@@ -138,11 +134,7 @@ export const videoGalleryService = {
   async getActiveVideos(): Promise<VideoItem[]> {
     try {
       console.log('🎥 [video-gallery-api] Buscando vídeos ativos...');
-      const response = await fetch(`${API_BASE_URL}/videos/active`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await request<VideoItem[]>('/videos/active');
       console.log('🎥 [video-gallery-api] Dados recebidos:', data);
       const normalized = normalizeVideos(data);
       console.log('🎥 [video-gallery-api] Vídeos normalizados:', normalized.length, normalized);
@@ -155,11 +147,7 @@ export const videoGalleryService = {
 
   async getVideo(id: string): Promise<VideoItem | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/${id}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await request<VideoItem>(`/videos/${id}`);
       return normalizeVideos([data])[0] || null;
     } catch (error) {
       console.error('Error fetching video:', error);
@@ -169,15 +157,10 @@ export const videoGalleryService = {
 
   async createVideo(video: Omit<VideoItem, 'id' | 'created_at' | 'updated_at'>): Promise<VideoItem | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos`, {
+      const data = await request<VideoItem>('/videos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(video),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data: VideoItem = await response.json();
       return normalizeVideos([data])[0] || null;
     } catch (error) {
       console.error('Error creating video:', error);
@@ -187,15 +170,10 @@ export const videoGalleryService = {
 
   async updateVideo(id: string, video: Partial<VideoItem>): Promise<VideoItem | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
+      const data = await request<VideoItem>(`/videos/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(video),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data: VideoItem = await response.json();
       return normalizeVideos([data])[0] || null;
     } catch (error) {
       console.error('Error updating video:', error);
@@ -205,10 +183,7 @@ export const videoGalleryService = {
 
   async deleteVideo(id: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/${id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      await request<void>(`/videos/${id}`, { method: 'DELETE' });
       return true;
     } catch (error) {
       console.error('Error deleting video:', error);
@@ -218,15 +193,10 @@ export const videoGalleryService = {
 
   async toggleVideo(id: string, is_active: boolean): Promise<VideoItem | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/${id}/toggle`, {
+      const data = await request<VideoItem>(`/videos/${id}/toggle`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active }),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
       return normalizeVideos([data])[0] || null;
     } catch (error) {
       console.error('Error toggling video:', error);
@@ -236,14 +206,10 @@ export const videoGalleryService = {
 
   async saveVideos(videos: VideoItem[]): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/bulk`, {
+      await request<void>('/videos/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(videos),
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
       return true;
     } catch (error) {
       console.error('Error saving videos:', error);
@@ -253,13 +219,9 @@ export const videoGalleryService = {
 
   async incrementViews(id: string): Promise<VideoItem | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/videos/${id}/increment-views`, {
+      const data = await request<VideoItem>(`/videos/${id}/increment-views`, {
         method: 'PUT',
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
       return normalizeVideos([data])[0] || null;
     } catch (error) {
       console.error('Error incrementing views:', error);
