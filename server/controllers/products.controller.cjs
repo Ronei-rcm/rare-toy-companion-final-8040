@@ -13,6 +13,7 @@ const cacheHelpers = require('../utils/cacheHelpers.cjs');
  * GET /api/produtos
  */
 async function getAll(req, res) {
+  console.log('🔍 [DEBUG] getAll called, query:', req.query);
   try {
     const {
       page: pageRaw,
@@ -39,7 +40,9 @@ async function getAll(req, res) {
     };
 
     const pagination = { page, pageSize };
+    console.log('🔍 [DEBUG] Calling productsService.findAll with filters:', filters, 'pagination:', pagination);
     const result = await productsService.findAll(filters, pagination, sort);
+    console.log('🔍 [DEBUG] productsService.findAll returned, result type:', Array.isArray(result) ? 'array' : 'object');
 
     // Transformar resultados (parseFloat para preços, URLs de imagem)
     const transformProduct = (p) => ({
@@ -59,7 +62,8 @@ async function getAll(req, res) {
     const itens = result.items.map(transformProduct);
     return res.json({ items: itens, total: result.total, page: result.page, pageSize: result.pageSize });
   } catch (error) {
-    console.error('❌ Erro ao buscar produtos:', error);
+    console.error('❌ [DEBUG] Erro ao buscar produtos:', error);
+    console.error('❌ [DEBUG] Error stack:', error.stack);
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
@@ -71,24 +75,24 @@ async function getAll(req, res) {
 async function getById(req, res) {
   try {
     const { id } = req.params;
-    
+
     // Tentar cache primeiro
     const cached = await cacheHelpers.getCachedProduct(id);
     if (cached) {
       console.log(`✅ Produto ${id} do cache`);
       return res.json(cached);
     }
-    
+
     console.log(`🔄 Buscando produto ID: ${id}`);
-    
+
     const produto = await productsService.findById(id);
-    
+
     if (!produto) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
-    
+
     console.log('✅ Produto encontrado:', produto.nome);
-    
+
     // Transformar resultado
     const produtoFormatado = {
       ...produto,
@@ -96,10 +100,10 @@ async function getById(req, res) {
       avaliacao: produto.avaliacao ? parseFloat(produto.avaliacao) : null,
       imagemUrl: produto.imagemUrl ? getPublicUrl(req, produto.imagemUrl) : null
     };
-    
+
     // Cachear resultado
     await cacheHelpers.setCachedProduct(id, produtoFormatado);
-    
+
     return res.json(produtoFormatado);
   } catch (error) {
     console.error('❌ Erro ao buscar produto:', error);
@@ -114,16 +118,16 @@ async function getById(req, res) {
 async function getFeatured(req, res) {
   try {
     console.log('🔄 Buscando produtos em destaque...');
-    
+
     const produtos = await productsService.findFeatured();
-    
+
     const produtosFormatados = produtos.map((produto) => ({
       ...produto,
       preco: parseFloat(produto.preco),
       avaliacao: produto.avaliacao ? parseFloat(produto.avaliacao) : null,
       imagemUrl: produto.imagemUrl ? getPublicUrl(req, produto.imagemUrl) : null
     }));
-    
+
     console.log(`✅ ${produtosFormatados.length} produtos em destaque encontrados`);
     return res.json(produtosFormatados);
   } catch (error) {
@@ -140,16 +144,16 @@ async function getByCategory(req, res) {
   try {
     const { categoria } = req.params;
     console.log(`🔄 Buscando produtos da categoria: ${categoria}`);
-    
+
     const produtos = await productsService.findByCategory(categoria);
-    
+
     const produtosFormatados = produtos.map((produto) => ({
       ...produto,
       preco: parseFloat(produto.preco),
       avaliacao: produto.avaliacao ? parseFloat(produto.avaliacao) : null,
       imagemUrl: produto.imagemUrl ? getPublicUrl(req, produto.imagemUrl) : null
     }));
-    
+
     console.log(`✅ ${produtosFormatados.length} produtos encontrados na categoria ${categoria}`);
     return res.json(produtosFormatados);
   } catch (error) {
@@ -166,13 +170,13 @@ async function create(req, res) {
   try {
     const produtoData = req.body;
     console.log('🔄 Criando produto:', produtoData.nome);
-    
+
     const result = await productsService.create(produtoData);
-    
+
     // Invalidar cache
     await cacheHelpers.invalidateProductsCache();
     await cacheHelpers.invalidateCategoriesCache();
-    
+
     console.log('✅ Produto criado com ID:', result.id);
     return res.status(201).json({ id: result.id, ...produtoData });
   } catch (error) {
@@ -193,13 +197,13 @@ async function update(req, res) {
     const { id } = req.params;
     const produtoData = req.body;
     console.log(`🔄 Atualizando produto ID: ${id}`);
-    
+
     const produto = await productsService.update(id, produtoData);
-    
+
     if (!produto) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
-    
+
     // Converter snake_case para camelCase
     const produtoFormatado = {
       id: produto.id,
@@ -227,11 +231,11 @@ async function update(req, res) {
       createdAt: produto.createdAt,
       updatedAt: produto.updatedAt
     };
-    
+
     // Invalidar cache
     await cacheHelpers.invalidateProductCache(id);
     await cacheHelpers.invalidateProductsCache();
-    
+
     console.log('✅ Produto atualizado com sucesso');
     return res.json(produtoFormatado);
   } catch (error) {
@@ -251,17 +255,17 @@ async function remove(req, res) {
   try {
     const { id } = req.params;
     console.log(`🔄 Deletando produto ID: ${id}`);
-    
+
     const deleted = await productsService.remove(id);
-    
+
     if (!deleted) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
-    
+
     // Invalidar cache
     await cacheHelpers.invalidateProductCache(id);
     await cacheHelpers.invalidateProductsCache();
-    
+
     console.log('✅ Produto deletado');
     return res.json({ message: 'Produto deletado com sucesso' });
   } catch (error) {
@@ -278,32 +282,32 @@ async function quickCreate(req, res) {
   try {
     const { nome, preco, estoque, categoria, status } = req.body;
     console.log('⚡ Cadastro rápido:', nome);
-    
+
     // URL da imagem (se enviou arquivo)
     let imagemUrl = null;
     if (req.file) {
       imagemUrl = `/lovable-uploads/${req.file.filename}`;
       console.log('📸 Foto capturada:', imagemUrl);
     }
-    
+
     const produtoData = { nome, preco, estoque, categoria, status };
     const result = await productsService.quickCreate(produtoData, imagemUrl);
-    
+
     // Invalidar cache
     await cacheHelpers.invalidateProductsCache();
     await cacheHelpers.invalidateCategoriesCache();
-    
-    return res.json({ 
-      success: true, 
+
+    return res.json({
+      success: true,
       id: result.id,
       message: status === 'rascunho' ? 'Rascunho salvo! Complete depois.' : 'Produto cadastrado com sucesso!',
       produto: { id: result.id, nome, preco, categoria, status }
     });
   } catch (error) {
     console.error('❌ Erro no quick-add:', error);
-    return res.status(500).json({ 
-      error: 'Erro ao cadastrar produto rapidamente', 
-      details: error.message 
+    return res.status(500).json({
+      error: 'Erro ao cadastrar produto rapidamente',
+      details: error.message
     });
   }
 }
@@ -316,20 +320,20 @@ async function quickCreateTest(req, res) {
   try {
     const { nome, preco, estoque, categoria, status } = req.body;
     console.log('⚡ Cadastro rápido (teste):', nome);
-    
+
     const produtoData = { nome, preco, estoque, categoria, status };
     const result = await productsService.quickCreate(produtoData, null);
-    
-    return res.json({ 
-      success: true, 
-      id: result.id, 
-      message: 'Produto cadastrado (teste)' 
+
+    return res.json({
+      success: true,
+      id: result.id,
+      message: 'Produto cadastrado (teste)'
     });
   } catch (error) {
     console.error('❌ Erro no quick-add-test:', error);
-    return res.status(500).json({ 
-      error: 'Erro ao cadastrar produto (teste)', 
-      details: error.message 
+    return res.status(500).json({
+      error: 'Erro ao cadastrar produto (teste)',
+      details: error.message
     });
   }
 }

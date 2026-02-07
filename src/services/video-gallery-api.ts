@@ -37,16 +37,24 @@ const resolveThumbnailUrl = (url: string | undefined): string => {
   return '/' + trimmed;
 };
 
-const normalizeVideos = (videos: VideoItem[]): VideoItem[] => {
+const normalizeVideos = (videos: any[]): VideoItem[] => {
   if (!videos || !Array.isArray(videos)) {
     console.warn('⚠️ [video-gallery-api] normalizeVideos recebeu dados inválidos:', videos);
     return [];
   }
   const normalized = videos.map(video => ({
-    ...video,
-    video_url: resolveVideoUrl(video.video_url),
-    thumbnail_url: resolveThumbnailUrl(video.thumbnail_url),
-    is_active: video.is_active !== undefined ? video.is_active : true
+    id: video.id,
+    titulo: video.title || video.titulo,
+    descricao: video.description || video.descricao,
+    video_url: resolveVideoUrl(video.videoUrl || video.video_url),
+    thumbnail_url: resolveThumbnailUrl(video.thumbnailUrl || video.thumbnail_url),
+    categoria: video.category || video.categoria,
+    duracao: video.duration || video.duracao,
+    ordem: video.order || video.ordem,
+    is_active: (video.isActive !== undefined ? video.isActive : video.is_active) ?? true,
+    visualizacoes: video.views || video.visualizacoes,
+    created_at: video.createdAt || video.created_at,
+    updated_at: video.updatedAt || video.updated_at
   }));
   console.log('🎥 [video-gallery-api] Normalizados', normalized.length, 'vídeos');
   return normalized;
@@ -55,27 +63,27 @@ const normalizeVideos = (videos: VideoItem[]): VideoItem[] => {
 // Extract video ID from YouTube/Vimeo URLs
 export const extractVideoId = (url: string): string | null => {
   if (!url) return null;
-  
+
   // YouTube patterns
   const youtubePatterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
     /youtube\.com\/watch\?.*v=([^&\n?#]+)/
   ];
-  
+
   for (const pattern of youtubePatterns) {
     const match = url.match(pattern);
     if (match && match[1]) {
       return match[1];
     }
   }
-  
+
   // Vimeo pattern
   const vimeoPattern = /(?:vimeo\.com\/)(\d+)/;
   const vimeoMatch = url.match(vimeoPattern);
   if (vimeoMatch && vimeoMatch[1]) {
     return vimeoMatch[1];
   }
-  
+
   return null;
 };
 
@@ -83,15 +91,15 @@ export const extractVideoId = (url: string): string | null => {
 export const getEmbedUrl = (url: string): string => {
   const videoId = extractVideoId(url);
   if (!videoId) return url;
-  
+
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     return `https://www.youtube.com/embed/${videoId}`;
   }
-  
+
   if (url.includes('vimeo.com')) {
     return `https://player.vimeo.com/video/${videoId}`;
   }
-  
+
   return url;
 };
 
@@ -99,16 +107,16 @@ export const getEmbedUrl = (url: string): string => {
 export const getThumbnailUrl = (url: string): string => {
   const videoId = extractVideoId(url);
   if (!videoId) return '';
-  
+
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     // Tentar maxresdefault primeiro, se falhar, usar hqdefault (sempre disponível)
     return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
   }
-  
+
   if (url.includes('vimeo.com')) {
     return `https://vumbnail.com/${videoId}.jpg`;
   }
-  
+
   return '';
 };
 

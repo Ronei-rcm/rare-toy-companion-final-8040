@@ -7,6 +7,9 @@
  * SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
  */
 
+// CRITICAL: Load environment variables BEFORE creating the pool
+require('dotenv').config();
+
 const mysql = require('mysql2/promise');
 
 // Criar pool de conexão
