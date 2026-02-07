@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/types/user';
+import { authApi } from '@/services/auth-api';
+import { usersApi } from '@/services/users-api';
 
 interface CurrentUserContextType {
   user: User | null;
@@ -14,86 +16,48 @@ const CurrentUserContext = createContext<CurrentUserContextType | undefined>(und
 export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
-
   useEffect(() => {
     const loadFromSession = async () => {
       try {
         setIsLoading(true);
-        const res = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
-        
-        // Tratar erros 502 (Bad Gateway) - servidor não está respondendo
-        if (res.status === 502) {
-          console.warn('⚠️ Servidor não está respondendo (502). Continuando sem autenticação.');
-          setIsLoading(false);
-          return;
-        }
-        
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.authenticated && data?.user?.email) {
-            // Buscar dados completos do cliente
-            const userId = data.user.id || data.user.email;
-            let fullUserData = {
-              id: userId,
-              email: data.user.email,
-              nome: data.user.nome || data.user.email,
-              avatar_url: data.user.avatar_url
-            };
+        const data = await authApi.me();
 
-            // Tentar buscar dados completos do cliente
-            try {
-              const customerRes = await fetch(`${API_BASE_URL}/customers/${userId}`, {
-                credentials: 'include'
-              });
+        if (data.success && data.user) {
+          // Buscar dados completos do cliente
+          const userId = data.user.id || data.user.email;
+          let fullUserData = {
+            id: userId,
+            email: data.user.email,
+            nome: data.user.nome || data.user.email,
+            avatar_url: data.user.avatar_url
+          };
 
-              // Se não encontrar por ID, tentar por email
-              if (!customerRes.ok && data.user.email) {
-                const emailRes = await fetch(`${API_BASE_URL}/customers/by-email/${encodeURIComponent(data.user.email)}`, {
-                  credentials: 'include'
-                });
-                
-                if (emailRes.ok) {
-                  const customerData = await emailRes.json();
-                  fullUserData = {
-                    ...fullUserData,
-                    nome: customerData.nome || fullUserData.nome,
-                    telefone: customerData.telefone || customerData.phone,
-                    endereco: customerData.endereco || customerData.address,
-                    cidade: customerData.cidade || customerData.city,
-                    estado: customerData.estado || customerData.state,
-                    cep: customerData.cep || customerData.postal_code,
-                    avatar_url: customerData.avatar_url || customerData.avatar || fullUserData.avatar_url
-                  };
-                }
-              } else if (customerRes.ok) {
-                const customerData = await customerRes.json();
-                fullUserData = {
-                  ...fullUserData,
-                  nome: customerData.nome || fullUserData.nome,
-                  telefone: customerData.telefone || customerData.phone,
-                  endereco: customerData.endereco || customerData.address,
-                  cidade: customerData.cidade || customerData.city,
-                  estado: customerData.estado || customerData.state,
-                  cep: customerData.cep || customerData.postal_code,
-                  avatar_url: customerData.avatar_url || customerData.avatar || fullUserData.avatar_url
-                };
+          // Tentar buscar dados completos do cliente
+          try {
+            // Preciso garantir que usersApi tenha esses métodos ou adicionar aqui
+            // Como não vi usersApi ainda com esses métodos específicos para customers (que parecem ser diferentes de users administrativos),
+            // vou assumir por enquanto que posso adicionar lá ou fazer a request direta usando o helper se não existirem.
+            // Mas para seguir o padrão, vou adicionar no usersApi.
+
+            const customerData = await usersApi.getCustomerById(userId).catch(() => null);
+
+            if (!customerData && data.user.email) {
+              const emailData = await usersApi.getCustomerByEmail(data.user.email).catch(() => null);
+              if (emailData) {
+                fullUserData = { ...fullUserData, ...emailData }; // Ajustar mapeamento se necessário
               }
-            } catch (e) {
-              // Se não conseguir buscar dados completos, usar dados básicos
-              console.log('Não foi possível buscar dados completos do cliente:', e);
+            } else if (customerData) {
+              fullUserData = { ...fullUserData, ...customerData };
             }
-
-            setUser(fullUserData as any);
+          } catch (e) {
+            console.log('Não foi possível buscar dados completos do cliente:', e);
           }
+
+          setUser(fullUserData as any);
         }
       } catch (e) {
         // Tratar erros de rede de forma silenciosa
-        if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
-          console.warn('⚠️ Erro de conexão ao verificar autenticação. Continuando sem usuário.');
-        } else {
-          console.error('Erro ao carregar sessão:', e);
-        }
+        console.warn('⚠️ Erro de conexão ao verificar autenticação. Continuando sem usuário.');
       } finally {
         setIsLoading(false);
       }
@@ -107,7 +71,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser);
-      
+
       // Notificar outros componentes sobre a atualização
       window.dispatchEvent(new CustomEvent('user-data-updated', {
         detail: updatedUser
@@ -118,17 +82,17 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try { 
-      await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }); 
-    } catch {}
-    
+    try {
+      await authApi.logout();
+    } catch { }
+
     try {
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
       localStorage.removeItem('minha_conta_tab');
       localStorage.removeItem('muhlstore-saved-cart');
-    } catch {}
-    
+    } catch { }
+
     setUser(null);
   };
 

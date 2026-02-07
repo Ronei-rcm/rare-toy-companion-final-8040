@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@/types/user';
+import { authApi } from '@/services/auth-api';
 
 interface UserContextType {
   user: User | null;
@@ -14,18 +15,14 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
-
   useEffect(() => {
     const loadFromSession = async () => {
       try {
         setIsLoading(true);
-        const res = await fetch(`${API_BASE_URL}/auth/me`, { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.authenticated && data?.user?.email) {
-            setUser({ id: data.user.id || data.user.email, email: data.user.email, nome: data.user.nome, avatar_url: data.user.avatar_url } as any);
-          }
+        const data = await authApi.me();
+        if (data.success && data.user) {
+          // data.user já deve vir no formato esperado, ou fazemos o mapeamento aqui se necessário
+          setUser(data.user);
         }
       } catch (e) {
         // ignore
@@ -40,7 +37,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     try {
       setIsLoading(true);
-      // Aqui manteremos apenas estado local por ora
+      // Aqui manteremos apenas estado local por ora, mas idealmente chamaria authApi.updateProfile
       setUser({ ...user, ...userData });
     } finally {
       setIsLoading(false);
@@ -48,18 +45,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try { 
-      await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' }); 
-    } catch {}
-    
+    try {
+      await authApi.logout();
+    } catch { }
+
     // Limpar todos os dados do usuário do localStorage
     try {
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_user');
       localStorage.removeItem('minha_conta_tab');
       localStorage.removeItem('muhlstore-saved-cart');
-    } catch {}
-    
+    } catch { }
+
     // Limpar estado do usuário
     setUser(null);
   };

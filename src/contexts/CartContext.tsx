@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { cartApi } from '@/services/cart-api';
 import { useToast } from '@/hooks/use-toast';
 import { useCartToast } from '@/hooks/useCartToast';
 import { Produto } from '@/types/produto';
@@ -45,9 +46,9 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
     case 'ADD_ITEM': {
       const { produto, quantidade = 1 } = action.payload;
       const itemExistente = state.itens.find(item => item.produto.id === produto.id);
-      
+
       let novosItens: ItemCarrinho[];
-      
+
       if (itemExistente) {
         novosItens = state.itens.map(item =>
           item.produto.id === produto.id
@@ -63,7 +64,7 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
         };
         novosItens = [...state.itens, novoItem];
       }
-      
+
       return {
         ...state,
         itens: novosItens,
@@ -71,7 +72,7 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
         quantidadeTotal: calcularQuantidadeTotal(novosItens),
       };
     }
-    
+
     case 'REMOVE_ITEM': {
       const novosItens = state.itens.filter(item => item.id !== action.payload.id);
       return {
@@ -81,17 +82,17 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
         quantidadeTotal: calcularQuantidadeTotal(novosItens),
       };
     }
-    
+
     case 'UPDATE_QUANTITY': {
       const { id, quantidade } = action.payload;
       if (quantidade <= 0) {
         return carrinhoReducer(state, { type: 'REMOVE_ITEM', payload: { id } });
       }
-      
+
       const novosItens = state.itens.map(item =>
         item.id === id ? { ...item, quantidade } : item
       );
-      
+
       return {
         ...state,
         itens: novosItens,
@@ -99,7 +100,7 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
         quantidadeTotal: calcularQuantidadeTotal(novosItens),
       };
     }
-    
+
     case 'CLEAR_CART':
       return {
         ...state,
@@ -107,25 +108,25 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
         total: 0,
         quantidadeTotal: 0,
       };
-    
+
     case 'TOGGLE_CART':
       return {
         ...state,
         isOpen: !state.isOpen,
       };
-    
+
     case 'SET_CART_OPEN':
       return {
         ...state,
         isOpen: action.payload,
       };
-    
+
     case 'SET_LOADING':
       return {
         ...state,
         isLoading: action.payload,
       };
-    
+
     case 'LOAD_CART':
       return {
         ...state,
@@ -133,7 +134,7 @@ function carrinhoReducer(state: CarrinhoState, action: CarrinhoAction): Carrinho
         total: calcularTotal(action.payload),
         quantidadeTotal: calcularQuantidadeTotal(action.payload),
       };
-    
+
     default:
       return state;
   }
@@ -167,7 +168,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(carrinhoReducer, initialState);
   const { toast } = useToast();
   const cartToast = useCartToast();
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
   function mapApiItemToLocal(apiItem: any): ItemCarrinho {
     const produto: Produto = {
@@ -209,17 +209,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
-        
+
         // Limpar localStorage se houver dados corrompidos
         try {
           const savedCart = localStorage.getItem('muhlstore-cart');
           if (savedCart) {
             const localItems = JSON.parse(savedCart);
             // Verificar se há itens com estoque 0 incorretamente
-            const hasInvalidStock = localItems.some((item: any) => 
+            const hasInvalidStock = localItems.some((item: any) =>
               item.produto && item.produto.estoque === 0 && item.produto.nome === 'Udy'
             );
-            
+
             if (hasInvalidStock) {
               console.log('🔄 Limpando carrinho com dados corrompidos...');
               localStorage.removeItem('muhlstore-cart');
@@ -231,34 +231,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
           console.error('Erro ao carregar carrinho do localStorage:', error);
           localStorage.removeItem('muhlstore-cart');
         }
-        
+
         // Depois, sincronizar com o servidor
-        const res = await fetch(`${API_BASE_URL}/cart`, { credentials: 'include' });
-        
-        // Tratar erros 502 (Bad Gateway) - servidor não está respondendo
-        if (res.status === 502) {
-          console.warn('⚠️ Servidor não está respondendo (502). Usando carrinho local.');
-          // Manter carrinho do localStorage se existir
-          return;
-        }
-        
-        if (!res.ok) {
-          // Para outros erros, apenas logar mas não quebrar
-          console.warn('⚠️ Erro ao carregar carrinho da API:', res.status);
-          return;
-        }
-        
-        const data = await res.json();
+        const data = await cartApi.getCart();
         const itens = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
         dispatch({ type: 'LOAD_CART', payload: itens });
-      } catch (error) {
+
+      } catch (error: any) {
         // Erros de rede ou outros - não quebrar a aplicação
-        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-          console.warn('⚠️ Erro de conexão ao carregar carrinho. Usando carrinho local.');
-        } else {
-        console.error('Erro ao carregar carrinho da API:', error);
-        }
-        // Se falhar, manter o carrinho do localStorage se existir
+        // O helper request já trata erros, mas aqui queremos manter a resiliência
+        // Se for 502 ou falha de conexão, continuamos com o local
+        console.warn('⚠️ Erro ao carregar carrinho da API:', error);
       } finally {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
@@ -267,10 +250,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Cache local e sincronização
   useEffect(() => {
-    try { 
+    try {
       localStorage.setItem('muhlstore-cart', JSON.stringify(state.itens));
       // Disparar evento customizado para sincronização entre abas
-      window.dispatchEvent(new CustomEvent('cartUpdated', { 
+      window.dispatchEvent(new CustomEvent('cartUpdated', {
         detail: { itens: state.itens, total: state.total, quantidadeTotal: state.quantidadeTotal }
       }));
     } catch (error) {
@@ -297,15 +280,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const syncWithServer = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/cart`, { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          const serverItems = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
-          
-          // Só atualizar se houver diferenças significativas
-          if (JSON.stringify(serverItems) !== JSON.stringify(state.itens)) {
-            dispatch({ type: 'LOAD_CART', payload: serverItems });
-          }
+        const data = await cartApi.getCart();
+        const serverItems = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
+
+        // Só atualizar se houver diferenças significativas
+        if (JSON.stringify(serverItems) !== JSON.stringify(state.itens)) {
+          dispatch({ type: 'LOAD_CART', payload: serverItems });
         }
       } catch (error) {
         console.error('Erro na sincronização automática:', error);
@@ -320,40 +300,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = async (produto: Produto, quantidade = 1) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
+
       // Feedback imediato para o usuário
       cartToast.showInfo('Adicionando ao carrinho...', `Adicionando ${produto.nome}...`, { duration: 2000 });
-      
-      const res = await fetch(`${API_BASE_URL}/cart/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          product_id: produto.id,
-          name: produto.nome,
-          price: Number(produto.preco || 0),
-          image_url: (produto as any).imagemUrl || (produto as any).imagem_url || null,
-          quantity: quantidade
-        })
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Falha ao adicionar item');
-      }
-      
-      const data = await res.json();
+
+      const data = await cartApi.addToCart(produto.id, quantidade);
+
       const itens = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
       dispatch({ type: 'LOAD_CART', payload: itens });
       dispatch({ type: 'SET_CART_OPEN', payload: true });
-      
+
       // Feedback de sucesso com preview de imagem
       const productImage = getProductImage(produto);
       cartToast.showAddToCart(produto.nome, quantidade, productImage);
     } catch (e: any) {
       console.error('Erro ao adicionar item:', e);
       cartToast.showError(
-        'Erro ao adicionar', 
+        'Erro ao adicionar',
         e?.message || 'Não foi possível adicionar o item. Tente novamente.',
         { duration: 5000 }
       );
@@ -365,29 +328,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeItem = async (id: string) => {
     const item = state.itens.find(i => i.id === id);
     if (!item) return;
-    
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
-      const res = await fetch(`${API_BASE_URL}/cart/items/${id}`, { 
-        method: 'DELETE', 
-        credentials: 'include' 
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Falha ao remover item');
-      }
-      
-      const data = await res.json();
+
+      const data = await cartApi.removeFromCart(id);
+
       const itens = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
       dispatch({ type: 'LOAD_CART', payload: itens });
-      
+
       cartToast.showRemoveFromCart(item.produto.nome);
     } catch (e: any) {
       console.error('Erro ao remover item:', e);
       cartToast.showError(
-        'Erro ao remover', 
+        'Erro ao remover',
         e?.message || 'Não foi possível remover o item. Tente novamente.',
         { duration: 5000 }
       );
@@ -399,38 +353,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = async (id: string, quantidade: number) => {
     const itemAtual = state.itens.find(i => i.id === id);
     if (!itemAtual) return;
-    
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
-      const res = await fetch(`${API_BASE_URL}/cart/items/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ quantity: quantidade })
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Falha ao atualizar quantidade');
-      }
-      
-      const data = await res.json();
+
+      const data = await cartApi.updateItemQuantity(id, quantidade);
+
       const itens = Array.isArray(data.items) ? data.items.map(mapApiItemToLocal) : [];
       dispatch({ type: 'LOAD_CART', payload: itens });
-      
+
       // Feedback baseado na ação
       const produtoNome = itemAtual.produto.nome;
       const isIncrease = quantidade > itemAtual.quantidade;
       cartToast.showUpdateQuantity(produtoNome, quantidade, isIncrease);
-      
+
       if (isIncrease) {
         dispatch({ type: 'SET_CART_OPEN', payload: true });
       }
     } catch (e: any) {
       console.error('Erro ao atualizar quantidade:', e);
       cartToast.showError(
-        'Erro ao atualizar', 
+        'Erro ao atualizar',
         e?.message || 'Não foi possível atualizar a quantidade. Tente novamente.',
         { duration: 5000 }
       );

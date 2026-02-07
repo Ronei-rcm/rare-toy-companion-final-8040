@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { userStatsApi } from '@/services/user-stats-api';
 
 export interface UserStats {
   usuario: {
@@ -108,47 +109,18 @@ export interface Favorite {
   total_avaliacoes: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-
 // Hook para buscar estatísticas do usuário
 export const useUserStats = (userId: string) => {
   return useQuery({
     queryKey: ['user-stats', userId],
     queryFn: async (): Promise<UserStats> => {
-      const response = await fetch(`${API_BASE_URL}/user-stats/stats/${userId}`);
-      
-      // Se for erro 500, tentar usar dados do response mesmo assim
-      if (response.status === 500) {
-        try {
-          const errorData = await response.json();
-          // Se o erro retornou dados válidos, usar eles
-          if (errorData.total_pedidos !== undefined || errorData.total_gasto !== undefined) {
-            return {
-              usuario: {
-                id: userId,
-                nome: '',
-                email: userId.includes('@') ? userId : '',
-                membro_desde: ''
-              },
-              pedidos: {
-                total: errorData.total_pedidos || 0,
-                pendentes: 0,
-                entregues: 0,
-                total_gasto: errorData.total_gasto || 0,
-                ticket_medio: 0
-              },
-              carrinho: { itens: 0, valor: 0 },
-              favoritos: { total: 0 },
-              fidelidade: { nivel: 'Bronze', pontos: 0, proximo_nivel: 100, progresso: 0 }
-            };
-          }
-        } catch (_) {
-          // Ignorar erro ao parsear JSON
-        }
-      }
-      
-      if (!response.ok) {
-        // Retornar dados padrão em vez de lançar erro
+      try {
+        return await userStatsApi.getStats(userId);
+      } catch (error: any) {
+        // Fallback lógica mantida para compatibilidade
+        // Se o helper request lançar erro, capturar aqui
+
+        // Retornar dados padrão em vez de lançar erro (comportamento original)
         return {
           usuario: {
             id: userId,
@@ -168,7 +140,6 @@ export const useUserStats = (userId: string) => {
           fidelidade: { nivel: 'Bronze', pontos: 0, proximo_nivel: 100, progresso: 0 }
         };
       }
-      return response.json();
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutos
@@ -183,11 +154,7 @@ export const useUserOrders = (userId: string, page: number = 1, limit: number = 
   return useQuery({
     queryKey: ['user-orders', userId, page, limit],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/user-stats/orders/${userId}?page=${page}&limit=${limit}`);
-      if (!response.ok) {
-        throw new Error('Erro ao buscar pedidos do usuário');
-      }
-      return response.json();
+      return await userStatsApi.getOrders(userId, page, limit);
     },
     enabled: !!userId,
     staleTime: 2 * 60 * 1000, // 2 minutos
@@ -199,11 +166,7 @@ export const useUserCart = (userId: string) => {
   return useQuery({
     queryKey: ['user-cart', userId],
     queryFn: async (): Promise<CartData> => {
-      const response = await fetch(`${API_BASE_URL}/user-stats/cart/${userId}`);
-      if (!response.ok) {
-        throw new Error('Erro ao buscar carrinho do usuário');
-      }
-      return response.json();
+      return await userStatsApi.getCart(userId);
     },
     enabled: !!userId,
     staleTime: 30 * 1000, // 30 segundos
@@ -216,11 +179,7 @@ export const useUserFavorites = (userId: string, page: number = 1, limit: number
   return useQuery({
     queryKey: ['user-favorites', userId, page, limit],
     queryFn: async (): Promise<FavoriteData> => {
-      const response = await fetch(`${API_BASE_URL}/user-stats/favorites/${userId}?page=${page}&limit=${limit}`);
-      if (!response.ok) {
-        throw new Error('Erro ao buscar favoritos do usuário');
-      }
-      return response.json();
+      return await userStatsApi.getFavorites(userId, page, limit);
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutos
@@ -230,30 +189,30 @@ export const useUserFavorites = (userId: string, page: number = 1, limit: number
 // Hook para invalidar cache e recarregar dados
 export const useRefreshUserData = () => {
   const queryClient = useQueryClient();
-  
+
   const refreshStats = (userId: string) => {
     queryClient.invalidateQueries({ queryKey: ['user-stats', userId] });
   };
-  
+
   const refreshOrders = (userId: string) => {
     queryClient.invalidateQueries({ queryKey: ['user-orders', userId] });
   };
-  
+
   const refreshCart = (userId: string) => {
     queryClient.invalidateQueries({ queryKey: ['user-cart', userId] });
   };
-  
+
   const refreshFavorites = (userId: string) => {
     queryClient.invalidateQueries({ queryKey: ['user-favorites', userId] });
   };
-  
+
   const refreshAll = (userId: string) => {
     refreshStats(userId);
     refreshOrders(userId);
     refreshCart(userId);
     refreshFavorites(userId);
   };
-  
+
   return {
     refreshStats,
     refreshOrders,

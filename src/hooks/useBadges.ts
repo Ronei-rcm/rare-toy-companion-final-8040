@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { badgesApi } from '@/services/badges-api';
 
 interface Badge {
   id: number;
@@ -16,8 +17,6 @@ export function useBadges() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
-
   useEffect(() => {
     fetchBadges();
   }, []);
@@ -25,9 +24,7 @@ export function useBadges() {
   const fetchBadges = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/badges`);
-      if (!response.ok) throw new Error('Erro ao carregar badges');
-      const data = await response.json();
+      const data = await badgesApi.getAll();
       setBadges(data);
       setError(null);
     } catch (err) {
@@ -40,10 +37,7 @@ export function useBadges() {
 
   const getProductBadges = async (productId: string | number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/produtos/${productId}/badges`);
-      if (!response.ok) throw new Error('Erro ao carregar badges do produto');
-      const data = await response.json();
-      return data;
+      return await badgesApi.getProductBadges(productId);
     } catch (err) {
       console.error('Erro ao carregar badges do produto:', err);
       return [];
@@ -52,13 +46,7 @@ export function useBadges() {
 
   const addBadgeToProduct = async (productId: string | number, badgeId: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/produtos/${productId}/badges`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ badge_id: badgeId })
-      });
-      if (!response.ok) throw new Error('Erro ao adicionar badge');
-      return await response.json();
+      return await badgesApi.addBadgeToProduct(productId, badgeId);
     } catch (err) {
       console.error('Erro ao adicionar badge:', err);
       throw err;
@@ -67,11 +55,7 @@ export function useBadges() {
 
   const removeBadgeFromProduct = async (productId: string | number, badgeId: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/produtos/${productId}/badges/${badgeId}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) throw new Error('Erro ao remover badge');
-      return await response.json();
+      return await badgesApi.removeBadgeFromProduct(productId, badgeId);
     } catch (err) {
       console.error('Erro ao remover badge:', err);
       throw err;
@@ -80,13 +64,7 @@ export function useBadges() {
 
   const updateProductCondition = async (productId: string | number, condicao: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/produtos/${productId}/condicao`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ condicao })
-      });
-      if (!response.ok) throw new Error('Erro ao atualizar condição');
-      return await response.json();
+      return await badgesApi.updateProductCondition(productId, condicao);
     } catch (err) {
       console.error('Erro ao atualizar condição:', err);
       throw err;

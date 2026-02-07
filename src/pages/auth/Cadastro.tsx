@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form';
 import { toast } from 'sonner';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
+import { authApi } from '@/services/auth-api';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -38,8 +39,7 @@ const Cadastro = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const { setUser } = useCurrentUser() as any;
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,30 +54,42 @@ const Cadastro = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
-    
+
     try {
-      const resp = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ nome: values.nome, email: values.email, senha: values.senha })
+      const data = await authApi.register({
+        name: values.nome,
+        email: values.email,
+        password: values.senha,
+        confirmPassword: values.confirmarSenha
       });
-      const data = await resp.json().catch(() => ({}));
-      
-      if (!resp.ok || !data.ok) {
-        // Se o email já está em uso, mostrar mensagem mais clara
-        if (data.error === 'email_in_use') {
-          throw new Error('Este email já está cadastrado. Use "Fazer login" para acessar sua conta ou "Esqueci minha senha" para redefinir.');
+
+      // Se o backend retornar sucesso true, prosseguir
+      if (data.success) {
+        // Se o registro já retornar o usuário, logar automaticamente
+        if (data.user) {
+          setUser(data.user);
+        } else {
+          // Fallback se o backend não retornar o user no registro
+          setUser({ id: values.email, email: values.email, nome: values.nome });
         }
-        throw new Error(data.message || data.error || 'Falha ao criar conta');
+        toast.success('Conta criada com sucesso!');
+        navigate('/minha-conta');
+      } else {
+        // Tratamento de erro específico se o backend retornar success: false com mensagem
+        throw new Error(data.message || 'Falha ao criar conta');
       }
-      setUser({ id: values.email, email: values.email, nome: values.nome });
-      toast.success('Conta criada com sucesso!');
-      navigate('/minha-conta');
-      
+
     } catch (error: any) {
       console.error('Erro ao criar conta:', error);
-      toast.error(error.message || 'Erro ao criar conta. Tente novamente.');
+      // O helper request lança erro com a mensagem do backend
+      let errorMessage = error.message || 'Erro ao criar conta. Tente novamente.';
+
+      // Mapear erros comuns se necessário (embora o backend deva enviar a mensagem)
+      if (errorMessage === 'email_in_use') {
+        errorMessage = 'Este email já está cadastrado. Use "Fazer login".';
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +105,7 @@ const Cadastro = () => {
               Cadastre-se para acompanhar seus pedidos e comprar mais rápido
             </p>
           </div>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -109,7 +121,7 @@ const Cadastro = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="email"
@@ -117,18 +129,18 @@ const Cadastro = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="email" 
-                        placeholder="seu@email.com" 
+                      <Input
+                        type="email"
+                        placeholder="seu@email.com"
                         autoComplete="email"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="telefone"
@@ -136,17 +148,17 @@ const Cadastro = () => {
                   <FormItem>
                     <FormLabel>Telefone</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="(00) 00000-0000" 
+                      <Input
+                        placeholder="(00) 00000-0000"
                         autoComplete="tel"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="senha"
@@ -154,18 +166,18 @@ const Cadastro = () => {
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
                         autoComplete="new-password"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="confirmarSenha"
@@ -173,18 +185,18 @@ const Cadastro = () => {
                   <FormItem>
                     <FormLabel>Confirmar senha</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
                         autoComplete="new-password"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="aceitarTermos"
@@ -205,7 +217,7 @@ const Cadastro = () => {
                   </FormItem>
                 )}
               />
-              
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
@@ -218,7 +230,7 @@ const Cadastro = () => {
               </Button>
             </form>
           </Form>
-          
+
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
               Já tem uma conta?{' '}

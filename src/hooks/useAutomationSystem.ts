@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { automationApi } from '@/services/automation-api';
 
 interface Trigger {
   id: string;
@@ -216,8 +217,7 @@ export function useAutomationSystem() {
   const loadWorkflows = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/automation/workflows');
-      const data = await response.json();
+      const data = await automationApi.getWorkflows();
       setWorkflows(data);
     } catch (error) {
       console.error('Erro ao carregar workflows:', error);
@@ -229,12 +229,7 @@ export function useAutomationSystem() {
   // Carregar execuções
   const loadExecutions = useCallback(async (workflowId?: string) => {
     try {
-      const url = workflowId 
-        ? `/api/automation/executions?workflowId=${workflowId}`
-        : '/api/automation/executions';
-      
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await automationApi.getExecutions(workflowId);
       setExecutions(data);
     } catch (error) {
       console.error('Erro ao carregar execuções:', error);
@@ -244,8 +239,7 @@ export function useAutomationSystem() {
   // Carregar campanhas
   const loadCampaigns = useCallback(async () => {
     try {
-      const response = await fetch('/api/automation/campaigns');
-      const data = await response.json();
+      const data = await automationApi.getCampaigns();
       setCampaigns(data);
     } catch (error) {
       console.error('Erro ao carregar campanhas:', error);
@@ -255,8 +249,7 @@ export function useAutomationSystem() {
   // Carregar regras
   const loadRules = useCallback(async () => {
     try {
-      const response = await fetch('/api/automation/rules');
-      const data = await response.json();
+      const data = await automationApi.getRules();
       setRules(data);
     } catch (error) {
       console.error('Erro ao carregar regras:', error);
@@ -266,20 +259,14 @@ export function useAutomationSystem() {
   // Criar workflow
   const createWorkflow = useCallback(async (workflowData: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt' | 'executionCount' | 'successCount' | 'failureCount'>) => {
     try {
-      const response = await fetch('/api/automation/workflows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...workflowData,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          executionCount: 0,
-          successCount: 0,
-          failureCount: 0
-        })
+      const newWorkflow = await automationApi.createWorkflow({
+        ...workflowData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        executionCount: 0,
+        successCount: 0,
+        failureCount: 0
       });
-
-      const newWorkflow = await response.json();
       setWorkflows(prev => [newWorkflow, ...prev]);
       return newWorkflow;
     } catch (error) {
@@ -291,19 +278,16 @@ export function useAutomationSystem() {
   // Atualizar workflow
   const updateWorkflow = useCallback(async (id: string, updates: Partial<Workflow>) => {
     try {
-      const response = await fetch(`/api/automation/workflows/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...updates,
-          updatedAt: new Date()
-        })
+      // Usando automationApi.updateWorkflow
+      await automationApi.updateWorkflow(id, {
+        ...updates,
+        updatedAt: new Date()
       });
 
-      if (response.ok) {
-        setWorkflows(prev => prev.map(w => w.id === id ? { ...w, ...updates, updatedAt: new Date() } : w));
-        return true;
-      }
+      // Assumindo sucesso se não lançar erro, pois request() lança erro se !ok
+      setWorkflows(prev => prev.map(w => w.id === id ? { ...w, ...updates, updatedAt: new Date() } : w));
+      return true;
+
     } catch (error) {
       console.error('Erro ao atualizar workflow:', error);
     }
@@ -313,14 +297,9 @@ export function useAutomationSystem() {
   // Deletar workflow
   const deleteWorkflow = useCallback(async (id: string) => {
     try {
-      const response = await fetch(`/api/automation/workflows/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setWorkflows(prev => prev.filter(w => w.id !== id));
-        return true;
-      }
+      await automationApi.deleteWorkflow(id);
+      setWorkflows(prev => prev.filter(w => w.id !== id));
+      return true;
     } catch (error) {
       console.error('Erro ao deletar workflow:', error);
     }
@@ -331,7 +310,7 @@ export function useAutomationSystem() {
   const executeWorkflow = useCallback(async (workflowId: string, triggerData?: any) => {
     try {
       setIsExecuting(true);
-      
+
       const workflow = workflows.find(w => w.id === workflowId);
       if (!workflow) {
         throw new Error('Workflow não encontrado');
@@ -355,13 +334,13 @@ export function useAutomationSystem() {
       };
 
       setExecutions(prev => [execution, ...prev]);
-      
+
       // Adicionar à fila de execução
       executionQueueRef.current.push(execution);
-      
+
       // Processar execução
       await processExecution(execution);
-      
+
       return execution;
     } catch (error) {
       console.error('Erro ao executar workflow:', error);
@@ -390,7 +369,7 @@ export function useAutomationSystem() {
 
         try {
           const result = await executeAction(action, execution.variables, execution.triggerData);
-          
+
           actionResult.status = 'completed';
           actionResult.completedAt = new Date();
           actionResult.result = result;
@@ -419,7 +398,7 @@ export function useAutomationSystem() {
           if (actionResult.retryCount < (action.retryCount || 0)) {
             actionResult.retryCount++;
             actionResult.status = 'pending';
-            
+
             // Aguardar antes de tentar novamente
             if (action.retryDelay) {
               await new Promise(resolve => setTimeout(resolve, action.retryDelay * 1000));
@@ -471,35 +450,35 @@ export function useAutomationSystem() {
     switch (action.type) {
       case 'email':
         return await sendEmail(config.email!, variables, triggerData);
-      
+
       case 'sms':
         return await sendSMS(config.sms!, variables, triggerData);
-      
+
       case 'push':
         return await sendPushNotification(config.push!, variables, triggerData);
-      
+
       case 'webhook':
         return await callWebhook(config.webhook!, variables, triggerData);
-      
+
       case 'api':
         return await callAPI(config.api!, variables, triggerData);
-      
+
       case 'update':
         return await updateEntity(config.update!, variables, triggerData);
-      
+
       case 'create':
         return await createEntity(config.create!, variables, triggerData);
-      
+
       case 'delete':
         return await deleteEntity(config.delete!, variables, triggerData);
-      
+
       case 'wait':
         await new Promise(resolve => setTimeout(resolve, config.wait!.duration * 1000));
         return { waited: config.wait!.duration };
-      
+
       case 'condition':
         return await executeCondition(config.condition!, variables, triggerData);
-      
+
       default:
         throw new Error(`Tipo de ação não suportado: ${action.type}`);
     }
@@ -563,26 +542,20 @@ export function useAutomationSystem() {
   // Criar campanha
   const createCampaign = useCallback(async (campaignData: Omit<Campaign, 'id' | 'createdAt' | 'updatedAt' | 'metrics'>) => {
     try {
-      const response = await fetch('/api/automation/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...campaignData,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          metrics: {
-            sent: 0,
-            delivered: 0,
-            opened: 0,
-            clicked: 0,
-            converted: 0,
-            unsubscribed: 0,
-            bounced: 0
-          }
-        })
+      const newCampaign = await automationApi.createCampaign({
+        ...campaignData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        metrics: {
+          sent: 0,
+          delivered: 0,
+          opened: 0,
+          clicked: 0,
+          converted: 0,
+          unsubscribed: 0,
+          bounced: 0
+        }
       });
-
-      const newCampaign = await response.json();
       setCampaigns(prev => [newCampaign, ...prev]);
       return newCampaign;
     } catch (error) {
@@ -594,14 +567,9 @@ export function useAutomationSystem() {
   // Executar campanha
   const executeCampaign = useCallback(async (campaignId: string) => {
     try {
-      const response = await fetch(`/api/automation/campaigns/${campaignId}/execute`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        await loadCampaigns();
-        return true;
-      }
+      await automationApi.executeCampaign(campaignId);
+      await loadCampaigns();
+      return true;
     } catch (error) {
       console.error('Erro ao executar campanha:', error);
     }
@@ -611,16 +579,10 @@ export function useAutomationSystem() {
   // Criar regra de automação
   const createRule = useCallback(async (ruleData: Omit<AutomationRule, 'id' | 'executionCount' | 'lastExecuted'>) => {
     try {
-      const response = await fetch('/api/automation/rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...ruleData,
-          executionCount: 0
-        })
+      const newRule = await automationApi.createRule({
+        ...ruleData,
+        executionCount: 0
       });
-
-      const newRule = await response.json();
       setRules(prev => [newRule, ...prev]);
       return newRule;
     } catch (error) {
@@ -632,16 +594,9 @@ export function useAutomationSystem() {
   // Executar regras
   const executeRules = useCallback(async (eventData: any) => {
     try {
-      const response = await fetch('/api/automation/rules/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventData)
-      });
-
-      if (response.ok) {
-        await loadRules();
-        return true;
-      }
+      await automationApi.executeRules(eventData);
+      await loadRules();
+      return true;
     } catch (error) {
       console.error('Erro ao executar regras:', error);
     }
@@ -685,7 +640,7 @@ export function useAutomationSystem() {
     rules,
     isLoading,
     isExecuting,
-    
+
     // Ações
     loadWorkflows,
     loadExecutions,
@@ -699,7 +654,7 @@ export function useAutomationSystem() {
     executeCampaign,
     createRule,
     executeRules,
-    
+
     // Utilitários
     getStatistics
   };
