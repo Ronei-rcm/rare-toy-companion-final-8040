@@ -60,92 +60,111 @@ const BlogAdmin = React.lazy(() => import("./pages/admin/BlogAdmin"));
 const BlogPost = React.lazy(() => import("./pages/BlogPost"));
 const MarketplaceAdmin = React.lazy(() => import("./pages/admin/MarketplaceAdmin"));
 const CategoriasAdmin = React.lazy(() => import("./pages/admin/CategoriasAdmin"));
+const ProfileSelector = React.lazy(() => import("./pages/auth/ProfileSelector"));
 
 const queryClient = new QueryClient();
 
 function App() {
+  React.useEffect(() => {
+    // Inicialização global de UI nativa se disponível
+    const initNative = async () => {
+      try {
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        const { Capacitor } = await import('@capacitor/core');
+        if (Capacitor.isNativePlatform()) {
+          await StatusBar.setStyle({ style: Style.Light });
+          await StatusBar.setBackgroundColor({ color: '#f97316' }); // Orange-500
+        }
+      } catch (e) {
+        console.warn('Capacitor não disponível');
+      }
+    };
+    initNative();
+  }, []);
+
   return (
     <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <UserProvider>
-          <CurrentUserProvider>
-          <HomeConfigProvider>
-            <SettingsProvider>
-            <CartProvider>
-              <CartToastWrapper>
-                <Toaster />
-                <Sonner />
-                <CartRecoveryManager />
-                <AccessibilitySettings />
-                <PWAInstallPrompt />
-                <NotificationPrompt />
-                <Router>
-          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando...</div>}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/loja" element={<Loja />} />
-              <Route path="/produto/:id" element={<ProdutoDetalhe />} />
-              <Route path="/carrinho" element={<Carrinho />} />
-              <Route path="/destaques" element={<Destaques />} />
-              
-              <Route path="/colecao" element={<Colecoes />} />
-              <Route path="/colecao/:id" element={<ColecaoDetalhe />} />
-              <Route path="/collection" element={<Colecao />} />
-              <Route path="/marketplace" element={<Mercado />} />
-              <Route path="/about" element={<Sobre />} />
-              <Route path="/eventos" element={<Eventos />} />
-              <Route path="/blog/:slug" element={<BlogPost />} />
-              
-              {/* Rotas de autenticação e conta do cliente */}
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/cadastro" element={<Cadastro />} />
-              <Route path="/minha-conta" element={<ProtectedRoute><MinhaConta /></ProtectedRoute>} />
-              <Route path="/minha-conta/pedido/:id" element={<ProtectedRoute>{React.createElement(React.lazy(() => import('./pages/cliente/PedidoDetalhe')))}</ProtectedRoute>} />
-              
-              {/* Rota de login administrativo */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              
-              {/* Rotas administrativas */}
-              <Route path="/admin" element={<Admin />}>
-                <Route index element={<Dashboard />} />
-                <Route path="produtos" element={<Produtos />} />
-                <Route path="categorias" element={<CategoriasAdmin />} />
-                <Route path="colecoes" element={<ColecoesAdmin />} />
-                <Route path="blog" element={<BlogAdmin />} />
-                <Route path="marketplace" element={<MarketplaceAdmin />} />
-                <Route path="instagram" element={<InstagramIntegracao />} />
-                <Route path="clientes" element={<Clientes />} />
-                <Route path="pedidos" element={<Pedidos />} />
-                <Route path="pedidos-evolved" element={<PedidosEvolved />} />
-                <Route path="home-config" element={<HomeConfig />} />
-                <Route path="whatsapp-grupos" element={<WhatsAppGrupos />} />
-                <Route path="fornecedores" element={<Fornecedores />} />
-                <Route path="configuracoes" element={<ConfiguracoesAdmin />} />
-                <Route path="recuperacao" element={<RecuperacaoAdmin />} />
-                <Route path="eventos" element={<EventosAdmin />} />
-                  <Route path="financeiro" element={<Financeiro />} />
-                  <Route path="fornecedores-financeiro" element={<FornecedoresFinanceiro />} />
-                  <Route path="lancamentos" element={<Lancamentos />} />
-                  <Route path="metas-financeiras" element={<MetasFinanceiras />} />
-                  <Route path="funcionarios" element={<Funcionarios />} />
-                  <Route path="usuarios" element={<UsuariosAdmin />} />
-                  <Route path="teste" element={<Teste />} />
-                <Route path="sobre" element={<SobreAdmin />} />
-              </Route>
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          </Router>
-              </CartToastWrapper>
-            </CartProvider>
-            </SettingsProvider>
-          </HomeConfigProvider>
-          </CurrentUserProvider>
-        </UserProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <UserProvider>
+            <CurrentUserProvider>
+              <HomeConfigProvider>
+                <SettingsProvider>
+                  <CartProvider>
+                    <CartToastWrapper>
+                      <Toaster />
+                      <Sonner />
+                      <CartRecoveryManager />
+                      <AccessibilitySettings />
+                      <PWAInstallPrompt />
+                      <NotificationPrompt />
+                      <Router>
+                        <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Carregando...</div>}>
+                          <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/loja" element={<Loja />} />
+                            <Route path="/produto/:id" element={<ProdutoDetalhe />} />
+                            <Route path="/carrinho" element={<Carrinho />} />
+                            <Route path="/destaques" element={<Destaques />} />
+
+                            <Route path="/colecao" element={<Colecoes />} />
+                            <Route path="/colecao/:id" element={<ColecaoDetalhe />} />
+                            <Route path="/collection" element={<Colecao />} />
+                            <Route path="/marketplace" element={<Mercado />} />
+                            <Route path="/about" element={<Sobre />} />
+                            <Route path="/eventos" element={<Eventos />} />
+                            <Route path="/blog/:slug" element={<BlogPost />} />
+
+                            {/* Rotas de autenticação e conta do cliente */}
+                            <Route path="/auth/login" element={<Login />} />
+                            <Route path="/auth/cadastro" element={<Cadastro />} />
+                            <Route path="/auth/profile-selector" element={<ProfileSelector />} />
+                            <Route path="/minha-conta" element={<ProtectedRoute><MinhaConta /></ProtectedRoute>} />
+                            <Route path="/minha-conta/pedido/:id" element={<ProtectedRoute>{React.createElement(React.lazy(() => import('./pages/cliente/PedidoDetalhe')))}</ProtectedRoute>} />
+
+                            {/* Rota de login administrativo */}
+                            <Route path="/admin/login" element={<AdminLogin />} />
+
+                            {/* Rotas administrativas */}
+                            <Route path="/admin" element={<Admin />}>
+                              <Route index element={<Dashboard />} />
+                              <Route path="produtos" element={<Produtos />} />
+                              <Route path="categorias" element={<CategoriasAdmin />} />
+                              <Route path="colecoes" element={<ColecoesAdmin />} />
+                              <Route path="blog" element={<BlogAdmin />} />
+                              <Route path="marketplace" element={<MarketplaceAdmin />} />
+                              <Route path="instagram" element={<InstagramIntegracao />} />
+                              <Route path="clientes" element={<Clientes />} />
+                              <Route path="pedidos" element={<Pedidos />} />
+                              <Route path="pedidos-evolved" element={<PedidosEvolved />} />
+                              <Route path="home-config" element={<HomeConfig />} />
+                              <Route path="whatsapp-grupos" element={<WhatsAppGrupos />} />
+                              <Route path="fornecedores" element={<Fornecedores />} />
+                              <Route path="configuracoes" element={<ConfiguracoesAdmin />} />
+                              <Route path="recuperacao" element={<RecuperacaoAdmin />} />
+                              <Route path="eventos" element={<EventosAdmin />} />
+                              <Route path="financeiro" element={<Financeiro />} />
+                              <Route path="fornecedores-financeiro" element={<FornecedoresFinanceiro />} />
+                              <Route path="lancamentos" element={<Lancamentos />} />
+                              <Route path="metas-financeiras" element={<MetasFinanceiras />} />
+                              <Route path="funcionarios" element={<Funcionarios />} />
+                              <Route path="usuarios" element={<UsuariosAdmin />} />
+                              <Route path="teste" element={<Teste />} />
+                              <Route path="sobre" element={<SobreAdmin />} />
+                            </Route>
+
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </Suspense>
+                      </Router>
+                    </CartToastWrapper>
+                  </CartProvider>
+                </SettingsProvider>
+              </HomeConfigProvider>
+            </CurrentUserProvider>
+          </UserProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
     </HelmetProvider>
   );
 }
