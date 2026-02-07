@@ -27,19 +27,16 @@ export function onImageError(e: React.SyntheticEvent<HTMLImageElement>): void {
   // Não logar 404s - são esperados quando imagens não existem
   // Silenciosamente substituir por placeholder
 
-  // Tentar usar placeholder.svg primeiro, depois placeholder.png
-  const placeholderSrc = '/placeholder.svg';
-  img.src = placeholderSrc;
-  img.alt = 'Imagem não disponível';
+  // Tentar usar placeholder.png diretamente para evitar erros de SVG no Android (Capacitor)
+  const placeholderSrc = '/placeholder.png';
 
-  // Se o placeholder.svg também falhar, tentar placeholder.png
-  const handlePlaceholderError = () => {
-    if (img.src !== '/placeholder.png') {
-      img.src = '/placeholder.png';
-    }
-  };
+  if (img.src !== placeholderSrc) {
+    img.src = placeholderSrc;
+    img.alt = 'Imagem não disponível';
+  }
 
-  img.onerror = handlePlaceholderError;
+  // Prevenir loop se o PNG também falhar
+  img.onerror = null;
 }
 
 export default resolveImage;
