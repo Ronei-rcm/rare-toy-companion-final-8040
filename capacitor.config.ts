@@ -5,10 +5,13 @@ const config: CapacitorConfig = {
   appName: 'MuhlStore',
   webDir: 'dist',
   server: {
-    // Em produção o app usa a API do servidor. Para desenvolvimento com live reload:
-    // androidScheme: 'https',
-    // url: 'http://SEU_IP:8040',
+    // PRODUÇÃO: App usa a API do servidor via IP público
+    // Para desenvolvimento com live reload, descomente as linhas abaixo:
+    // url: 'http://177.67.33.248:8040',
     // cleartext: true
+
+    // IMPORTANTE: Para APK de produção, deixe vazio (usa .env.production)
+    // O app vai usar VITE_API_URL definido em .env.production
   },
   android: {
     allowMixedContent: true,
