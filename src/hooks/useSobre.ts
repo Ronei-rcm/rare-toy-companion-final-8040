@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  getSobreContent, 
+import {
+  getSobreContent,
   updateSobreContent,
   getCompanyValues,
   createCompanyValue,
@@ -18,8 +18,8 @@ import {
   createContactInfo,
   updateContactInfo,
   deleteContactInfo
-} from '@/api/sobre-api';
-import { 
+} from '@/services/sobre-api';
+import {
   CreateSobreContentData,
   CreateCompanyValueData,
   UpdateCompanyValueData,
@@ -42,9 +42,9 @@ export function useSobreContent() {
 
 export function useUpdateSobreContent() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ section, data }: { section: string; data: CreateSobreContentData }) => 
+    mutationFn: ({ section, data }: { section: string; data: CreateSobreContentData }) =>
       updateSobreContent(section, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sobre-content'] });
@@ -63,7 +63,7 @@ export function useCompanyValues() {
 
 export function useCreateCompanyValue() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: createCompanyValue,
     onSuccess: () => {
@@ -74,9 +74,9 @@ export function useCreateCompanyValue() {
 
 export function useUpdateCompanyValue() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateCompanyValueData }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdateCompanyValueData }) =>
       updateCompanyValue(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-values'] });
@@ -86,7 +86,7 @@ export function useUpdateCompanyValue() {
 
 export function useDeleteCompanyValue() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: deleteCompanyValue,
     onSuccess: () => {
@@ -106,7 +106,7 @@ export function useTeamMembers() {
 
 export function useCreateTeamMember() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: createTeamMember,
     onSuccess: () => {
@@ -117,9 +117,9 @@ export function useCreateTeamMember() {
 
 export function useUpdateTeamMember() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTeamMemberData }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdateTeamMemberData }) =>
       updateTeamMember(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
@@ -129,7 +129,7 @@ export function useUpdateTeamMember() {
 
 export function useDeleteTeamMember() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: deleteTeamMember,
     onSuccess: () => {
@@ -149,7 +149,7 @@ export function useCompanyStats() {
 
 export function useCreateCompanyStat() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: createCompanyStat,
     onSuccess: () => {
@@ -160,9 +160,9 @@ export function useCreateCompanyStat() {
 
 export function useUpdateCompanyStat() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateCompanyStatData }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdateCompanyStatData }) =>
       updateCompanyStat(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-stats'] });
@@ -172,7 +172,7 @@ export function useUpdateCompanyStat() {
 
 export function useDeleteCompanyStat() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: deleteCompanyStat,
     onSuccess: () => {
@@ -192,7 +192,7 @@ export function useContactInfo() {
 
 export function useCreateContactInfo() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: createContactInfo,
     onSuccess: () => {
@@ -203,9 +203,9 @@ export function useCreateContactInfo() {
 
 export function useUpdateContactInfo() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateContactInfoData }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdateContactInfoData }) =>
       updateContactInfo(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contact-info'] });
@@ -215,7 +215,7 @@ export function useUpdateContactInfo() {
 
 export function useDeleteContactInfo() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: deleteContactInfo,
     onSuccess: () => {

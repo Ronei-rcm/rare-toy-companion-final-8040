@@ -8,18 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Heart, 
-  Users, 
-  Award, 
-  Target, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Save, 
+import {
+  Heart,
+  Users,
+  Award,
+  Target,
+  Mail,
+  Phone,
+  MapPin,
+  Plus,
+  Edit,
+  Trash2,
+  Save,
   X,
   Upload,
   Image as ImageIcon,
@@ -41,8 +41,8 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
-import { 
-  useSobreContent, 
+import {
+  useSobreContent,
   useUpdateSobreContent,
   useCompanyValues,
   useCreateCompanyValue,
@@ -61,7 +61,7 @@ import {
   useUpdateContactInfo,
   useDeleteContactInfo
 } from '@/hooks/useSobre';
-import { uploadSobreImage, uploadTeamMemberImage } from '@/api/sobre-api';
+import { uploadSobreImage, uploadTeamMemberImage } from '@/services/sobre-api';
 import { CreateSobreContentData, CreateCompanyValueData, UpdateCompanyValueData, CreateTeamMemberData, UpdateTeamMemberData, CreateCompanyStatData, UpdateCompanyStatData, CreateContactInfoData, UpdateContactInfoData } from '@/types/sobre';
 import { toast } from 'sonner';
 import HistoriaEditor from '@/components/admin/HistoriaEditor';
@@ -157,7 +157,7 @@ const SobreAdmin = () => {
     try {
       setIsLoading(true);
       let result;
-      
+
       if (editingItem === 'equipe' && formData.id) {
         // Upload específico para membro da equipe
         result = await uploadTeamMemberImage(formData.id, file);
@@ -165,7 +165,7 @@ const SobreAdmin = () => {
         // Upload geral
         result = await uploadSobreImage(file);
       }
-      
+
       if (result.success) {
         setFormData({ ...formData, image_url: result.fullUrl });
         toast.success('Imagem enviada com sucesso!');
@@ -180,7 +180,7 @@ const SobreAdmin = () => {
   const handleSave = async (type: string) => {
     try {
       setIsLoading(true);
-      
+
       // Validação de campos obrigatórios
       if (type === 'valor' && !formData.title) {
         toast.error('Título é obrigatório');
@@ -254,7 +254,7 @@ const SobreAdmin = () => {
           toast.success('Informação de contato criada com sucesso!');
         }
       }
-      
+
       setEditingItem(null);
       setFormData({});
     } catch (error: any) {
@@ -335,35 +335,35 @@ const SobreAdmin = () => {
       <div className="p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm border border-orange-100 rounded-2xl p-1">
-            <TabsTrigger 
-              value="conteudo" 
+            <TabsTrigger
+              value="conteudo"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-xl"
             >
               <Type className="w-4 h-4 mr-2" />
               Conteúdo
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="valores"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-xl"
             >
               <Heart className="w-4 h-4 mr-2" />
               Valores
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="equipe"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-xl"
             >
               <Users className="w-4 h-4 mr-2" />
               Equipe
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="stats"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-xl"
             >
               <TrendingUp className="w-4 h-4 mr-2" />
               Estatísticas
             </TabsTrigger>
-            <TabsTrigger 
+            <TabsTrigger
               value="contato"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:text-white rounded-xl"
             >
@@ -372,257 +372,150 @@ const SobreAdmin = () => {
             </TabsTrigger>
           </TabsList>
 
-        {/* Conteúdo Geral */}
-        <TabsContent value="conteudo" className="space-y-6 mt-6">
-          {/* Editor especializado para Nossa História */}
-          {sobreContent?.find(content => content.section === 'hero') && (
-            <HistoriaEditor
-              content={sobreContent.find(content => content.section === 'hero')}
-              onSave={async (data) => {
-                const heroContent = sobreContent?.find(content => content.section === 'hero');
-                if (heroContent) {
-                  await updateSobreContent.mutateAsync({
-                    section: 'hero',
-                    data: data
-                  });
-                } else {
-                  // Criar novo conteúdo se não existir
-                  await updateSobreContent.mutateAsync({
-                    section: 'hero',
-                    data: data
-                  });
-                }
-              }}
-              isLoading={updateSobreContent.isPending}
-            />
-          )}
+          {/* Conteúdo Geral */}
+          <TabsContent value="conteudo" className="space-y-6 mt-6">
+            {/* Editor especializado para Nossa História */}
+            {sobreContent?.find(content => content.section === 'hero') && (
+              <HistoriaEditor
+                content={sobreContent.find(content => content.section === 'hero')}
+                onSave={async (data) => {
+                  const heroContent = sobreContent?.find(content => content.section === 'hero');
+                  if (heroContent) {
+                    await updateSobreContent.mutateAsync({
+                      section: 'hero',
+                      data: data
+                    });
+                  } else {
+                    // Criar novo conteúdo se não existir
+                    await updateSobreContent.mutateAsync({
+                      section: 'hero',
+                      data: data
+                    });
+                  }
+                }}
+                isLoading={updateSobreContent.isPending}
+              />
+            )}
 
-          {/* Outras seções */}
-          <div className="grid gap-6">
-            {sobreContent?.filter(content => content.section !== 'hero').map((content) => (
-              <Card key={content.id} className="bg-white/80 backdrop-blur-sm border border-orange-100 hover:shadow-lg transition-all duration-300">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                        <Type className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl capitalize">{content.section}</CardTitle>
-                        <p className="text-sm text-slate-600">Conteúdo da seção {content.section}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(content, 'conteudo')}
-                      className="hover:bg-orange-50 hover:border-orange-200"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Editar
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">Título</Label>
-                        <p className="text-slate-900 font-medium">{content.title || 'Não definido'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-slate-700">Subtítulo</Label>
-                        <p className="text-slate-600">{content.subtitle || 'Não definido'}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {content.image_url && (
+            {/* Outras seções */}
+            <div className="grid gap-6">
+              {sobreContent?.filter(content => content.section !== 'hero').map((content) => (
+                <Card key={content.id} className="bg-white/80 backdrop-blur-sm border border-orange-100 hover:shadow-lg transition-all duration-300">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                          <Type className="w-5 h-5 text-white" />
+                        </div>
                         <div>
-                          <Label className="text-sm font-medium text-slate-700">Imagem</Label>
-                          <div className="mt-2">
-                            <img 
-                              src={content.image_url} 
-                              alt="Preview" 
-                              className="w-20 h-20 object-cover rounded-lg border border-orange-100"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-slate-700">Descrição</Label>
-                    <p className="text-slate-600 mt-1 leading-relaxed">
-                      {content.description || 'Não definido'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Valores */}
-        <TabsContent value="valores" className="space-y-6 mt-6">
-          <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                    <Heart className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Valores da Empresa</CardTitle>
-                    <p className="text-sm text-slate-600">Gerencie os valores e princípios da empresa</p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => handleAddNew('valor')}
-                  className="gradient-brand text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Valor
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                {valores?.map((valor, index) => {
-                  const IconComponent = getIconComponent(valor.icon);
-                  return (
-                    <div 
-                      key={valor.id} 
-                      className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors">
-                            <GripVertical className="w-4 h-4 text-orange-600" />
-                          </div>
-                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                            <IconComponent className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-slate-900">{valor.title}</h3>
-                            <p className="text-slate-600 mt-1">{valor.description}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            Ordem: {valor.order_index}
-                          </Badge>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(valor, 'valor')}
-                              className="hover:bg-orange-50"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(valor.id, 'valor')}
-                              className="hover:bg-red-50 text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          <CardTitle className="text-xl capitalize">{content.section}</CardTitle>
+                          <p className="text-sm text-slate-600">Conteúdo da seção {content.section}</p>
                         </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(content, 'conteudo')}
+                        className="hover:bg-orange-50 hover:border-orange-200"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
+                      </Button>
                     </div>
-                  );
-                })}
-                {valores?.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Heart className="w-8 h-8 text-orange-500" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700">Título</Label>
+                          <p className="text-slate-900 font-medium">{content.title || 'Não definido'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-slate-700">Subtítulo</Label>
+                          <p className="text-slate-600">{content.subtitle || 'Não definido'}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        {content.image_url && (
+                          <div>
+                            <Label className="text-sm font-medium text-slate-700">Imagem</Label>
+                            <div className="mt-2">
+                              <img
+                                src={content.image_url}
+                                alt="Preview"
+                                className="w-20 h-20 object-cover rounded-lg border border-orange-100"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhum valor cadastrado</h3>
-                    <p className="text-slate-600 mb-4">Adicione os valores da sua empresa para começar</p>
-                    <Button 
-                      onClick={() => handleAddNew('valor')}
-                      className="gradient-brand text-white"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Primeiro Valor
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <div>
+                      <Label className="text-sm font-medium text-slate-700">Descrição</Label>
+                      <p className="text-slate-600 mt-1 leading-relaxed">
+                        {content.description || 'Não definido'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-        {/* Equipe */}
-        <TabsContent value="equipe" className="space-y-6 mt-6">
-          <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
+          {/* Valores */}
+          <TabsContent value="valores" className="space-y-6 mt-6">
+            <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                      <Heart className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Valores da Empresa</CardTitle>
+                      <p className="text-sm text-slate-600">Gerencie os valores e princípios da empresa</p>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl">Membros da Equipe</CardTitle>
-                    <p className="text-sm text-slate-600">Gerencie os membros da sua equipe</p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => handleAddNew('equipe')}
-                  className="gradient-brand text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Membro
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                {equipe?.map((membro, index) => (
-                  <div 
-                    key={membro.id} 
-                    className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
+                  <Button
+                    onClick={() => handleAddNew('valor')}
+                    className="gradient-brand text-white"
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors mt-1">
-                        <GripVertical className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Valor
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {valores?.map((valor, index) => {
+                    const IconComponent = getIconComponent(valor.icon);
+                    return (
+                      <div
+                        key={valor.id}
+                        className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
+                      >
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            <div className="relative">
-                              {membro.image_url ? (
-                                <img 
-                                  src={membro.image_url} 
-                                  alt={membro.name}
-                                  className="w-16 h-16 rounded-2xl object-cover border-2 border-orange-100"
-                                />
-                              ) : (
-                                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center">
-                                  <Users className="w-8 h-8 text-white" />
-                                </div>
-                              )}
-                              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              </div>
+                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors">
+                              <GripVertical className="w-4 h-4 text-orange-600" />
+                            </div>
+                            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                              <IconComponent className="w-6 h-6 text-white" />
                             </div>
                             <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-slate-900">{membro.name}</h3>
-                              <p className="text-orange-600 font-medium">{membro.position}</p>
-                              <p className="text-slate-600 mt-2 leading-relaxed">{membro.description}</p>
+                              <h3 className="text-lg font-semibold text-slate-900">{valor.title}</h3>
+                              <p className="text-slate-600 mt-1">{valor.description}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
-                              Ordem: {membro.order_index}
+                              Ordem: {valor.order_index}
                             </Badge>
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEdit(membro, 'equipe')}
+                                onClick={() => handleEdit(valor, 'valor')}
                                 className="hover:bg-orange-50"
                               >
                                 <Edit className="w-4 h-4" />
@@ -630,7 +523,7 @@ const SobreAdmin = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDelete(membro.id, 'equipe')}
+                                onClick={() => handleDelete(valor.id, 'valor')}
                                 className="hover:bg-red-50 text-red-600"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -639,219 +532,326 @@ const SobreAdmin = () => {
                           </div>
                         </div>
                       </div>
+                    );
+                  })}
+                  {valores?.length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Heart className="w-8 h-8 text-orange-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhum valor cadastrado</h3>
+                      <p className="text-slate-600 mb-4">Adicione os valores da sua empresa para começar</p>
+                      <Button
+                        onClick={() => handleAddNew('valor')}
+                        className="gradient-brand text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Primeiro Valor
+                      </Button>
                     </div>
-                  </div>
-                ))}
-                {equipe?.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-8 h-8 text-orange-500" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhum membro cadastrado</h3>
-                    <p className="text-slate-600 mb-4">Adicione os membros da sua equipe para começar</p>
-                    <Button 
-                      onClick={() => handleAddNew('equipe')}
-                      className="gradient-brand text-white"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Primeiro Membro
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Estatísticas */}
-        <TabsContent value="stats" className="space-y-6 mt-6">
-          <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Estatísticas da Empresa</CardTitle>
-                    <p className="text-sm text-slate-600">Gerencie as estatísticas e números da empresa</p>
-                  </div>
+                  )}
                 </div>
-                <Button 
-                  onClick={() => handleAddNew('stat')}
-                  className="gradient-brand text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Estatística
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
-                {stats?.map((stat, index) => {
-                  const IconComponent = getIconComponent(stat.icon);
-                  return (
-                    <div 
-                      key={stat.id} 
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Equipe */}
+          <TabsContent value="equipe" className="space-y-6 mt-6">
+            <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Membros da Equipe</CardTitle>
+                      <p className="text-sm text-slate-600">Gerencie os membros da sua equipe</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleAddNew('equipe')}
+                    className="gradient-brand text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Membro
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6">
+                  {equipe?.map((membro, index) => (
+                    <div
+                      key={membro.id}
                       className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
                     >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors">
-                            <GripVertical className="w-4 h-4 text-orange-600" />
+                      <div className="flex items-start gap-4">
+                        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors mt-1">
+                          <GripVertical className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="relative">
+                                {membro.image_url ? (
+                                  <img
+                                    src={membro.image_url}
+                                    alt={membro.name}
+                                    className="w-16 h-16 rounded-2xl object-cover border-2 border-orange-100"
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center">
+                                    <Users className="w-8 h-8 text-white" />
+                                  </div>
+                                )}
+                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-slate-900">{membro.name}</h3>
+                                <p className="text-orange-600 font-medium">{membro.position}</p>
+                                <p className="text-slate-600 mt-2 leading-relaxed">{membro.description}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                Ordem: {membro.order_index}
+                              </Badge>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(membro, 'equipe')}
+                                  className="hover:bg-orange-50"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDelete(membro.id, 'equipe')}
+                                  className="hover:bg-red-50 text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                          {stat.icon && (
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {equipe?.length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-8 h-8 text-orange-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhum membro cadastrado</h3>
+                      <p className="text-slate-600 mb-4">Adicione os membros da sua equipe para começar</p>
+                      <Button
+                        onClick={() => handleAddNew('equipe')}
+                        className="gradient-brand text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Primeiro Membro
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Estatísticas */}
+          <TabsContent value="stats" className="space-y-6 mt-6">
+            <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Estatísticas da Empresa</CardTitle>
+                      <p className="text-sm text-slate-600">Gerencie as estatísticas e números da empresa</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleAddNew('stat')}
+                    className="gradient-brand text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Estatística
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {stats?.map((stat, index) => {
+                    const IconComponent = getIconComponent(stat.icon);
+                    return (
+                      <div
+                        key={stat.id}
+                        className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors">
+                              <GripVertical className="w-4 h-4 text-orange-600" />
+                            </div>
+                            {stat.icon && (
+                              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                                <IconComponent className="w-6 h-6 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(stat, 'stat')}
+                              className="hover:bg-orange-50"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(stat.id, 'stat')}
+                              className="hover:bg-red-50 text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-4xl font-bold text-orange-600 mb-2">{stat.value}</div>
+                          <div className="text-lg font-semibold text-slate-900">{stat.title}</div>
+                          <Badge variant="outline" className="text-xs mt-2">
+                            Ordem: {stat.order_index}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {stats?.length === 0 && (
+                    <div className="col-span-2 text-center py-12">
+                      <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <TrendingUp className="w-8 h-8 text-orange-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhuma estatística cadastrada</h3>
+                      <p className="text-slate-600 mb-4">Adicione as estatísticas da sua empresa para começar</p>
+                      <Button
+                        onClick={() => handleAddNew('stat')}
+                        className="gradient-brand text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Primeira Estatística
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Contato */}
+          <TabsContent value="contato" className="space-y-6 mt-6">
+            <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Informações de Contato</CardTitle>
+                      <p className="text-sm text-slate-600">Gerencie as informações de contato da empresa</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleAddNew('contato')}
+                    className="gradient-brand text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Contato
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {contato?.map((info, index) => {
+                    const IconComponent = getIconComponent(info.icon);
+                    return (
+                      <div
+                        key={info.id}
+                        className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors">
+                              <GripVertical className="w-4 h-4 text-orange-600" />
+                            </div>
                             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
                               <IconComponent className="w-6 h-6 text-white" />
                             </div>
-                          )}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(info, 'contato')}
+                              className="hover:bg-orange-50"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(info.id, 'contato')}
+                              className="hover:bg-red-50 text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(stat, 'stat')}
-                            className="hover:bg-orange-50"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(stat.id, 'stat')}
-                            className="hover:bg-red-50 text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-900 mb-2">{info.title}</h3>
+                          <p className="text-slate-600 mb-3">{info.value}</p>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {info.type}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              Ordem: {info.order_index}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-4xl font-bold text-orange-600 mb-2">{stat.value}</div>
-                        <div className="text-lg font-semibold text-slate-900">{stat.title}</div>
-                        <Badge variant="outline" className="text-xs mt-2">
-                          Ordem: {stat.order_index}
-                        </Badge>
+                    );
+                  })}
+                  {contato?.length === 0 && (
+                    <div className="col-span-2 text-center py-12">
+                      <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Mail className="w-8 h-8 text-orange-500" />
                       </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhuma informação de contato cadastrada</h3>
+                      <p className="text-slate-600 mb-4">Adicione as informações de contato da sua empresa para começar</p>
+                      <Button
+                        onClick={() => handleAddNew('contato')}
+                        className="gradient-brand text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Primeira Informação
+                      </Button>
                     </div>
-                  );
-                })}
-                {stats?.length === 0 && (
-                  <div className="col-span-2 text-center py-12">
-                    <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <TrendingUp className="w-8 h-8 text-orange-500" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhuma estatística cadastrada</h3>
-                    <p className="text-slate-600 mb-4">Adicione as estatísticas da sua empresa para começar</p>
-                    <Button 
-                      onClick={() => handleAddNew('stat')}
-                      className="gradient-brand text-white"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Primeira Estatística
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Contato */}
-        <TabsContent value="contato" className="space-y-6 mt-6">
-          <Card className="bg-white/80 backdrop-blur-sm border border-orange-100">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Informações de Contato</CardTitle>
-                    <p className="text-sm text-slate-600">Gerencie as informações de contato da empresa</p>
-                  </div>
+                  )}
                 </div>
-                <Button 
-                  onClick={() => handleAddNew('contato')}
-                  className="gradient-brand text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Contato
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
-                {contato?.map((info, index) => {
-                  const IconComponent = getIconComponent(info.icon);
-                  return (
-                    <div 
-                      key={info.id} 
-                      className="group bg-white border border-orange-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:border-orange-200"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center cursor-move group-hover:bg-orange-200 transition-colors">
-                            <GripVertical className="w-4 h-4 text-orange-600" />
-                          </div>
-                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                            <IconComponent className="w-6 h-6 text-white" />
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(info, 'contato')}
-                            className="hover:bg-orange-50"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(info.id, 'contato')}
-                            className="hover:bg-red-50 text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">{info.title}</h3>
-                        <p className="text-slate-600 mb-3">{info.value}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {info.type}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            Ordem: {info.order_index}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {contato?.length === 0 && (
-                  <div className="col-span-2 text-center py-12">
-                    <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Mail className="w-8 h-8 text-orange-500" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhuma informação de contato cadastrada</h3>
-                    <p className="text-slate-600 mb-4">Adicione as informações de contato da sua empresa para começar</p>
-                    <Button 
-                      onClick={() => handleAddNew('contato')}
-                      className="gradient-brand text-white"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Primeira Informação
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Modal de Edição Moderno */}
@@ -876,11 +876,11 @@ const SobreAdmin = () => {
                     </h2>
                     <p className="text-orange-100 text-sm">
                       {editingItem === 'conteudo' ? 'Edite o conteúdo das seções da página' :
-                       editingItem === 'valor' ? 'Edite os valores da empresa' :
-                       editingItem === 'equipe' ? 'Edite os membros da equipe' :
-                       editingItem === 'stat' ? 'Edite as estatísticas da empresa' :
-                       editingItem === 'contato' ? 'Edite as informações de contato' :
-                       'Adicione um novo item'}
+                        editingItem === 'valor' ? 'Edite os valores da empresa' :
+                          editingItem === 'equipe' ? 'Edite os membros da equipe' :
+                            editingItem === 'stat' ? 'Edite as estatísticas da empresa' :
+                              editingItem === 'contato' ? 'Edite as informações de contato' :
+                                'Adicione um novo item'}
                     </p>
                   </div>
                 </div>
@@ -894,7 +894,7 @@ const SobreAdmin = () => {
                 </Button>
               </div>
             </div>
-            
+
             {/* Conteúdo do Modal - Scrollável */}
             <div className="p-8 flex-1 overflow-y-auto">
               <div className="space-y-6">
@@ -914,9 +914,9 @@ const SobreAdmin = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="subtitle" className="text-sm font-semibold text-slate-700">
-                      {editingItem === 'equipe' ? 'Cargo/Posição' : 
-                       editingItem === 'stat' ? 'Valor *' : 
-                       editingItem === 'contato' ? 'Tipo' : 'Subtítulo'}
+                      {editingItem === 'equipe' ? 'Cargo/Posição' :
+                        editingItem === 'stat' ? 'Valor *' :
+                          editingItem === 'contato' ? 'Tipo' : 'Subtítulo'}
                     </Label>
                     {editingItem === 'contato' ? (
                       <select
@@ -935,14 +935,14 @@ const SobreAdmin = () => {
                       <Input
                         id="subtitle"
                         value={formData.subtitle || formData.position || formData.value || ''}
-                        onChange={(e) => setFormData({ 
-                          ...formData, 
-                          [editingItem === 'equipe' ? 'position' : 
-                           editingItem === 'stat' ? 'value' : 'subtitle']: e.target.value 
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          [editingItem === 'equipe' ? 'position' :
+                            editingItem === 'stat' ? 'value' : 'subtitle']: e.target.value
                         })}
                         className="border-orange-200 focus:border-orange-400 focus:ring-orange-100"
-                        placeholder={editingItem === 'equipe' ? 'Digite o cargo...' : 
-                                   editingItem === 'stat' ? 'Digite o valor...' : 'Digite o subtítulo...'}
+                        placeholder={editingItem === 'equipe' ? 'Digite o cargo...' :
+                          editingItem === 'stat' ? 'Digite o valor...' : 'Digite o subtítulo...'}
                       />
                     )}
                   </div>
@@ -968,9 +968,9 @@ const SobreAdmin = () => {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={4}
                       className="border-orange-200 focus:border-orange-400 focus:ring-orange-100"
-                      placeholder={editingItem === 'equipe' ? 'Digite a descrição do membro da equipe...' : 
-                                 editingItem === 'valor' ? 'Digite a descrição do valor...' : 
-                                 editingItem === 'stat' ? 'Digite a descrição da estatística...' : 'Digite a descrição...'}
+                      placeholder={editingItem === 'equipe' ? 'Digite a descrição do membro da equipe...' :
+                        editingItem === 'valor' ? 'Digite a descrição do valor...' :
+                          editingItem === 'stat' ? 'Digite a descrição da estatística...' : 'Digite a descrição...'}
                     />
                   )}
                 </div>
@@ -1075,9 +1075,9 @@ const SobreAdmin = () => {
                     </div>
                     {formData.image_url && (
                       <div className="mt-3">
-                        <img 
-                          src={formData.image_url} 
-                          alt="Preview" 
+                        <img
+                          src={formData.image_url}
+                          alt="Preview"
                           className="w-24 h-24 object-cover rounded-xl border border-orange-100"
                         />
                       </div>
@@ -1094,26 +1094,26 @@ const SobreAdmin = () => {
                   />
                   <Label htmlFor="is_active" className="text-sm font-semibold text-slate-700">
                     {editingItem === 'conteudo' ? 'Seção ativa (visível na página)' :
-                     editingItem === 'valor' ? 'Valor ativo (visível na página)' :
-                     editingItem === 'equipe' ? 'Membro ativo (visível na página)' :
-                     editingItem === 'stat' ? 'Estatística ativa (visível na página)' :
-                     editingItem === 'contato' ? 'Informação ativa (visível na página)' :
-                     'Item ativo (visível na página)'}
+                      editingItem === 'valor' ? 'Valor ativo (visível na página)' :
+                        editingItem === 'equipe' ? 'Membro ativo (visível na página)' :
+                          editingItem === 'stat' ? 'Estatística ativa (visível na página)' :
+                            editingItem === 'contato' ? 'Informação ativa (visível na página)' :
+                              'Item ativo (visível na página)'}
                   </Label>
                 </div>
               </div>
             </div>
-            
+
             {/* Footer do Modal - Fixo na parte inferior */}
             <div className="px-8 py-6 bg-slate-50 border-t border-orange-100 flex justify-end gap-3 flex-shrink-0">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleCancel}
                 className="border-orange-200 hover:bg-orange-50"
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleSave(editingItem || activeTab)}
                 className="gradient-brand text-white"
                 disabled={isLoading}
