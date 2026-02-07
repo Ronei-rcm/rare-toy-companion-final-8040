@@ -5,7 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 console.log('🔧 Iniciando servidor...');
 
@@ -45,8 +45,8 @@ app.use(helmetConfig);
 // Middleware
 app.use(cors({
   origin: [
-    'http://localhost:8040', 
-    'http://localhost:3000', 
+    'http://localhost:8040',
+    'http://localhost:3000',
     'http://127.0.0.1:8040',
     'http://localhost:8040',
     'http://172.16.0.15:8040',
@@ -79,12 +79,12 @@ app.set('trust proxy', 1); // Trust only the first proxy
 // Middleware de logging de requests
 app.use((req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     logger.logRequest(req, res, duration);
   });
-  
+
   next();
 });
 
@@ -100,18 +100,18 @@ function serveUploadFile(req, res, filename, routeName) {
   console.log(`   Filename: ${filename}`);
   console.log(`   Original URL: ${req.originalUrl}`);
   console.log(`   IP: ${req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress}`);
-  
+
   // Validar filename para evitar path traversal
   if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
     console.warn(`⚠️ [${routeName}] Filename inválido: ${filename}`);
     return res.status(400).json({ error: 'Filename inválido' });
   }
-  
+
   const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
-  
+
   console.log(`   Caminho completo: ${filePath}`);
   console.log(`   Existe? ${fs.existsSync(filePath)}`);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     const stats = fs.statSync(filePath);
@@ -119,7 +119,7 @@ function serveUploadFile(req, res, filename, routeName) {
       console.warn(`⚠️ [${routeName}] Caminho não é arquivo: ${filePath}`);
       return res.status(404).json({ error: 'Arquivo não encontrado', filename });
     }
-    
+
     const ext = path.extname(filename).toLowerCase();
     const mimeTypes = {
       '.png': 'image/png',
@@ -135,20 +135,20 @@ function serveUploadFile(req, res, filename, routeName) {
       '.ogg': 'video/ogg'
     };
     const contentType = mimeTypes[ext] || 'application/octet-stream';
-    
+
     // Headers para CORS e cache
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    
+
     console.log(`✅ [${routeName}] Servindo: ${filename} (${stats.size} bytes, ${contentType})`);
     return res.sendFile(path.resolve(filePath));
   } else {
     console.warn(`⚠️ [${routeName}] Arquivo não encontrado: ${filename}`);
     console.warn(`   Tentando buscar em: ${path.dirname(filePath)}`);
     console.warn(`   Diretório existe? ${fs.existsSync(path.dirname(filePath))}`);
-    
+
     // Listar arquivos no diretório para debug
     try {
       const dirFiles = fs.readdirSync(path.dirname(filePath));
@@ -156,7 +156,7 @@ function serveUploadFile(req, res, filename, routeName) {
     } catch (e) {
       console.warn(`   Erro ao listar diretório: ${e.message}`);
     }
-    
+
     return res.status(404).json({ error: 'Arquivo não encontrado', filename, path: filePath });
   }
 }
@@ -213,13 +213,13 @@ try {
     const pathWithoutPrefix = req.path.replace(/^\/lovable-uploads\/?/, '');
     const filename = pathWithoutPrefix.split('/').pop(); // Pegar apenas o nome do arquivo
     const target = path.join(uploadsDir, filename);
-    
+
     // Log para debug
     console.log(`🔍 [lovable-uploads] Requisição: ${req.method} ${req.path}`);
     console.log(`   Filename: ${filename}`);
     console.log(`   Target: ${target}`);
     console.log(`   Existe? ${fs.existsSync(target)}`);
-    
+
     if (fs.existsSync(target)) {
       // Verificar se é um arquivo (não diretório)
       const stats = fs.statSync(target);
@@ -239,13 +239,13 @@ try {
           '.webm': 'video/webm',
           '.ogg': 'video/ogg'
         };
-        
+
         const contentType = mimeTypes[ext] || 'application/octet-stream';
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache por 1 ano
-        
+
         console.log(`✅ Servindo arquivo: ${filename} (Content-Type: ${contentType}, Size: ${stats.size} bytes)`);
         return res.sendFile(path.resolve(target));
       } else {
@@ -255,7 +255,7 @@ try {
       console.warn(`⚠️ Arquivo não encontrado: ${target}`);
       console.warn(`   Tentando buscar em: ${uploadsDir}`);
     }
-    
+
     // Fallback para placeholder se arquivo não existir
     const placeholderPng = path.join(process.cwd(), 'public', 'placeholder.png');
     const placeholderSvg = path.join(process.cwd(), 'public', 'placeholder.svg');
@@ -346,7 +346,7 @@ app.use('/uploads', (req, res, next) => {
 app.get('/api/icons/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/static-icons', filename);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
@@ -359,7 +359,7 @@ app.get('/api/icons/:filename', (req, res) => {
 app.get('/pwa-icon/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/static-icons', filename);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
@@ -372,7 +372,7 @@ app.get('/pwa-icon/:filename', (req, res) => {
 app.get('/icon/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/static-icons', filename);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
@@ -386,7 +386,7 @@ app.get('/icon/:filename', (req, res) => {
 app.get('/lovable-uploads/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     const ext = path.extname(filename).toLowerCase();
@@ -414,7 +414,7 @@ app.get('/lovable-uploads/:filename', (req, res) => {
 app.get('/uploads/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
@@ -427,7 +427,7 @@ app.get('/uploads/:filename', (req, res) => {
 app.get('/img/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../public/lovable-uploads', filename);
-  
+
   // Verificar se o arquivo existe
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
@@ -444,7 +444,7 @@ app.use((req, _res, next) => {
     try {
       const keys = req.body && typeof req.body === 'object' ? Object.keys(req.body) : [];
       console.log(`📥 ${req.method} ${req.path}`, keys.length ? { keys } : {});
-    } catch {}
+    } catch { }
   }
   next();
 });
@@ -455,7 +455,7 @@ app.get('/:fileName', async (req, res, next) => {
   try {
     const fileName = req.params.fileName;
     if (!fileName || !/(\.jpg|\.jpeg|\.png|\.webp)$/i.test(fileName)) return next();
-  const tryPaths = [
+    const tryPaths = [
       path.join(__dirname, '../public', 'lovable-uploads', fileName),
       path.join(__dirname, '../public', fileName)
     ];
@@ -486,7 +486,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
@@ -513,7 +513,7 @@ const upload = multer({
 });
 
 // Configure multer for video uploads (larger file size limit)
-const videoUpload = multer({ 
+const videoUpload = multer({
   storage: storage,
   limits: { fileSize: 500 * 1024 * 1024 }, // 500MB limit for videos
   fileFilter: (req, file, cb) => {
@@ -644,7 +644,7 @@ app.post('/api/carousel', async (req, res) => {
     const item = req.body;
     const dbItem = filterUndefined(transformToDatabase(item));
     const newId = require('crypto').randomUUID();
-    
+
     const [result] = await pool.execute(
       `INSERT INTO carousel_items 
        (id, title, subtitle, image_url, badge, link_url, is_active, order_index, created_at, updated_at)
@@ -664,7 +664,7 @@ app.post('/api/carousel', async (req, res) => {
     // Fetch the created item
     const [rows] = await pool.execute('SELECT * FROM carousel_items WHERE id = ?', [newId]);
     const createdItem = transformCarouselItem(rows[0], req);
-    
+
     res.status(201).json(createdItem);
   } catch (error) {
     console.error('Error creating carousel item:', error);
@@ -678,7 +678,7 @@ app.put('/api/carousel/:id', async (req, res) => {
     const { id } = req.params;
     const item = req.body;
     const dbItem = filterUndefined(transformToDatabase(item));
-    
+
     await pool.execute(
       `UPDATE carousel_items 
        SET title = ?, subtitle = ?, image_url = ?, badge = ?, link_url = ?, 
@@ -701,7 +701,7 @@ app.put('/api/carousel/:id', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Carousel item not found' });
     }
-    
+
     const updatedItem = transformCarouselItem(rows[0], req);
     res.json(updatedItem);
   } catch (error) {
@@ -714,13 +714,13 @@ app.put('/api/carousel/:id', async (req, res) => {
 app.delete('/api/carousel/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [result] = await pool.execute('DELETE FROM carousel_items WHERE id = ?', [id]);
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Carousel item not found' });
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting carousel item:', error);
@@ -733,7 +733,7 @@ app.put('/api/carousel/:id/toggle', async (req, res) => {
   try {
     const { id } = req.params;
     const { ativo } = req.body;
-    
+
     await pool.execute(
       'UPDATE carousel_items SET active = ?, updated_at = NOW() WHERE id = ?',
       [ativo ?? true, id]
@@ -744,7 +744,7 @@ app.put('/api/carousel/:id/toggle', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Carousel item not found' });
     }
-    
+
     const updatedItem = transformCarouselItem(rows[0], req);
     res.json(updatedItem);
   } catch (error) {
@@ -757,11 +757,11 @@ app.put('/api/carousel/:id/toggle', async (req, res) => {
 app.post('/api/carousel/bulk', async (req, res) => {
   try {
     const items = req.body;
-    
+
     // Start transaction
     const connection = await pool.getConnection();
     await connection.beginTransaction();
-    
+
     try {
       // Get all existing items
       const [existingRows] = await connection.execute('SELECT id FROM carousel_items');
@@ -779,7 +779,7 @@ app.post('/api/carousel/bulk', async (req, res) => {
       for (let i = 0; i < items.length; i++) {
         const item = { ...items[i], order_index: i };
         const dbItem = filterUndefined(transformToDatabase(item));
-        
+
         if (existingIds.has(item.id)) {
           // Update existing item
           await connection.execute(
@@ -821,14 +821,14 @@ app.post('/api/carousel/bulk', async (req, res) => {
 
       await connection.commit();
       res.json({ success: true });
-      
+
     } catch (error) {
       await connection.rollback();
       throw error;
     } finally {
       connection.release();
     }
-    
+
   } catch (error) {
     console.error('Error saving carousel items:', error);
     res.status(500).json({ error: 'Failed to save carousel items' });
@@ -848,7 +848,7 @@ function transformVideoItem(dbItem, req) {
   } else if (!videoUrl.startsWith('/') && !videoUrl.startsWith('http')) {
     videoUrl = '/lovable-uploads/' + videoUrl;
   }
-  
+
   return {
     id: dbItem.id || '',
     titulo: dbItem.titulo || '',
@@ -931,14 +931,14 @@ app.post('/api/videos', async (req, res) => {
   try {
     console.log('📹 [VIDEOS] POST /api/videos - Criando vídeo...');
     console.log('📹 [VIDEOS] Body recebido:', JSON.stringify(req.body, null, 2));
-    
+
     const video = req.body;
     const dbVideo = filterUndefined(transformVideoToDatabase(video));
     const newId = require('crypto').randomUUID();
-    
+
     console.log('📹 [VIDEOS] Dados transformados:', JSON.stringify(dbVideo, null, 2));
     console.log('📹 [VIDEOS] Novo ID:', newId);
-    
+
     const [result] = await pool.execute(
       `INSERT INTO video_gallery 
        (id, titulo, descricao, video_url, thumbnail_url, categoria, duracao, ordem, is_active, visualizacoes, created_at, updated_at)
@@ -964,10 +964,10 @@ app.post('/api/videos', async (req, res) => {
     if (rows.length === 0) {
       throw new Error('Video was not created');
     }
-    
+
     const createdVideo = transformVideoItem(rows[0], req);
     console.log('✅ [VIDEOS] Vídeo criado com sucesso:', createdVideo.id);
-    
+
     res.status(201).json(createdVideo);
   } catch (error) {
     console.error('❌ [VIDEOS] Error creating video:', error);
@@ -982,7 +982,7 @@ app.put('/api/videos/:id', async (req, res) => {
     const { id } = req.params;
     const video = req.body;
     const dbVideo = filterUndefined(transformVideoToDatabase(video));
-    
+
     await pool.execute(
       `UPDATE video_gallery 
        SET titulo = ?, descricao = ?, video_url = ?, thumbnail_url = ?, categoria = ?, 
@@ -1006,7 +1006,7 @@ app.put('/api/videos/:id', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
+
     const updatedVideo = transformVideoItem(rows[0], req);
     res.json(updatedVideo);
   } catch (error) {
@@ -1019,13 +1019,13 @@ app.put('/api/videos/:id', async (req, res) => {
 app.delete('/api/videos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [result] = await pool.execute('DELETE FROM video_gallery WHERE id = ?', [id]);
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting video:', error);
@@ -1038,7 +1038,7 @@ app.put('/api/videos/:id/toggle', async (req, res) => {
   try {
     const { id } = req.params;
     const { is_active } = req.body;
-    
+
     await pool.execute(
       'UPDATE video_gallery SET is_active = ?, updated_at = NOW() WHERE id = ?',
       [is_active ?? true, id]
@@ -1049,7 +1049,7 @@ app.put('/api/videos/:id/toggle', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
+
     const updatedVideo = transformVideoItem(rows[0], req);
     res.json(updatedVideo);
   } catch (error) {
@@ -1062,11 +1062,11 @@ app.put('/api/videos/:id/toggle', async (req, res) => {
 app.post('/api/videos/bulk', async (req, res) => {
   try {
     const videos = req.body;
-    
+
     // Start transaction
     const connection = await pool.getConnection();
     await connection.beginTransaction();
-    
+
     try {
       // Get all existing videos
       const [existingRows] = await connection.execute('SELECT id FROM video_gallery');
@@ -1084,7 +1084,7 @@ app.post('/api/videos/bulk', async (req, res) => {
       for (let i = 0; i < videos.length; i++) {
         const video = { ...videos[i], ordem: i };
         const dbVideo = filterUndefined(transformVideoToDatabase(video));
-        
+
         if (existingIds.has(video.id)) {
           // Update existing video
           await connection.execute(
@@ -1144,7 +1144,7 @@ app.post('/api/videos/bulk', async (req, res) => {
 app.put('/api/videos/:id/increment-views', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.execute(
       'UPDATE video_gallery SET visualizacoes = visualizacoes + 1 WHERE id = ?',
       [id]
@@ -1154,7 +1154,7 @@ app.put('/api/videos/:id/increment-views', async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Video not found' });
     }
-    
+
     const video = transformVideoItem(rows[0], req);
     res.json(video);
   } catch (error) {
@@ -1174,26 +1174,26 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
       size: req.file.size,
       path: req.file.path
     } : 'Nenhum arquivo');
-    
+
     if (!req.file) {
       console.error('❌ [UPLOAD] Nenhum arquivo recebido');
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
-    const response = { 
-      success: true, 
+    const response = {
+      success: true,
       imageUrl: imageUrl,
       filename: req.file.filename
     };
-    
+
     console.log('✅ [UPLOAD] Upload bem-sucedido:', {
       filename: req.file.filename,
       imageUrl: imageUrl,
       fullPath: req.file.path,
       fileExists: fs.existsSync(req.file.path)
     });
-    
+
     res.json(response);
   } catch (error) {
     console.error('❌ [UPLOAD] Erro no upload:', error);
@@ -1213,21 +1213,21 @@ app.post('/api/upload/video', videoUpload.single('video'), (req, res) => {
       size: req.file.size,
       path: req.file.path
     } : 'Nenhum arquivo');
-    
+
     if (!req.file) {
       console.error('❌ [VIDEO UPLOAD] Nenhum arquivo recebido');
       return res.status(400).json({ error: 'No video file uploaded' });
     }
 
     const videoUrl = `/lovable-uploads/${req.file.filename}`;
-    const response = { 
-      success: true, 
+    const response = {
+      success: true,
       videoUrl: videoUrl,
       filename: req.file.filename,
       size: req.file.size,
       mimetype: req.file.mimetype
     };
-    
+
     console.log('✅ [VIDEO UPLOAD] Upload bem-sucedido:', {
       filename: req.file.filename,
       videoUrl: videoUrl,
@@ -1235,7 +1235,7 @@ app.post('/api/upload/video', videoUpload.single('video'), (req, res) => {
       fileExists: fs.existsSync(req.file.path),
       size: `${(req.file.size / 1024 / 1024).toFixed(2)} MB`
     });
-    
+
     res.json(response);
   } catch (error) {
     console.error('❌ [VIDEO UPLOAD] Erro no upload:', error);
@@ -1312,7 +1312,7 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
         `SELECT id, nome, descricao, preco, imagem_url as imagemUrl, categoria, estoque,
                 status, destaque, promocao, lancamento, avaliacao, total_avaliacoes as totalAvaliacoes,
                 faixa_etaria as faixaEtaria, peso, dimensoes, material, marca, origem, fornecedor,
-                codigo_barras as codigoBarras, data_lancamento as dataLancamento, condicao,
+                codigo_barras as codigoBarras, data_lancamento as dataLancamento,
                 created_at as createdAt, updated_at as updatedAt
            FROM produtos ${whereSql}
            ORDER BY ${orderBy}`,
@@ -1340,9 +1340,9 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
     // Usar valores diretos para LIMIT e OFFSET (são seguros pois são números validados)
     const [rows] = await pool.execute(
       `SELECT id, nome, descricao, preco, imagem_url as imagemUrl, categoria, estoque,
-              status, destaque, promocao, lancamento, novo, seminovo, avaliacao, total_avaliacoes as totalAvaliacoes,
+              status, destaque, promocao, lancamento, avaliacao, total_avaliacoes as totalAvaliacoes,
               faixa_etaria as faixaEtaria, peso, dimensoes, material, marca, origem, fornecedor,
-              codigo_barras as codigoBarras, data_lancamento as dataLancamento, condicao,
+              codigo_barras as codigoBarras, data_lancamento as dataLancamento,
               created_at as createdAt, updated_at as updatedAt
          FROM produtos ${whereSql}
          ORDER BY ${orderBy}
@@ -1368,13 +1368,13 @@ app.get('/api/produtos', productsLimiter, productsCacheMiddleware, async (req, r
 app.get('/api/produtos/destaque', async (req, res) => {
   try {
     console.log('🔄 Buscando produtos em destaque...');
-    
+
     const [rows] = await pool.execute(
-      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt, novo, seminovo FROM produtos WHERE destaque = true ORDER BY created_at DESC'
+      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt FROM produtos WHERE destaque = true ORDER BY created_at DESC'
     );
-    
+
     console.log(`✅ ${rows.length} produtos em destaque encontrados`);
-    
+
     // Converter preços de string para number e corrigir URLs de imagem
     const produtos = rows.map(produto => ({
       ...produto,
@@ -1382,7 +1382,7 @@ app.get('/api/produtos/destaque', async (req, res) => {
       avaliacao: produto.avaliacao ? parseFloat(produto.avaliacao) : null,
       imagemUrl: produto.imagemUrl ? getPublicUrl(req, produto.imagemUrl) : null
     }));
-    
+
     res.json(produtos);
   } catch (error) {
     console.error('❌ Erro ao buscar produtos em destaque:', error);
@@ -1396,14 +1396,14 @@ app.get('/api/categorias', async (req, res) => {
     // Tentar cache primeiro
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
     const cached = await cacheHelpers.getCachedCategories();
-    
+
     if (cached) {
       console.log('✅ Categorias do cache');
       return res.json(cached);
     }
-    
+
     console.log('🔄 Buscando categorias públicas...');
-    
+
     // Buscar categorias da tabela com estatísticas de produtos
     const [categorias] = await pool.query(`
       SELECT 
@@ -1426,9 +1426,9 @@ app.get('/api/categorias', async (req, res) => {
       GROUP BY c.id
       ORDER BY c.ordem ASC, c.nome ASC
     `);
-    
+
     console.log(`✅ ${categorias.length} categorias encontradas`);
-    
+
     // Formatar resposta
     const categoriasFormatadas = categorias.map(categoria => ({
       id: categoria.slug || categoria.id,
@@ -1441,15 +1441,15 @@ app.get('/api/categorias', async (req, res) => {
       quantidade: parseInt(categoria.quantidade),
       precoMinimo: parseFloat(categoria.precoMinimo),
       precoMaximo: parseFloat(categoria.precoMaximo),
-      avaliacaoMedia: categoria.avaliacaoMedia && categoria.quantidade > 0 
-        ? parseFloat(categoria.avaliacaoMedia).toFixed(1) 
+      avaliacaoMedia: categoria.avaliacaoMedia && categoria.quantidade > 0
+        ? parseFloat(categoria.avaliacaoMedia).toFixed(1)
         : null,
       ultimoProduto: categoria.ultimoProduto
     }));
-    
+
     // Cachear resultado
     await cacheHelpers.setCachedCategories(categoriasFormatadas);
-    
+
     res.json(categoriasFormatadas);
   } catch (error) {
     console.error('❌ Erro ao buscar categorias:', error);
@@ -1470,7 +1470,7 @@ app.get('/api/categorias/nomes', async (req, res) => {
       WHERE ativo = TRUE 
       ORDER BY ordem ASC, nome ASC
     `);
-    
+
     res.json(categorias.map(c => c.nome));
   } catch (error) {
     console.error('❌ Erro ao buscar nomes de categorias:', error);
@@ -1487,7 +1487,7 @@ app.get('/api/categorias/lista', async (req, res) => {
       WHERE ativo = TRUE 
       ORDER BY ordem ASC, nome ASC
     `);
-    
+
     res.json(categorias);
   } catch (error) {
     console.error('❌ Erro ao buscar lista de categorias:', error);
@@ -1499,7 +1499,7 @@ app.get('/api/categorias/lista', async (req, res) => {
 app.get('/api/categorias/gerenciaveis', async (req, res) => {
   try {
     console.log('🔄 Buscando categorias gerenciáveis...');
-    
+
     const [categorias] = await pool.execute(`
       SELECT 
         c.*,
@@ -1512,9 +1512,9 @@ app.get('/api/categorias/gerenciaveis', async (req, res) => {
       GROUP BY c.id
       ORDER BY c.ordem ASC, c.nome ASC
     `);
-    
+
     console.log(`✅ ${categorias.length} categorias gerenciáveis encontradas`);
-    
+
     const categoriasFormatadas = categorias.map(cat => ({
       ...cat,
       precoMinimo: parseFloat(cat.precoMinimo),
@@ -1522,7 +1522,7 @@ app.get('/api/categorias/gerenciaveis', async (req, res) => {
       avaliacaoMedia: cat.avaliacaoMedia ? parseFloat(cat.avaliacaoMedia).toFixed(1) : null,
       imagem_url: cat.imagem_url ? getPublicUrl(req, cat.imagem_url) : null
     }));
-    
+
     res.json(categoriasFormatadas);
   } catch (error) {
     console.error('❌ Erro ao buscar categorias gerenciáveis:', error);
@@ -1535,7 +1535,7 @@ app.get('/api/categorias/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Buscando categoria ID: ${id}`);
-    
+
     const [rows] = await pool.execute(`
       SELECT 
         c.*,
@@ -1548,11 +1548,11 @@ app.get('/api/categorias/:id', async (req, res) => {
       WHERE c.id = ?
       GROUP BY c.id
     `, [id]);
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
-    
+
     const categoria = {
       ...rows[0],
       precoMinimo: parseFloat(rows[0].precoMinimo),
@@ -1560,7 +1560,7 @@ app.get('/api/categorias/:id', async (req, res) => {
       avaliacaoMedia: rows[0].avaliacaoMedia ? parseFloat(rows[0].avaliacaoMedia).toFixed(1) : null,
       imagem_url: rows[0].imagem_url ? getPublicUrl(req, rows[0].imagem_url) : null
     };
-    
+
     console.log(`✅ Categoria encontrada: ${categoria.nome}`);
     res.json(categoria);
   } catch (error) {
@@ -1572,10 +1572,10 @@ app.get('/api/categorias/:id', async (req, res) => {
 // POST /api/categorias - Criar nova categoria (admin)
 app.post('/api/categorias', async (req, res) => {
   try {
-    const { 
-      nome, 
-      descricao, 
-      icon = '📦', 
+    const {
+      nome,
+      descricao,
+      icon = '📦',
       cor = 'from-purple-500 to-purple-600',
       imagem_url,
       ordem = 0,
@@ -1584,14 +1584,14 @@ app.post('/api/categorias', async (req, res) => {
       meta_description,
       meta_keywords
     } = req.body;
-    
+
     console.log('🔄 Criando nova categoria:', nome);
-    
+
     // Validação
     if (!nome || nome.trim() === '') {
       return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
     }
-    
+
     // Gerar slug
     const slug = nome.toLowerCase()
       .normalize('NFD')
@@ -1600,42 +1600,42 @@ app.post('/api/categorias', async (req, res) => {
       .replace(/\s+/g, '-') // Substitui espaços por hífens
       .replace(/-+/g, '-') // Remove hífens duplicados
       .trim();
-    
+
     const [result] = await pool.execute(`
       INSERT INTO categorias 
       (nome, slug, descricao, icon, cor, imagem_url, ordem, ativo, meta_title, meta_description, meta_keywords)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      nome, 
-      slug, 
-      descricao ?? null, 
-      icon, 
-      cor, 
-      imagem_url ?? null, 
-      ordem, 
-      ativo, 
-      meta_title ?? null, 
-      meta_description ?? null, 
+      nome,
+      slug,
+      descricao ?? null,
+      icon,
+      cor,
+      imagem_url ?? null,
+      ordem,
+      ativo,
+      meta_title ?? null,
+      meta_description ?? null,
       meta_keywords ?? null
     ]);
-    
+
     console.log(`✅ Categoria criada com ID: ${result.insertId}`);
-    
+
     // Buscar categoria criada
     const [categorias] = await pool.execute('SELECT * FROM categorias WHERE id = ?', [result.insertId]);
-    
+
     res.status(201).json({
       message: 'Categoria criada com sucesso',
       categoria: categorias[0]
     });
   } catch (error) {
     console.error('❌ Erro ao criar categoria:', error);
-    
+
     // Erro de duplicação
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Já existe uma categoria com este nome' });
     }
-    
+
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -1644,10 +1644,10 @@ app.post('/api/categorias', async (req, res) => {
 app.put('/api/categorias/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      nome, 
-      descricao, 
-      icon, 
+    const {
+      nome,
+      descricao,
+      icon,
       cor,
       imagem_url,
       ordem,
@@ -1656,16 +1656,16 @@ app.put('/api/categorias/:id', async (req, res) => {
       meta_description,
       meta_keywords
     } = req.body;
-    
+
     console.log(`🔄 Atualizando categoria ID: ${id}`);
-    
+
     // Verificar se categoria existe
     const [existing] = await pool.execute('SELECT * FROM categorias WHERE id = ?', [id]);
-    
+
     if (existing.length === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
-    
+
     // Gerar novo slug se o nome mudou
     let slug = existing[0].slug;
     if (nome && nome !== existing[0].nome) {
@@ -1677,7 +1677,7 @@ app.put('/api/categorias/:id', async (req, res) => {
         .replace(/-+/g, '-')
         .trim();
     }
-    
+
     const [result] = await pool.execute(`
       UPDATE categorias 
       SET 
@@ -1695,36 +1695,36 @@ app.put('/api/categorias/:id', async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [
-      nome ?? null, 
-      slug, 
-      descricao ?? null, 
-      icon ?? null, 
-      cor ?? null, 
-      imagem_url ?? null, 
-      ordem ?? null, 
-      ativo ?? null, 
-      meta_title ?? null, 
-      meta_description ?? null, 
-      meta_keywords ?? null, 
+      nome ?? null,
+      slug,
+      descricao ?? null,
+      icon ?? null,
+      cor ?? null,
+      imagem_url ?? null,
+      ordem ?? null,
+      ativo ?? null,
+      meta_title ?? null,
+      meta_description ?? null,
+      meta_keywords ?? null,
       id
     ]);
-    
+
     console.log(`✅ Categoria atualizada: ${id}`);
-    
+
     // Buscar categoria atualizada
     const [categorias] = await pool.execute('SELECT * FROM categorias WHERE id = ?', [id]);
-    
+
     res.json({
       message: 'Categoria atualizada com sucesso',
       categoria: categorias[0]
     });
   } catch (error) {
     console.error('❌ Erro ao atualizar categoria:', error);
-    
+
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Já existe uma categoria com este nome' });
     }
-    
+
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -1734,35 +1734,35 @@ app.delete('/api/categorias/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Deletando categoria ID: ${id}`);
-    
+
     // Buscar nome da categoria
     const [categoriaResult] = await pool.execute(
       'SELECT nome FROM categorias WHERE id = ?',
       [id]
     );
-    
+
     if (categoriaResult.length === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
-    
+
     const nomeCategoria = categoriaResult[0].nome;
-    
+
     // Verificar se existem produtos com esta categoria (usando o campo nome)
     const [produtos] = await pool.execute(
       'SELECT COUNT(*) as count FROM produtos WHERE categoria = ?',
       [nomeCategoria]
     );
-    
+
     if (produtos[0].count > 0) {
-      return res.status(409).json({ 
-        error: `Não é possível deletar esta categoria pois existem ${produtos[0].count} produto(s) associado(s)` 
+      return res.status(409).json({
+        error: `Não é possível deletar esta categoria pois existem ${produtos[0].count} produto(s) associado(s)`
       });
     }
-    
+
     const [result] = await pool.execute('DELETE FROM categorias WHERE id = ?', [id]);
-    
+
     console.log(`✅ Categoria deletada: ${id}`);
-    
+
     res.json({ message: 'Categoria deletada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao deletar categoria:', error);
@@ -1775,24 +1775,24 @@ app.patch('/api/categorias/:id/ordem', async (req, res) => {
   try {
     const { id } = req.params;
     const { ordem } = req.body;
-    
+
     console.log(`🔄 Atualizando ordem da categoria ID: ${id} para ${ordem}`);
-    
+
     if (typeof ordem !== 'number') {
       return res.status(400).json({ error: 'Ordem deve ser um número' });
     }
-    
+
     const [result] = await pool.execute(
       'UPDATE categorias SET ordem = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [ordem, id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
-    
+
     console.log(`✅ Ordem atualizada para categoria: ${id}`);
-    
+
     res.json({ message: 'Ordem atualizada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar ordem:', error);
@@ -1804,23 +1804,23 @@ app.patch('/api/categorias/:id/ordem', async (req, res) => {
 app.patch('/api/categorias/:id/toggle', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     console.log(`🔄 Alterando status da categoria ID: ${id}`);
-    
+
     const [result] = await pool.execute(
       'UPDATE categorias SET ativo = NOT ativo, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada' });
     }
-    
+
     // Buscar categoria atualizada
     const [categorias] = await pool.execute('SELECT * FROM categorias WHERE id = ?', [id]);
-    
+
     console.log(`✅ Status alterado para categoria: ${id}`);
-    
+
     res.json({
       message: 'Status alterado com sucesso',
       ativo: categorias[0].ativo
@@ -1840,7 +1840,7 @@ app.get('/api/produtos/categoria/:categoria', async (req, res) => {
   try {
     const { categoria } = req.params;
     console.log(`🔄 Buscando produtos da categoria: ${categoria}`);
-    
+
     // Buscar por slug primeiro, se não encontrar tenta por nome (compatibilidade)
     const [rows] = await pool.execute(`
       SELECT p.*, p.imagem_url as imagemUrl, p.total_avaliacoes as totalAvaliacoes, 
@@ -1853,9 +1853,9 @@ app.get('/api/produtos/categoria/:categoria', async (req, res) => {
       WHERE c.slug = ? OR c.nome = ? OR p.categoria = ?
       ORDER BY p.created_at DESC
     `, [categoria, categoria, categoria]);
-    
+
     console.log(`✅ ${rows.length} produtos encontrados na categoria ${categoria}`);
-    
+
     // Converter preços de string para number e corrigir URLs de imagem
     const produtos = rows.map(produto => ({
       ...produto,
@@ -1863,7 +1863,7 @@ app.get('/api/produtos/categoria/:categoria', async (req, res) => {
       avaliacao: produto.avaliacao ? parseFloat(produto.avaliacao) : null,
       imagemUrl: produto.imagemUrl ? getPublicUrl(req, produto.imagemUrl) : null
     }));
-    
+
     res.json(produtos);
   } catch (error) {
     console.error('❌ Erro ao buscar produtos por categoria:', error);
@@ -1875,7 +1875,7 @@ app.get('/api/produtos/categoria/:categoria', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try {
     console.log('🔄 Buscando estatísticas da loja...');
-    
+
     const [statsRows] = await pool.execute(`
       SELECT 
         COUNT(*) as totalProdutos,
@@ -1889,19 +1889,19 @@ app.get('/api/stats', async (req, res) => {
         AVG(preco) as precoMedio
       FROM produtos
     `);
-    
+
     const [categoriasRows] = await pool.execute(`
       SELECT COUNT(DISTINCT categoria) as totalCategorias
       FROM produtos WHERE status = 'ativo'
     `);
-    
+
     const stats = {
       ...statsRows[0],
       totalCategorias: categoriasRows[0].totalCategorias,
       avaliacaoMedia: statsRows[0].avaliacaoMedia ? parseFloat(statsRows[0].avaliacaoMedia).toFixed(1) : null,
       precoMedio: parseFloat(statsRows[0].precoMedio).toFixed(2)
     };
-    
+
     console.log('✅ Estatísticas carregadas:', stats);
     res.json(stats);
   } catch (error) {
@@ -1914,7 +1914,7 @@ app.get('/api/stats', async (req, res) => {
 app.get('/api/compras-recentes', async (req, res) => {
   try {
     console.log('🔄 Buscando compras recentes...');
-    
+
     // Buscar produtos aleatórios para simular compras recentes
     const [rows] = await pool.execute(`
       SELECT 
@@ -1950,14 +1950,14 @@ app.get('/api/compras-recentes', async (req, res) => {
       ORDER BY RAND()
       LIMIT 10
     `);
-    
+
     const compras = rows.map(compra => ({
       ...compra,
       preco: parseFloat(compra.preco),
       imagemUrl: compra.imagemUrl ? getPublicUrl(req, compra.imagemUrl) : null,
       tempoAtras: Math.floor(Math.random() * 30) + 1 // 1-30 minutos atrás
     }));
-    
+
     console.log(`✅ ${compras.length} compras recentes simuladas`);
     res.json(compras);
   } catch (error) {
@@ -1970,29 +1970,29 @@ app.get('/api/compras-recentes', async (req, res) => {
 app.get('/api/produtos/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Tentar cache primeiro
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
     const cached = await cacheHelpers.getCachedProduct(id);
-    
+
     if (cached) {
       console.log(`✅ Produto ${id} do cache`);
       return res.json(cached);
     }
-    
+
     console.log(`🔄 Buscando produto ID: ${id}`);
-    
+
     const [rows] = await pool.execute(
-      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt, novo, seminovo FROM produtos WHERE id = ?',
+      'SELECT *, imagem_url as imagemUrl, total_avaliacoes as totalAvaliacoes, faixa_etaria as faixaEtaria, codigo_barras as codigoBarras, data_lancamento as dataLancamento, created_at as createdAt, updated_at as updatedAt FROM produtos WHERE id = ?',
       [id]
     );
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
-    
+
     console.log('✅ Produto encontrado:', rows[0].nome);
-    
+
     // Converter preços de string para number e corrigir URLs de imagem
     const produto = {
       ...rows[0],
@@ -2000,10 +2000,10 @@ app.get('/api/produtos/:id', async (req, res) => {
       avaliacao: rows[0].avaliacao ? parseFloat(rows[0].avaliacao) : null,
       imagemUrl: rows[0].imagemUrl ? getPublicUrl(req, rows[0].imagemUrl) : null
     };
-    
+
     // Cachear resultado
     await cacheHelpers.setCachedProduct(id, produto);
-    
+
     res.json(produto);
   } catch (error) {
     console.error('❌ Erro ao buscar produto:', error);
@@ -2029,13 +2029,13 @@ app.post('/api/produtos/quick-add-test', async (req, res) => {
   console.log('🔵🔵🔵 POST /api/produtos/quick-add-test - HANDLER TESTE (SEM UPLOAD)');
   console.log('📊 Body:', req.body);
   console.log('📊 Headers:', req.headers);
-  
+
   try {
     const { nome, preco, estoque, categoria, status } = req.body;
     const id = crypto.randomUUID();
-    
+
     console.log('⚡ Cadastro rápido (teste):', nome);
-    
+
     // Buscar categoria_id
     let categoria_id = null;
     if (categoria) {
@@ -2047,7 +2047,7 @@ app.post('/api/produtos/quick-add-test', async (req, res) => {
         categoria_id = catRows[0].id;
       }
     }
-    
+
     if (!categoria_id) {
       const [firstCat] = await pool.execute(
         'SELECT id, nome FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
@@ -2056,15 +2056,15 @@ app.post('/api/produtos/quick-add-test', async (req, res) => {
         categoria_id = firstCat[0].id;
       }
     }
-    
+
     console.log(`✅ categoria_id: ${categoria_id}`);
-    
+
     // Inserir produto
     let connection;
     try {
       connection = await pool.getConnection();
       await connection.query('USE `rare_toy_companion`');
-      
+
       await connection.execute(`
         INSERT INTO \`rare_toy_companion\`.\`produtos\` (
           id, nome, preco, categoria, categoria_id, estoque, status,
@@ -2074,10 +2074,10 @@ app.post('/api/produtos/quick-add-test', async (req, res) => {
         id, nome, Number(preco || 0), categoria || 'Outros', categoria_id,
         Number(estoque || 1), status || 'ativo', false, false, false
       ]);
-      
+
       connection.release();
       console.log(`✅ Produto inserido (teste)! ID: ${id}`);
-      
+
       res.json({ success: true, id, message: 'Produto cadastrado (teste)' });
     } catch (insertError) {
       if (connection) connection.release();
@@ -2109,21 +2109,21 @@ app.post('/api/produtos/quick-add', (req, res, next) => {
   console.log('📊 Headers:', req.headers);
   console.log('📊 Content-Type:', req.headers['content-type']);
   console.log('📊 File:', req.file ? req.file.filename : 'nenhum arquivo');
-  
+
   try {
     const { nome, preco, estoque, categoria, status } = req.body;
     const id = crypto.randomUUID();
-    
+
     console.log('⚡ Cadastro rápido:', nome);
     console.log('📊 Dados recebidos:', { nome, preco, estoque, categoria, status });
-    
+
     // URL da imagem (se enviou)
     let imagemUrl = null;
     if (req.file) {
       imagemUrl = `/lovable-uploads/${req.file.filename}`;
       console.log('📸 Foto capturada:', imagemUrl);
     }
-    
+
     // Buscar categoria_id pelo nome ou usar a primeira disponível
     // Usar nome completo do banco para garantir
     let categoria_id = null;
@@ -2136,17 +2136,17 @@ app.post('/api/produtos/quick-add', (req, res, next) => {
         categoria_id = catRows[0].id;
       }
     }
-    
+
     // Se não encontrou, usa a primeira categoria disponível
     if (!categoria_id) {
       try {
-      const [firstCat] = await pool.execute(
+        const [firstCat] = await pool.execute(
           'SELECT id, nome FROM `rare_toy_companion`.`categorias` WHERE ativo = 1 ORDER BY ordem LIMIT 1'
-      );
-      if (firstCat.length > 0) {
-        categoria_id = firstCat[0].id;
-        console.log(`📦 Usando categoria padrão: ${firstCat[0].nome} (ID: ${categoria_id})`);
-      } else {
+        );
+        if (firstCat.length > 0) {
+          categoria_id = firstCat[0].id;
+          console.log(`📦 Usando categoria padrão: ${firstCat[0].nome} (ID: ${categoria_id})`);
+        } else {
           console.log('⚠️ Nenhuma categoria ativa encontrada, tentando qualquer categoria...');
           const [anyCat] = await pool.execute(
             'SELECT id, nome FROM `rare_toy_companion`.`categorias` ORDER BY id LIMIT 1'
@@ -2156,46 +2156,46 @@ app.post('/api/produtos/quick-add', (req, res, next) => {
             console.log(`📦 Usando primeira categoria disponível: ${anyCat[0].nome} (ID: ${categoria_id})`);
           } else {
             return res.status(400).json({ error: 'Nenhuma categoria disponível no banco de dados' });
-      }
-    }
+          }
+        }
       } catch (catError) {
         console.error('❌ Erro ao buscar categoria:', catError);
         return res.status(500).json({ error: 'Erro ao buscar categoria', details: catError.message });
       }
     }
-    
+
     console.log(`✅ categoria_id final: ${categoria_id}`);
-    
+
     // Inserir produto com campos mínimos
     // Usar conexão explícita e garantir banco correto
     console.log(`📝 Inserindo produto no banco rare_toy_companion...`);
     let connection;
     try {
       connection = await pool.getConnection();
-      
+
       // SEMPRE forçar uso do banco correto (não confiar no banco padrão)
       // Verificar banco atual primeiro
       const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
       const currentDb = dbCheck[0]?.current_db;
       console.log(`📊 Banco atual da conexão ANTES do USE: ${currentDb}`);
-      
+
       // SEMPRE executar USE para garantir o banco correto
       await connection.query('USE `rare_toy_companion`');
       console.log(`✅ USE rare_toy_companion executado`);
-      
+
       // Verificar novamente para confirmar
       const [dbCheck2] = await connection.query('SELECT DATABASE() as current_db');
       const finalDb = dbCheck2[0]?.current_db;
       console.log(`📊 Banco atual da conexão APÓS o USE: ${finalDb}`);
-      
+
       if (finalDb !== 'rare_toy_companion') {
         throw new Error(`Falha ao mudar para banco rare_toy_companion. Banco atual: ${finalDb}`);
       }
-      
+
       // Inserir produto - usar apenas nome da tabela (banco já foi definido com USE)
       console.log(`📝 Executando INSERT na tabela produtos do banco ${finalDb}...`);
       console.log(`📝 Valores: id=${id}, nome=${nome}, categoria_id=${categoria_id}`);
-      
+
       // Tentar inserir SEM categoria_id primeiro para ver se funciona
       // Se não funcionar, tentar COM categoria_id
       let result;
@@ -2224,10 +2224,10 @@ app.post('/api/produtos/quick-add', (req, res, next) => {
     `, [
           id, nome, Number(preco || 0), categoria || 'Outros', categoria_id,
           imagemUrl, Number(estoque || 1), status || 'ativo', false, false, false
-    ]);
+        ]);
         console.log(`✅ Produto inserido COM categoria_id! ID: ${id}`);
       }
-      
+
       console.log(`✅ Produto inserido com sucesso! ID: ${id}, Result:`, result);
       connection.release();
     } catch (insertError) {
@@ -2237,16 +2237,16 @@ app.post('/api/produtos/quick-add', (req, res, next) => {
       console.error('❌ Mensagem:', insertError.message);
       throw insertError;
     }
-    
+
     logger.info('Produto cadastrado rapidamente', { id, nome, mobile: true });
-    
+
     // Invalidar cache de produtos
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
     await cacheHelpers.invalidateProductsCache();
     await cacheHelpers.invalidateCategoriesCache();
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       id,
       message: status === 'rascunho' ? 'Rascunho salvo! Complete depois.' : 'Produto cadastrado com sucesso!',
       produto: { id, nome, preco, categoria, status }
@@ -2266,7 +2266,7 @@ app.post('/api/produtos', async (req, res) => {
   try {
     const produtoData = req.body;
     console.log('🔄 Criando produto:', produtoData.nome);
-    
+
     // Buscar categoria_id pelo nome
     // Usar nome completo do banco para garantir
     let categoria_id = null;
@@ -2279,7 +2279,7 @@ app.post('/api/produtos', async (req, res) => {
         categoria_id = catRows[0].id;
       }
     }
-    
+
     // Se não encontrou, usa a primeira categoria disponível
     if (!categoria_id) {
       const [firstCat] = await pool.execute(
@@ -2291,22 +2291,22 @@ app.post('/api/produtos', async (req, res) => {
         return res.status(400).json({ error: 'Nenhuma categoria disponível' });
       }
     }
-    
+
     // Criar produto com campos obrigatórios
     // Usar nome completo do banco para garantir
     let connection;
     try {
       connection = await pool.getConnection();
-      
+
       // Verificar banco atual
       const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
       const currentDb = dbCheck[0]?.current_db;
-      
+
       // Forçar uso do banco correto
       if (currentDb !== 'rare_toy_companion') {
         await connection.query('USE `rare_toy_companion`');
       }
-      
+
       const [result] = await connection.execute(`
       INSERT INTO produtos (
           id, nome, preco, categoria, categoria_id, imagem_url, descricao, estoque, status,
@@ -2315,40 +2315,40 @@ app.post('/api/produtos', async (req, res) => {
         codigo_barras, data_lancamento
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      require('crypto').randomUUID(),
-      produtoData.nome,
-      produtoData.preco,
-      produtoData.categoria,
-      categoria_id,
-      produtoData.imagemUrl || null,
-      produtoData.descricao || null,
-      produtoData.estoque || 0,
-      produtoData.status || 'ativo',
-      produtoData.destaque || false,
-      produtoData.promocao || false,
-      produtoData.lancamento || false,
-      produtoData.avaliacao || 0,
-      produtoData.totalAvaliacoes || 0,
-      produtoData.faixaEtaria || null,
-      produtoData.peso || null,
-      produtoData.dimensoes || null,
-      produtoData.material || null,
-      produtoData.marca || null,
-      produtoData.origem || null,
-      produtoData.fornecedor || null,
-      produtoData.codigoBarras || null,
-      produtoData.dataLancamento || null
-    ]);
-      
+        require('crypto').randomUUID(),
+        produtoData.nome,
+        produtoData.preco,
+        produtoData.categoria,
+        categoria_id,
+        produtoData.imagemUrl || null,
+        produtoData.descricao || null,
+        produtoData.estoque || 0,
+        produtoData.status || 'ativo',
+        produtoData.destaque || false,
+        produtoData.promocao || false,
+        produtoData.lancamento || false,
+        produtoData.avaliacao || 0,
+        produtoData.totalAvaliacoes || 0,
+        produtoData.faixaEtaria || null,
+        produtoData.peso || null,
+        produtoData.dimensoes || null,
+        produtoData.material || null,
+        produtoData.marca || null,
+        produtoData.origem || null,
+        produtoData.fornecedor || null,
+        produtoData.codigoBarras || null,
+        produtoData.dataLancamento || null
+      ]);
+
       connection.release();
-    
-    // Invalidar cache de produtos
-    const cacheHelpers = require('./utils/cacheHelpers.cjs');
-    await cacheHelpers.invalidateProductsCache();
-    await cacheHelpers.invalidateCategoriesCache();
-    
-    console.log('✅ Produto criado com ID:', result.insertId);
-    res.status(201).json({ id: result.insertId, ...produtoData });
+
+      // Invalidar cache de produtos
+      const cacheHelpers = require('./utils/cacheHelpers.cjs');
+      await cacheHelpers.invalidateProductsCache();
+      await cacheHelpers.invalidateCategoriesCache();
+
+      console.log('✅ Produto criado com ID:', result.insertId);
+      res.status(201).json({ id: result.insertId, ...produtoData });
     } catch (insertError) {
       if (connection) connection.release();
       console.error('❌ Erro ao inserir produto:', insertError);
@@ -2366,11 +2366,11 @@ app.put('/api/produtos/:id', async (req, res) => {
     const { id } = req.params;
     const produtoData = req.body;
     console.log(`🔄 Atualizando produto ID: ${id}`, produtoData);
-    
+
     // Construir query dinamicamente baseado nos campos enviados
     const fields = [];
     const values = [];
-    
+
     if (produtoData.nome !== undefined) {
       fields.push('nome = ?');
       values.push(produtoData.nome);
@@ -2463,29 +2463,29 @@ app.put('/api/produtos/:id', async (req, res) => {
       fields.push('data_lancamento = ?');
       values.push(produtoData.dataLancamento);
     }
-    
+
     if (fields.length === 0) {
       return res.status(400).json({ error: 'Nenhum campo para atualizar' });
     }
-    
+
     // Adicionar updated_at
     fields.push('updated_at = NOW()');
     values.push(id);
-    
+
     const query = `UPDATE produtos SET ${fields.join(', ')} WHERE id = ?`;
     console.log('Query:', query);
     console.log('Values:', values);
-    
+
     const [result] = await pool.execute(query, values);
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
-    
+
     // Buscar o produto atualizado completo
     const [rows] = await pool.execute('SELECT * FROM produtos WHERE id = ?', [id]);
     const produto = rows[0];
-    
+
     // Converter snake_case para camelCase
     const produtoFormatado = {
       id: produto.id,
@@ -2513,12 +2513,12 @@ app.put('/api/produtos/:id', async (req, res) => {
       createdAt: produto.created_at,
       updatedAt: produto.updated_at
     };
-    
+
     // Invalidar cache de produtos
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
     await cacheHelpers.invalidateProductCache(id);
     await cacheHelpers.invalidateProductsCache();
-    
+
     console.log('✅ Produto atualizado com sucesso');
     res.json(produtoFormatado);
   } catch (error) {
@@ -2532,21 +2532,21 @@ app.delete('/api/produtos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Deletando produto ID: ${id}`);
-    
+
     const [result] = await pool.execute(
       'DELETE FROM produtos WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
-    
+
     // Invalidar cache de produtos
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
     await cacheHelpers.invalidateProductCache(id);
     await cacheHelpers.invalidateProductsCache();
-    
+
     console.log('✅ Produto deletado');
     res.json({ message: 'Produto deletado com sucesso' });
   } catch (error) {
@@ -2561,7 +2561,7 @@ app.delete('/api/produtos/:id', async (req, res) => {
 app.get('/api/events', async (req, res) => {
   try {
     console.log('🔄 Buscando eventos...');
-    
+
     // Buscar apenas colunas essenciais que sempre existem
     let rows;
     try {
@@ -2592,9 +2592,9 @@ app.get('/api/events', async (req, res) => {
         throw error2;
       }
     }
-    
+
     console.log(`✅ ${rows.length} eventos encontrados`);
-    
+
     // Converter e adicionar campos adicionais com valores padrão
     const eventos = rows.map(evento => ({
       ...evento,
@@ -2612,7 +2612,7 @@ app.get('/api/events', async (req, res) => {
       participantes_confirmados: evento.participantes_confirmados || 0,
       imagem_url: evento.imagem_url ? getPublicUrl(req, evento.imagem_url) : null
     }));
-    
+
     res.json(eventos);
   } catch (error) {
     console.error('❌ Erro ao buscar eventos:', error);
@@ -2625,25 +2625,25 @@ app.get('/api/events/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Buscando evento ID: ${id}`);
-    
+
     const [rows] = await pool.execute(
       'SELECT * FROM events WHERE id = ?',
       [id]
     );
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
-    
+
     console.log('✅ Evento encontrado:', rows[0].titulo);
-    
+
     // Converter renda_total de string para number e corrigir URLs de imagem
     const evento = {
       ...rows[0],
       renda_total: rows[0].renda_total ? parseFloat(rows[0].renda_total) : null,
       imagem_url: rows[0].imagem_url ? getPublicUrl(req, rows[0].imagem_url) : null
     };
-    
+
     res.json(evento);
   } catch (error) {
     console.error('❌ Erro ao buscar evento:', error);
@@ -2664,25 +2664,25 @@ app.post('/api/events', async (req, res) => {
     const eventoData = req.body;
     console.log('🔄 Criando evento:', eventoData.titulo);
     console.log('📦 Dados recebidos:', JSON.stringify(eventoData, null, 2));
-    
+
     // Validar campos obrigatórios
     if (!eventoData.titulo) {
       return res.status(400).json({ error: 'Título é obrigatório' });
     }
-    
+
     // Usar data_inicio se disponível, senão data_evento (compatibilidade)
     const dataEvento = eventoData.data_inicio || eventoData.data_evento;
-    
+
     if (!dataEvento) {
       return res.status(400).json({ error: 'Data do evento é obrigatória' });
     }
-    
+
     const formattedDate = formatDateForMySQL(dataEvento);
     console.log('📅 Data original:', dataEvento);
     console.log('📅 Data formatada:', formattedDate);
-    
+
     const newId = require('crypto').randomUUID();
-    
+
     const insertValues = [
       newId,
       eventoData.titulo,
@@ -2692,12 +2692,12 @@ app.post('/api/events', async (req, res) => {
       eventoData.imagem_url || null,
       eventoData.ativo !== false
     ];
-    
+
     console.log('📋 Valores do INSERT:', insertValues);
-    
+
     // A tabela events usa 'status' em vez de 'ativo'
     const status = eventoData.ativo !== false ? 'ativo' : 'inativo';
-    
+
     // Usar nome completo do banco e tentar inserir com status primeiro
     let result;
     try {
@@ -2706,14 +2706,14 @@ app.post('/api/events', async (req, res) => {
         id, titulo, descricao, data_evento, local, imagem_url, status
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
-      newId,
-      eventoData.titulo,
-      eventoData.descricao || null,
-      formattedDate,
-      eventoData.local || null,
-      eventoData.imagem_url || null,
-      status
-    ]);
+        newId,
+        eventoData.titulo,
+        eventoData.descricao || null,
+        formattedDate,
+        eventoData.local || null,
+        eventoData.imagem_url || null,
+        status
+      ]);
     } catch (statusError) {
       // Se falhar com status, tentar com ativo
       if (statusError.message.includes('status')) {
@@ -2735,13 +2735,13 @@ app.post('/api/events', async (req, res) => {
         throw statusError;
       }
     }
-    
+
     // Inserir campos adicionais se fornecidos (data_fim, numero_vagas, etc.)
     if (eventoData.data_fim || eventoData.numero_vagas !== undefined || eventoData.vagas_limitadas !== undefined) {
       try {
         const updateFields = [];
         const updateValues = [];
-        
+
         if (eventoData.data_fim) {
           updateFields.push('data_fim = ?');
           updateValues.push(formatDateForMySQL(eventoData.data_fim));
@@ -2754,7 +2754,7 @@ app.post('/api/events', async (req, res) => {
           updateFields.push('vagas_limitadas = ?');
           updateValues.push(eventoData.vagas_limitadas ? 1 : 0);
         }
-        
+
         if (updateFields.length > 0) {
           updateValues.push(newId);
           await pool.execute(`
@@ -2768,9 +2768,9 @@ app.post('/api/events', async (req, res) => {
         console.warn('⚠️ Erro ao atualizar campos adicionais (não crítico):', updateError.message);
       }
     }
-    
+
     console.log('✅ Evento criado com sucesso! ID:', newId);
-    res.status(201).json({ 
+    res.status(201).json({
       id: newId,
       titulo: eventoData.titulo,
       message: 'Evento criado com sucesso'
@@ -2780,26 +2780,26 @@ app.post('/api/events', async (req, res) => {
     console.error('📋 Stack:', error.stack);
     console.error('📋 SQL Error Code:', error.code);
     console.error('📋 SQL Message:', error.sqlMessage);
-    
+
     // Tratamento específico para erros SQL
     if (error.code === 'ER_BAD_FIELD_ERROR') {
-      return res.status(500).json({ 
-        error: 'Erro na estrutura da tabela', 
-        details: `Coluna não encontrada: ${error.sqlMessage}` 
+      return res.status(500).json({
+        error: 'Erro na estrutura da tabela',
+        details: `Coluna não encontrada: ${error.sqlMessage}`
       });
     }
-    
+
     if (error.code === 'ER_NO_SUCH_TABLE') {
-      return res.status(500).json({ 
-        error: 'Tabela não encontrada', 
-        details: 'A tabela events não existe no banco de dados' 
+      return res.status(500).json({
+        error: 'Tabela não encontrada',
+        details: 'A tabela events não existe no banco de dados'
       });
     }
-    
-    res.status(500).json({ 
-      error: 'Erro interno do servidor', 
+
+    res.status(500).json({
+      error: 'Erro interno do servidor',
       details: error.message,
-      code: error.code 
+      code: error.code
     });
   }
 });
@@ -2810,40 +2810,40 @@ app.put('/api/events/:id', async (req, res) => {
     const { id } = req.params;
     const eventoData = req.body;
     console.log(`🔄 Atualizando evento ID: ${id}`);
-    
+
     // Usar data_inicio se disponível, senão data_evento (compatibilidade)
     const dataEvento = eventoData.data_inicio || eventoData.data_evento;
-    
+
     // Construir query UPDATE dinamicamente apenas com campos que existem
     const updateFields = [];
     const updateValues = [];
-    
+
     if (eventoData.titulo !== undefined) { updateFields.push('titulo = ?'); updateValues.push(eventoData.titulo); }
     if (eventoData.descricao !== undefined) { updateFields.push('descricao = ?'); updateValues.push(eventoData.descricao || null); }
     if (dataEvento !== undefined) { updateFields.push('data_evento = ?'); updateValues.push(formatDateForMySQL(dataEvento)); }
     if (eventoData.local !== undefined) { updateFields.push('local = ?'); updateValues.push(eventoData.local || null); }
     if (eventoData.imagem_url !== undefined) { updateFields.push('imagem_url = ?'); updateValues.push(eventoData.imagem_url || null); }
-    if (eventoData.ativo !== undefined) { 
+    if (eventoData.ativo !== undefined) {
       const status = eventoData.ativo !== false ? 'ativo' : 'inativo';
-      updateFields.push('status = ?'); 
-      updateValues.push(status); 
+      updateFields.push('status = ?');
+      updateValues.push(status);
     }
-    
+
     updateFields.push('updated_at = NOW()');
     updateValues.push(id);
-    
+
     if (updateFields.length === 1) {
       return res.status(400).json({ error: 'Nenhum campo para atualizar' });
     }
-    
+
     const [result] = await pool.execute(`
       UPDATE events SET ${updateFields.join(', ')} WHERE id = ?
     `, updateValues);
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
-    
+
     console.log('✅ Evento atualizado com sucesso!');
     res.json({ id, ...eventoData });
   } catch (error) {
@@ -2858,23 +2858,23 @@ app.post('/api/events/:id/fechar-feira', async (req, res) => {
     const { id } = req.params;
     const { renda_total, participantes_confirmados } = req.body;
     console.log(`🔄 Fechando feira do evento ID: ${id}`);
-    
+
     // Nota: As colunas feira_fechada, renda_total e participantes_confirmados não existem na tabela events
     // Este endpoint está desabilitado até que essas colunas sejam adicionadas ao banco de dados
-    
+
     // Apenas atualizar o timestamp para indicar que a ação foi executada
     const [result] = await pool.execute(`
       UPDATE events SET 
         updated_at = NOW()
       WHERE id = ?
     `, [id]);
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
-    
+
     console.log('✅ Feira fechada com sucesso (funcionalidade limitada)');
-    res.json({ 
+    res.json({
       message: 'Feira fechada com sucesso',
       renda_total: renda_total || 0,
       participantes_confirmados: participantes_confirmados || 0,
@@ -2891,16 +2891,16 @@ app.delete('/api/events/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Deletando evento ID: ${id}`);
-    
+
     const [result] = await pool.execute(
       'DELETE FROM events WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Evento não encontrado' });
     }
-    
+
     console.log('✅ Evento deletado');
     res.json({ message: 'Evento deletado com sucesso' });
   } catch (error) {
@@ -2924,7 +2924,7 @@ app.get('/api/users', async (req, res) => {
       FROM users 
       ORDER BY created_at DESC
     `);
-    
+
     console.log(`✅ ${rows.length} usuários encontrados`);
     res.json(rows);
   } catch (error) {
@@ -2938,16 +2938,16 @@ app.get('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Buscando usuário ID: ${id}`);
-    
+
     const [rows] = await pool.execute(
       'SELECT * FROM users WHERE id = ?',
       [id]
     );
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     console.log('✅ Usuário encontrado:', rows[0].nome);
     res.json(rows[0]);
   } catch (error) {
@@ -2961,7 +2961,7 @@ app.post('/api/users', async (req, res) => {
   try {
     const userData = req.body;
     console.log('🔄 Criando usuário:', userData.nome);
-    
+
     const [result] = await pool.execute(`
       INSERT INTO users (
         id, email, avatar_url, nome
@@ -2972,7 +2972,7 @@ app.post('/api/users', async (req, res) => {
       userData.avatar_url || null,
       userData.nome
     ]);
-    
+
     console.log('✅ Usuário criado com ID:', result.insertId);
     res.status(201).json({ id: result.insertId, ...userData });
   } catch (error) {
@@ -2994,7 +2994,7 @@ app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const userData = req.body;
     console.log(`🔄 Atualizando usuário ID: ${id}`);
-    
+
     const [result] = await pool.execute(`
       UPDATE users SET 
         email = ?, avatar_url = ?, nome = ?
@@ -3005,11 +3005,11 @@ app.put('/api/users/:id', async (req, res) => {
       userData.nome,
       id
     ]);
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     console.log('✅ Usuário atualizado');
     res.json({ message: 'Usuário atualizado com sucesso' });
   } catch (error) {
@@ -3027,16 +3027,16 @@ app.delete('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Deletando usuário ID: ${id}`);
-    
+
     const [result] = await pool.execute(
       'DELETE FROM users WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     console.log('✅ Usuário deletado');
     res.json({ message: 'Usuário deletado com sucesso' });
   } catch (error) {
@@ -3059,17 +3059,17 @@ app.get('/api/collections', async (req, res) => {
     const sort = (req.query.sort || 'created_at').toString();
     const order = ((req.query.order || 'desc').toString().toUpperCase() === 'ASC') ? 'ASC' : 'DESC';
     console.log('🔄 Buscando coleções...');
-    
+
     // Verificar qual banco está sendo usado
     const [dbCheck] = await pool.execute('SELECT DATABASE() as current_db');
     console.log('📊 Banco atual:', dbCheck[0].current_db);
-    
+
     const whereParts = [];
     const vals = [];
     if (q) { whereParts.push('(nome LIKE ? OR descricao LIKE ?)'); vals.push(`%${q}%`, `%${q}%`); }
     const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
 
-    const allowSort = new Set(['created_at','updated_at','nome','id']);
+    const allowSort = new Set(['created_at', 'updated_at', 'nome', 'id']);
     const sortCol = allowSort.has(sort) ? sort : 'created_at';
 
     const [countRows] = await pool.execute(`SELECT COUNT(*) as total FROM collections ${whereSql}`, vals);
@@ -3095,11 +3095,11 @@ app.get('/api/collections', async (req, res) => {
 
     const selectCols = `c.id, c.nome, c.descricao, c.imagem_url${optionalCols ? ', c.' + optionalCols.split(', ').join(', c.') : ''}, NOW() as created_at, NOW() as updated_at, 
       (SELECT COUNT(*) FROM collection_products cp WHERE cp.collection_id = c.id) as total_produtos`;
-    const sql = `SELECT ${selectCols} FROM collections c ${whereSql.replaceAll('nome','c.nome').replaceAll('descricao','c.descricao')} ORDER BY ${sortCol.startsWith('c.')?sortCol:`c.${sortCol}`} ${order} LIMIT ${limitNum} OFFSET ${offsetNum}`;
+    const sql = `SELECT ${selectCols} FROM collections c ${whereSql.replaceAll('nome', 'c.nome').replaceAll('descricao', 'c.descricao')} ORDER BY ${sortCol.startsWith('c.') ? sortCol : `c.${sortCol}`} ${order} LIMIT ${limitNum} OFFSET ${offsetNum}`;
     const [rows] = await pool.execute(sql, vals);
-    
+
     console.log(`✅ ${rows.length} coleções encontradas`);
-    
+
     const toPublic = (p) => normalizeToThisOrigin(req, p);
 
     const colecoes = rows.map(colecao => {
@@ -3120,7 +3120,7 @@ app.get('/api/collections', async (req, res) => {
         updated_at: colecao.updated_at
       };
     });
-    
+
     const withMeta = req.query.withMeta === '1' || req.query.withMeta === 'true';
     if (withMeta) {
       return res.json({ items: colecoes, page, pageSize, total, hasMore: offset + rows.length < total });
@@ -3243,85 +3243,85 @@ app.get('/api/collections/:id/products', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔄 Buscando produtos da coleção ${id}...`);
-    
+
     // Verificar se a coleção existe
     const [collectionRows] = await pool.execute('SELECT id, nome FROM collections WHERE id = ?', [id]);
     if (collectionRows.length === 0) {
       return res.status(404).json({ error: 'Coleção não encontrada' });
     }
-    
+
     // Buscar vínculos primeiro
     const [links] = await pool.execute('SELECT * FROM collection_products WHERE collection_id = ? ORDER BY order_index ASC, created_at ASC', [id]);
     console.log(`🔗 Vínculos encontrados: ${links.length}`);
-    
-        // Buscar detalhes dos produtos (tanto da tabela products quanto produtos)
-        let productDetailsMap = {};
-        if (links.length > 0) {
-          const productIds = links.map(l => l.product_id).filter(id => id);
-          console.log(`🆔 IDs dos produtos: ${productIds.join(', ')}`);
-          
-          if (productIds.length > 0) {
-            // Tentar primeiro na tabela products
-            let productRows = [];
-            try {
-              const [productsRows] = await pool.execute(`
+
+    // Buscar detalhes dos produtos (tanto da tabela products quanto produtos)
+    let productDetailsMap = {};
+    if (links.length > 0) {
+      const productIds = links.map(l => l.product_id).filter(id => id);
+      console.log(`🆔 IDs dos produtos: ${productIds.join(', ')}`);
+
+      if (productIds.length > 0) {
+        // Tentar primeiro na tabela products
+        let productRows = [];
+        try {
+          const [productsRows] = await pool.execute(`
                 SELECT id, nome, preco, categoria, imagem_url, descricao, estoque, status, destaque, promocao, lancamento, avaliacao, total_avaliacoes, faixa_etaria, peso, dimensoes, material, marca, origem, fornecedor, codigo_barras, data_lancamento, created_at, updated_at
                 FROM products 
                 WHERE id IN (${productIds.map(() => '?').join(',')})
               `, productIds);
-              productRows = productsRows;
-              console.log(`🧾 Produtos carregados da tabela 'products': ${productRows.length}`);
-            } catch (e) {
-              console.log('⚠️ Tabela products não encontrada, tentando tabela produtos...');
-            }
-            
-            // Se não encontrou na tabela products, tentar na tabela produtos
-            if (productRows.length === 0) {
-              try {
-                const [produtosRows] = await pool.execute(`
+          productRows = productsRows;
+          console.log(`🧾 Produtos carregados da tabela 'products': ${productRows.length}`);
+        } catch (e) {
+          console.log('⚠️ Tabela products não encontrada, tentando tabela produtos...');
+        }
+
+        // Se não encontrou na tabela products, tentar na tabela produtos
+        if (productRows.length === 0) {
+          try {
+            const [produtosRows] = await pool.execute(`
                   SELECT id, nome, preco, categoria, imagem_url, descricao, estoque, status, destaque, promocao, lancamento, avaliacao, total_avaliacoes, faixa_etaria, peso, dimensoes, material, marca, origem, fornecedor, codigo_barras, data_lancamento, created_at, updated_at
                   FROM produtos 
                   WHERE id IN (${productIds.map(() => '?').join(',')})
                 `, productIds);
-                productRows = produtosRows;
-                console.log(`🧾 Produtos carregados da tabela 'produtos': ${productRows.length}`);
-              } catch (e) {
-                console.log('⚠️ Tabela produtos não encontrada');
-              }
-            }
-            
-            productDetailsMap = productRows.reduce((acc, row) => {
-              acc[row.id] = {
-                id: row.id,
-                nome: row.nome,
-                preco: parseFloat(row.preco || 0),
-                categoria: row.categoria,
-                imagem_url: row.imagem_url,
-                descricao: row.descricao,
-                estoque: row.estoque,
-                status: row.status,
-                destaque: row.destaque,
-                promocao: row.promocao,
-                lancamento: row.lancamento,
-                avaliacao: row.avaliacao ? parseFloat(row.avaliacao) : null,
-                total_avaliacoes: row.total_avaliacoes,
-                faixa_etaria: row.faixa_etaria,
-                peso: row.peso,
-                dimensoes: row.dimensoes,
-                material: row.material,
-                marca: row.marca,
-                origem: row.origem,
-                fornecedor: row.fornecedor,
-                codigo_barras: row.codigo_barras,
-                data_lancamento: row.data_lancamento,
-                created_at: row.created_at,
-                updated_at: row.updated_at
-              };
-              return acc;
-            }, {});
+            productRows = produtosRows;
+            console.log(`🧾 Produtos carregados da tabela 'produtos': ${productRows.length}`);
+          } catch (e) {
+            console.log('⚠️ Tabela produtos não encontrada');
           }
         }
-    
+
+        productDetailsMap = productRows.reduce((acc, row) => {
+          acc[row.id] = {
+            id: row.id,
+            nome: row.nome,
+            preco: parseFloat(row.preco || 0),
+            categoria: row.categoria,
+            imagem_url: row.imagem_url,
+            descricao: row.descricao,
+            estoque: row.estoque,
+            status: row.status,
+            destaque: row.destaque,
+            promocao: row.promocao,
+            lancamento: row.lancamento,
+            avaliacao: row.avaliacao ? parseFloat(row.avaliacao) : null,
+            total_avaliacoes: row.total_avaliacoes,
+            faixa_etaria: row.faixa_etaria,
+            peso: row.peso,
+            dimensoes: row.dimensoes,
+            material: row.material,
+            marca: row.marca,
+            origem: row.origem,
+            fornecedor: row.fornecedor,
+            codigo_barras: row.codigo_barras,
+            data_lancamento: row.data_lancamento,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          };
+          return acc;
+        }, {});
+      }
+    }
+
     const produtos = links.map(link => ({
       id: link.id,
       collection_id: link.collection_id,
@@ -3329,7 +3329,7 @@ app.get('/api/collections/:id/products', async (req, res) => {
       order_index: link.order_index,
       product: productDetailsMap[link.product_id] || null
     }));
-    
+
     console.log(`✅ ${produtos.length} produtos encontrados na coleção ${collectionRows[0].nome}`);
     res.json(produtos);
   } catch (error) {
@@ -3340,7 +3340,7 @@ app.get('/api/collections/:id/products', async (req, res) => {
 
 // Utilitário simples: salvar imagem base64 (opcional)
 const UPLOAD_DIR = path.join(__dirname, '../public', 'lovable-uploads');
-try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch {}
+try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch { }
 app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
 function saveBase64ImageToCollectionsBase64(dataUrl) {
@@ -3366,25 +3366,25 @@ app.post('/api/collections', async (req, res) => {
     const finalDescription = (description ?? descricao) || '';
     let finalImageUrl = (image_url ?? imagem) || null;
     console.log(`🔄 Criando coleção: ${finalName}`);
-    
+
     // Validar dados obrigatórios
     if (!finalName || !finalDescription) {
       return res.status(400).json({ error: 'Nome e descrição são obrigatórios' });
     }
-    
+
     // Garantir que finalImageUrl seja string ou null
     if (finalImageUrl !== null && finalImageUrl !== undefined) {
       finalImageUrl = String(finalImageUrl);
     } else {
       finalImageUrl = null;
     }
-    
+
     // Salvar base64 se enviado
     if (finalImageUrl && finalImageUrl.startsWith('data:')) {
       const saved = saveBase64ImageToCollectionsBase64(finalImageUrl);
       if (saved) finalImageUrl = saved;
     }
-    
+
     // Inserção alinhada ao schema PT (id varchar, nome, descricao, imagem_url)
     const newId = require('crypto').randomUUID();
     // detectar colunas opcionais
@@ -3397,11 +3397,11 @@ app.post('/api/collections', async (req, res) => {
     if (colSet.has('tags')) { extraCols.push('tags'); extraVals.push(tags ? JSON.stringify(tags) : JSON.stringify([])); }
     if (colSet.has('ordem')) { extraCols.push('ordem'); extraVals.push(Number.isFinite(ordem) ? ordem : 0); }
 
-    const baseCols = ['id','nome','descricao','imagem_url','created_at','updated_at'];
-    const basePlace = ['?','?','?','?','NOW()','NOW()'];
-    const sql = `INSERT INTO collections (${baseCols.concat(extraCols).join(',')}) VALUES (${basePlace.concat(extraCols.map(()=>'?')).join(',')})`;
+    const baseCols = ['id', 'nome', 'descricao', 'imagem_url', 'created_at', 'updated_at'];
+    const basePlace = ['?', '?', '?', '?', 'NOW()', 'NOW()'];
+    const sql = `INSERT INTO collections (${baseCols.concat(extraCols).join(',')}) VALUES (${basePlace.concat(extraCols.map(() => '?')).join(',')})`;
     await pool.execute(sql, [newId, finalName, finalDescription, finalImageUrl, ...extraVals]);
-    
+
     const host = req.get('host');
     const proto = req.protocol || 'http';
     const publicUrl = finalImageUrl ? `${proto}://${host}${finalImageUrl.startsWith('/') ? '' : '/'}${finalImageUrl}` : null;
@@ -3420,7 +3420,7 @@ app.post('/api/collections', async (req, res) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    
+
     console.log(`✅ Coleção criada com sucesso: ${finalName}`);
     res.status(201).json(novaColecao);
   } catch (error) {
@@ -3438,19 +3438,19 @@ app.put('/api/collections/:id', async (req, res) => {
     const finalDescription = (description ?? descricao) || '';
     let finalImageUrl = (image_url ?? imagem) || null;
     console.log(`🔄 Atualizando coleção ${id}: ${finalName}`);
-    
+
     // Validar dados obrigatórios
     if (!finalName || !finalDescription) {
       return res.status(400).json({ error: 'Nome e descrição são obrigatórios' });
     }
-    
+
     // Garantir que finalImageUrl seja string ou null
     if (finalImageUrl !== null && finalImageUrl !== undefined) {
       finalImageUrl = String(finalImageUrl);
     } else {
       finalImageUrl = null;
     }
-    
+
     // Salvar base64 se enviado
     if (finalImageUrl && finalImageUrl.startsWith('data:')) {
       const saved = saveBase64ImageToCollectionsBase64(finalImageUrl);
@@ -3461,7 +3461,7 @@ app.put('/api/collections/:id', async (req, res) => {
     // detectar colunas opcionais para update
     const [cols2] = await pool.execute("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'collections'");
     const colSet2 = new Set(cols2.map(c => c.COLUMN_NAME));
-    const parts = ['nome = ?','descricao = ?','imagem_url = ?'];
+    const parts = ['nome = ?', 'descricao = ?', 'imagem_url = ?'];
     const params = [finalName, finalDescription, finalImageUrl];
     if (colSet2.has('destaque') && typeof destaque !== 'undefined') { parts.push('destaque = ?'); params.push(!!destaque); }
     if (colSet2.has('ativo') && typeof ativo !== 'undefined') { parts.push('ativo = ?'); params.push(ativo ? 1 : 0); }
@@ -3469,7 +3469,7 @@ app.put('/api/collections/:id', async (req, res) => {
     if (colSet2.has('ordem') && typeof ordem !== 'undefined') { parts.push('ordem = ?'); params.push(Number.isFinite(ordem) ? ordem : 0); }
     const sql = `UPDATE collections SET ${parts.join(', ')}, updated_at = NOW() WHERE id = ?`;
     await pool.execute(sql, [...params, id]);
-    
+
     // Buscar coleção atualizada
     const [rows] = await pool.execute('SELECT * FROM collections WHERE id = ?', [id]);
     const imgPath = extractUploadPath(rows[0].imagem_url ?? rows[0].image_url);
@@ -3482,7 +3482,7 @@ app.put('/api/collections/:id', async (req, res) => {
       created_at: rows[0].created_at,
       updated_at: rows[0].updated_at
     };
-    
+
     console.log(`✅ Coleção atualizada com sucesso: ${nome}`);
     res.json(colecaoAtualizada);
   } catch (error) {
@@ -3542,7 +3542,7 @@ app.get('/api/debug/collections-schema', async (req, res) => {
       const [colInfo] = await pool.execute(
         "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'collection_products' AND COLUMN_NAME IN ('collection_id', 'product_id')"
       );
-      
+
       for (const col of colInfo) {
         if (col.COLUMN_NAME === 'collection_id' && (col.DATA_TYPE.toLowerCase() !== 'varchar' || Number(col.CHARACTER_MAXIMUM_LENGTH || 0) < 191)) {
           console.log('🛠️ Alterando tipo de collection_id para VARCHAR(191) em collection_products...');
@@ -3636,18 +3636,18 @@ app.get('/api/debug/collections-schema', async (req, res) => {
       for (const [k, v] of defaults) {
         await pool.execute('INSERT IGNORE INTO settings (key_name, value_text) VALUES (?,?)', [k, v]);
       }
-    // SMTP defaults (não sensível; senha não default)
-    const smtpDefaults = [
-      ['smtp_enabled', 'false'],
-      ['smtp_host', ''],
-      ['smtp_port', '587'],
-      ['smtp_secure', 'false'],
-      ['smtp_user', ''],
-      ['smtp_from', ''],
-    ];
-    for (const [k, v] of smtpDefaults) {
-      await pool.execute('INSERT IGNORE INTO settings (key_name, value_text) VALUES (?,?)', [k, v]);
-    }
+      // SMTP defaults (não sensível; senha não default)
+      const smtpDefaults = [
+        ['smtp_enabled', 'false'],
+        ['smtp_host', ''],
+        ['smtp_port', '587'],
+        ['smtp_secure', 'false'],
+        ['smtp_user', ''],
+        ['smtp_from', ''],
+      ];
+      for (const [k, v] of smtpDefaults) {
+        await pool.execute('INSERT IGNORE INTO settings (key_name, value_text) VALUES (?,?)', [k, v]);
+      }
       console.log('✅ Settings default populated');
     }
   } catch (err) {
@@ -3693,15 +3693,15 @@ app.put('/api/settings', express.json(), async (req, res) => {
       digital_pay_discount_percent: (v) => Number(v) >= 0 && Number(v) <= 50,
       free_shipping_min: (v) => Number(v) >= 0 && Number(v) <= 100000,
       shipping_base_price: (v) => Number(v) >= 0 && Number(v) <= 10000,
-      enable_apple_pay: (v) => ['true','false',true,false].includes(v),
-      enable_google_pay: (v) => ['true','false',true,false].includes(v),
-      cart_recovery_enabled: (v) => ['true','false',true,false].includes(v),
+      enable_apple_pay: (v) => ['true', 'false', true, false].includes(v),
+      enable_google_pay: (v) => ['true', 'false', true, false].includes(v),
+      cart_recovery_enabled: (v) => ['true', 'false', true, false].includes(v),
       cart_recovery_banner_delay_ms: (v) => Number(v) >= 0 && Number(v) <= 3600000,
       cart_recovery_email_delay_ms: (v) => Number(v) >= 0 && Number(v) <= 86400000,
-      smtp_enabled: (v) => ['true','false',true,false].includes(v),
+      smtp_enabled: (v) => ['true', 'false', true, false].includes(v),
       smtp_host: (v) => typeof v === 'string' && v.length <= 255,
       smtp_port: (v) => Number(v) > 0 && Number(v) <= 65535,
-      smtp_secure: (v) => ['true','false',true,false].includes(v),
+      smtp_secure: (v) => ['true', 'false', true, false].includes(v),
       smtp_user: (v) => typeof v === 'string' && v.length <= 255,
       smtp_from: (v) => typeof v === 'string' && v.length <= 255,
       // smtp_pass validado mas não exposto em GET
@@ -3711,7 +3711,7 @@ app.put('/api/settings', express.json(), async (req, res) => {
       pix_key_type: (v) => ['email', 'cpf', 'cnpj', 'phone', 'random'].includes(v),
       pix_merchant_name: (v) => typeof v === 'string' && v.length <= 255,
       pix_city: (v) => typeof v === 'string' && v.length <= 255,
-      pix_show_qr_cart: (v) => ['true','false',true,false].includes(v),
+      pix_show_qr_cart: (v) => ['true', 'false', true, false].includes(v),
     };
 
     // Obter valores antigos para audit
@@ -3831,11 +3831,11 @@ app.get('/api/recovery/emails', async (req, res) => {
     const offset = (page - 1) * pageSize;
     const emailFilter = (req.query.email || '').toString();
     const where = emailFilter ? `WHERE email LIKE ${pool.escape('%' + emailFilter + '%')}` : '';
-  const sql = `SELECT id, email, status, error, created_at, sent_at FROM recovery_emails ${where} ORDER BY created_at DESC LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}`;
-  const [rows] = await pool.execute(sql);
-  const countSql = `SELECT COUNT(*) as total FROM recovery_emails ${where}`;
-  const [[countRow]] = await pool.execute(countSql);
-  res.json({ page, pageSize, total: Number(countRow.total || 0), items: rows });
+    const sql = `SELECT id, email, status, error, created_at, sent_at FROM recovery_emails ${where} ORDER BY created_at DESC LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}`;
+    const [rows] = await pool.execute(sql);
+    const countSql = `SELECT COUNT(*) as total FROM recovery_emails ${where}`;
+    const [[countRow]] = await pool.execute(countSql);
+    res.json({ page, pageSize, total: Number(countRow.total || 0), items: rows });
   } catch (e) {
     console.error('Recovery emails GET error', e);
     res.status(500).json({ error: 'recovery_emails_get_failed' });
@@ -3849,10 +3849,10 @@ app.get('/api/settings/audit', async (req, res) => {
     const page = Math.max(1, Number(req.query.page || 1));
     const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize || 20)));
     const offset = (page - 1) * pageSize;
-  const sql = `SELECT id, key_name, old_value, new_value, admin_id, created_at FROM settings_audit ORDER BY created_at DESC LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}`;
-  const [rows] = await pool.execute(sql);
-  const [[countRow]] = await pool.execute('SELECT COUNT(*) as total FROM settings_audit');
-  res.json({ page, pageSize, total: Number(countRow.total || 0), items: rows });
+    const sql = `SELECT id, key_name, old_value, new_value, admin_id, created_at FROM settings_audit ORDER BY created_at DESC LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}`;
+    const [rows] = await pool.execute(sql);
+    const [[countRow]] = await pool.execute('SELECT COUNT(*) as total FROM settings_audit');
+    res.json({ page, pageSize, total: Number(countRow.total || 0), items: rows });
   } catch (e) {
     console.error('Settings audit GET error', e);
     res.status(500).json({ error: 'settings_audit_get_failed' });
@@ -3916,7 +3916,7 @@ app.get('/api/settings/audit', async (req, res) => {
         INDEX idx_order (order_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
-    
+
     // Migração: alterar product_id de INT para VARCHAR nas tabelas existentes
     try {
       await pool.execute(`ALTER TABLE cart_items MODIFY COLUMN product_id VARCHAR(191) NOT NULL`);
@@ -3926,7 +3926,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ cart_items.product_id já é VARCHAR ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE order_items MODIFY COLUMN product_id VARCHAR(191) NOT NULL`);
       console.log('✅ Migração: order_items.product_id alterado para VARCHAR(191)');
@@ -3935,7 +3935,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ order_items.product_id já é VARCHAR ou erro na migração:', e.message);
       }
     }
-    
+
     // Migração: adicionar colunas de entrega/pagamento na tabela orders se não existirem
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN nome VARCHAR(255) AFTER cart_id`);
@@ -3945,7 +3945,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna nome já existe ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN email VARCHAR(255) AFTER nome`);
       console.log('✅ Migração: coluna email adicionada à tabela orders');
@@ -3954,7 +3954,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna email já existe ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN telefone VARCHAR(50) AFTER email`);
       console.log('✅ Migração: coluna telefone adicionada à tabela orders');
@@ -3963,7 +3963,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna telefone já existe ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN endereco TEXT AFTER telefone`);
       console.log('✅ Migração: coluna endereco adicionada à tabela orders');
@@ -3972,7 +3972,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna endereco já existe ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN metodo_pagamento VARCHAR(50) AFTER endereco`);
       console.log('✅ Migração: coluna metodo_pagamento adicionada à tabela orders');
@@ -3981,7 +3981,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna metodo_pagamento já existe ou erro na migração:', e.message);
       }
     }
-    
+
     // Migração: adicionar colunas de pagamento
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN payment_status VARCHAR(50) DEFAULT 'pending' AFTER metodo_pagamento`);
@@ -3991,7 +3991,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna payment_status já existe ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN payment_data JSON AFTER payment_status`);
       console.log('✅ Migração: coluna payment_data adicionada à tabela orders');
@@ -4000,7 +4000,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna payment_data já existe ou erro na migração:', e.message);
       }
     }
-    
+
     try {
       await pool.execute(`ALTER TABLE orders ADD COLUMN pix_qr_code TEXT AFTER payment_data`);
       console.log('✅ Migração: coluna pix_qr_code adicionada à tabela orders');
@@ -4009,7 +4009,7 @@ app.get('/api/settings/audit', async (req, res) => {
         console.log('ℹ️ Coluna pix_qr_code já existe ou erro na migração:', e.message);
       }
     }
-    
+
     console.log('✅ Tabelas de carrinho/pedidos verificadas');
   } catch (e) {
     console.error('❌ Erro nas tabelas de carrinho/pedidos:', e?.message || e);
@@ -4030,7 +4030,7 @@ app.get('/api/settings/audit', async (req, res) => {
         INDEX idx_user_id (user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
-    
+
     // Adicionar coluna user_id se não existir
     try {
       await pool.execute('ALTER TABLE sessions ADD COLUMN user_id VARCHAR(191) NULL AFTER id');
@@ -4060,14 +4060,14 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const { email, senha, password } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
     const pass = String(password || senha || '');
-    
+
     if (!mail || !pass) {
       return res.status(400).json({ error: 'credenciais_invalidas', message: 'Email e senha são obrigatórios' });
     }
-    
+
     console.log('🔐 Tentativa de login cliente:', mail);
     console.log('🔍 Verificando banco de dados atual...');
-    
+
     // Verificar banco atual
     try {
       const [dbCheck] = await pool.execute('SELECT DATABASE() as current_db');
@@ -4075,12 +4075,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     } catch (e) {
       console.log('⚠️ Erro ao verificar banco:', e.message);
     }
-    
+
     // Buscar usuário no banco (tentar primeiro em users, depois em customers)
     let userRows = [];
     let user = null;
     let userId = null;
-    
+
     // Tentar em users primeiro
     // CORRIGIDO: usar apenas password_hash (não existe senha_hash na tabela users)
     try {
@@ -4104,7 +4104,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       console.error('❌ Erro ao buscar em users:', e.message);
       console.error('❌ Stack:', e.stack);
     }
-    
+
     // Se não encontrou em users, tentar em customers
     // CORRIGIDO: customers não tem password_hash, apenas users tem
     if (!user) {
@@ -4139,7 +4139,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         console.error('❌ Stack:', e.stack);
       }
     }
-    
+
     if (!user || !userId) {
       console.log('❌ Usuário não encontrado em users nem customers:', mail);
       // Listar alguns emails disponíveis para debug
@@ -4151,24 +4151,24 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       } catch (e) {
         console.log('⚠️ Não foi possível listar emails:', e.message);
       }
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'usuario_nao_encontrado',
         message: 'Email ou senha incorretos. Verifique suas credenciais ou crie uma conta.'
       });
     }
-    
+
     // Verificar senha se houver hash
     if (user.senha_hash) {
       try {
         console.log('🔐 Verificando senha para:', mail);
-      const { verifyPassword } = require('./utils/security.cjs');
-      const senhaCorreta = await verifyPassword(pass, user.senha_hash);
+        const { verifyPassword } = require('./utils/security.cjs');
+        const senhaCorreta = await verifyPassword(pass, user.senha_hash);
         console.log('🔐 Resultado da verificação de senha:', senhaCorreta ? '✅ Correta' : '❌ Incorreta');
-      if (!senhaCorreta) {
-        console.log('❌ Senha incorreta para:', mail);
-        return res.status(401).json({ 
-          error: 'credenciais_invalidas',
-          message: 'Email ou senha incorretos'
+        if (!senhaCorreta) {
+          console.log('❌ Senha incorreta para:', mail);
+          return res.status(401).json({
+            error: 'credenciais_invalidas',
+            message: 'Email ou senha incorretos'
           });
         }
         console.log('✅ Senha verificada com sucesso para:', mail);
@@ -4176,7 +4176,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         console.error('❌ Erro ao verificar senha:', verifyError);
         console.error('❌ Stack:', verifyError.stack);
         // Se houver erro na verificação, não permitir login por segurança
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'credenciais_invalidas',
           message: 'Erro ao verificar credenciais. Tente novamente.'
         });
@@ -4187,7 +4187,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       if (pass && pass.length > 0) {
         console.log('⚠️ Senha fornecida mas usuário não tem hash - negando login por segurança');
         console.log('💡 Solução: O usuário precisa redefinir a senha ou criar uma nova conta');
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'credenciais_invalidas',
           message: 'Este email não possui senha cadastrada. Por favor, use a opção "Esqueci minha senha" ou crie uma nova conta.'
         });
@@ -4196,31 +4196,31 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         console.log('⚠️ Login sem senha permitido para usuário antigo:', mail);
       }
     }
-    
+
     // Gerar ID de sessão único
     const sid = require('crypto').randomUUID();
-    
+
     // Remover sessões antigas do usuário para garantir sessão única
     await pool.execute('DELETE FROM sessions WHERE user_id = ? OR user_email = ?', [userId, mail]);
-    
+
     // Criar nova sessão
     await pool.execute('INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())', [sid, mail, userId]);
-    
+
     // Configurar cookie de sessão (seguro)
     const { getSecureCookieOptions } = require('./utils/security.cjs');
     res.cookie('session_id', sid, getSecureCookieOptions({
-      maxAge: 1000*60*60*24*30 // 30 dias
+      maxAge: 1000 * 60 * 60 * 24 * 30 // 30 dias
     }));
-    
+
     // Vincular carrinho atual ao usuário
     const cartId = req.cookies?.cart_id;
     if (cartId) {
       await pool.execute('UPDATE carts SET user_id = ? WHERE id = ?', [userId, cartId]);
     }
-    
+
     console.log('✅ Login realizado com sucesso:', mail, 'Sessão:', sid);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       user: {
         id: userId,
         email: user.email,
@@ -4236,7 +4236,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 app.post('/api/auth/logout', async (req, res) => {
   try {
     const sid = req.cookies?.session_id;
-    
+
     if (sid) {
       // Deletar sessão do banco
       await pool.execute('DELETE FROM sessions WHERE id = ?', [sid]);
@@ -4257,9 +4257,9 @@ app.post('/api/auth/logout', async (req, res) => {
 
     const variants = [
       { httpOnly: false, secure: isHttps, path: '/', domain: undefined },
-      { httpOnly: true,  secure: isHttps, path: '/', domain: undefined },
+      { httpOnly: true, secure: isHttps, path: '/', domain: undefined },
       { httpOnly: false, secure: isHttps, path: '/', domain: baseDomain },
-      { httpOnly: true,  secure: isHttps, path: '/', domain: baseDomain },
+      { httpOnly: true, secure: isHttps, path: '/', domain: baseDomain },
     ];
 
     for (const def of cookieNames) {
@@ -4273,7 +4273,7 @@ app.post('/api/auth/logout', async (req, res) => {
             sameSite: def.sameSite,
             domain: v.domain,
           });
-        } catch {}
+        } catch { }
       }
     }
 
@@ -4290,21 +4290,21 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
-    
+
     if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'invalid_email',
         message: 'Email inválido'
       });
     }
-    
+
     console.log('🔐 Solicitação de reset de senha para:', mail);
-    
+
     // Buscar usuário em users ou customers
     let userId = null;
     let userEmail = null;
-    
+
     try {
       const [users] = await pool.execute('SELECT id, email FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', [mail]);
       if (users && users.length > 0) {
@@ -4322,20 +4322,20 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
     } catch (e) {
       console.error('❌ Erro ao buscar usuário:', e);
     }
-    
+
     // Sempre retornar sucesso (não revelar se email existe)
     if (!userId) {
       console.log('⚠️ Email não encontrado (não revelando para segurança):', mail);
-      return res.json({ 
-        ok: true, 
+      return res.json({
+        ok: true,
         message: 'Se o email existir, você receberá um link para redefinir sua senha.'
       });
     }
-    
+
     // Gerar token de reset
     const token = require('crypto').randomUUID();
     const expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
-    
+
     // Salvar token no banco (usar tabela users ou customers conforme encontrado)
     try {
       // Verificar em qual tabela o usuário foi encontrado e atualizar
@@ -4399,13 +4399,13 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
           }
         }
       }
-      
+
       console.log('✅ Token de reset gerado para:', mail);
-      
+
       // Construir URL de reset
       const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`;
       const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
-      
+
       // Enviar email com link de reset
       try {
         const { sendPasswordResetEmail } = require('../config/emailService.cjs');
@@ -4414,7 +4414,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
           customerName: null, // Pode buscar o nome do usuário se necessário
           resetUrl: resetUrl,
         });
-        
+
         if (emailResult.success) {
           console.log('✅ Email de recuperação de senha enviado para:', mail);
         } else {
@@ -4431,24 +4431,24 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
           console.log('🔐 Link de reset (DESENVOLVIMENTO):', resetUrl);
         }
       }
-      
-      return res.json({ 
-        ok: true, 
+
+      return res.json({
+        ok: true,
         message: 'Se o email existir, você receberá um link para redefinir sua senha.',
         // Apenas em desenvolvimento retornar URL e token
         ...(process.env.NODE_ENV === 'development' && { resetUrl, token })
       });
     } catch (e) {
       console.error('❌ Erro ao salvar token:', e);
-      return res.json({ 
-        ok: true, 
+      return res.json({
+        ok: true,
         message: 'Se o email existir, você receberá um link para redefinir sua senha.'
       });
     }
   } catch (e) {
     console.error('❌ Erro em forgot-password:', e);
-    res.json({ 
-      ok: true, 
+    res.json({
+      ok: true,
       message: 'Se o email existir, você receberá um link para redefinir sua senha.'
     });
   }
@@ -4458,37 +4458,37 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   try {
     const { hashPassword } = require('./utils/security.cjs');
-    
+
     const { token, new_password } = req.body || {};
-    
+
     if (!token || !new_password) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'missing_params',
         message: 'Token e nova senha são obrigatórios'
       });
     }
-    
+
     if (String(new_password).length < 6) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'weak_password',
         message: 'Senha deve ter no mínimo 6 caracteres'
       });
     }
-    
+
     console.log('🔐 Tentativa de reset de senha com token');
-    
+
     // Buscar usuário com token válido em users
     let userId = null;
     let expires = null;
-    
+
     try {
       const [users] = await pool.execute(
         'SELECT id, reset_expires FROM `rare_toy_companion`.`users` WHERE reset_token = ? LIMIT 1',
         [token]
       );
-      
+
       if (users && users.length > 0) {
         userId = users[0].id;
         expires = users[0].reset_expires ? new Date(users[0].reset_expires) : null;
@@ -4499,7 +4499,7 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
           'SELECT id, reset_expires FROM `rare_toy_companion`.`customers` WHERE reset_token = ? LIMIT 1',
           [token]
         );
-        
+
         if (customers && customers.length > 0) {
           userId = customers[0].id;
           expires = customers[0].reset_expires ? new Date(customers[0].reset_expires) : null;
@@ -4509,26 +4509,26 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     } catch (e) {
       console.error('❌ Erro ao buscar token:', e);
     }
-    
+
     if (!userId) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'invalid_token',
         message: 'Token inválido ou expirado'
       });
     }
-    
+
     if (!expires || expires.getTime() < Date.now()) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'expired_token',
         message: 'Token expirado. Solicite um novo link de redefinição.'
       });
     }
-    
+
     // Gerar hash da nova senha
     const hash = await hashPassword(String(new_password));
-    
+
     // Atualizar senha em users ou customers
     try {
       // Verificar em qual tabela o usuário está e atualizar
@@ -4556,25 +4556,25 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
           console.log('✅ Senha atualizada em customers (senha_hash)');
         }
       }
-      
+
       console.log(`✅ Senha resetada com sucesso para usuário ID: ${userId}`);
-      
-      return res.json({ 
-        ok: true, 
+
+      return res.json({
+        ok: true,
         message: 'Senha redefinida com sucesso! Você já pode fazer login.'
       });
     } catch (e) {
       console.error('❌ Erro ao atualizar senha:', e);
-      return res.status(500).json({ 
-        ok: false, 
+      return res.status(500).json({
+        ok: false,
         error: 'reset_failed',
         message: 'Erro ao redefinir senha. Tente novamente.'
       });
     }
   } catch (e) {
     console.error('❌ Erro em reset-password:', e);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: 'reset_failed',
       message: 'Erro ao redefinir senha. Tente novamente.'
     });
@@ -4752,77 +4752,77 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
     const { email, senha, password, nome } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
     const pass = String(password || senha || '');
-    
+
     console.log('📝 Tentativa de registro:', mail);
-    
+
     // Validações
     if (!mail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'invalid_email',
         message: 'Email inválido. Por favor, verifique o formato do email.'
       });
     }
-    
+
     if (pass.length < 6) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'weak_password',
         message: 'A senha deve ter no mínimo 6 caracteres.'
       });
     }
-    
+
     // Verificar se email já existe em users ou customers
     try {
       const [existingUsers] = await pool.execute(
-        'SELECT id, email, password_hash FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1', 
+        'SELECT id, email, password_hash FROM `rare_toy_companion`.`users` WHERE email = ? LIMIT 1',
         [mail]
       );
-      
+
       if (existingUsers && existingUsers.length > 0) {
         const existingUser = existingUsers[0];
-        
+
         // Se o usuário existe mas não tem senha, permitir completar o cadastro
         if (!existingUser.password_hash || existingUser.password_hash.trim() === '') {
           console.log('⚠️ Usuário existe sem senha, completando cadastro:', mail);
-          
+
           // Atualizar senha e nome do usuário existente
           const pw = await hashPassword(pass);
           await pool.execute(
             'UPDATE `rare_toy_companion`.`users` SET password_hash = ?, nome = COALESCE(?, nome), updated_at = NOW() WHERE email = ?',
             [pw, nome || null, mail]
           );
-          
+
           // Criar entrada em customers se não existir
           const [existingCustomers] = await pool.execute(
-            'SELECT id FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', 
+            'SELECT id FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1',
             [mail]
           );
-          
+
           if (existingCustomers.length === 0) {
             await pool.execute(
               'INSERT INTO `rare_toy_companion`.`customers` (id, email, nome, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
               [existingUser.id, mail, nome || mail]
             );
           }
-          
+
           // Criar sessão
           const sid = require('crypto').randomUUID();
           await pool.execute(
             'INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW()) ON DUPLICATE KEY UPDATE last_seen = NOW()',
             [sid, mail, existingUser.id]
           );
-          
+
           // Configurar cookie
           const { getSecureCookieOptions } = require('./utils/security.cjs');
           res.cookie('session_id', sid, getSecureCookieOptions({
-            maxAge: 1000*60*60*24*30
+            maxAge: 1000 * 60 * 60 * 24 * 30
           }));
-          
+
           setAuthCookie(res, { id: existingUser.id, email: mail });
           logger.info('User registration completed (existing user)', { email: mail });
-          
-          return res.json({ 
+
+          return res.json({
             ok: true,
             message: 'Conta criada com sucesso!',
             user: {
@@ -4834,49 +4834,49 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
         } else {
           // Usuário já existe E tem senha - retornar erro
           console.log('⚠️ Email já existe com senha cadastrada:', mail);
-          return res.status(409).json({ 
-            ok: false, 
+          return res.status(409).json({
+            ok: false,
             error: 'email_in_use',
             message: 'Este email já está cadastrado. Tente fazer login ou use "Esqueci minha senha".'
           });
         }
       }
-      
+
       // Verificar em customers (se não encontrou em users)
       const [existingCustomers] = await pool.execute(
-        'SELECT id, email FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1', 
+        'SELECT id, email FROM `rare_toy_companion`.`customers` WHERE email = ? LIMIT 1',
         [mail]
       );
-      
+
       if (existingCustomers && existingCustomers.length > 0 && existingUsers.length === 0) {
         // Existe em customers mas não em users - criar em users com senha
         console.log('⚠️ Email existe apenas em customers, criando em users:', mail);
-        
+
         const customerId = existingCustomers[0].id;
         const pw = await hashPassword(pass);
-        
+
         await pool.execute(
           'INSERT INTO `rare_toy_companion`.`users` (id, email, password_hash, nome, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
           [customerId, mail, pw, nome || existingCustomers[0].nome || mail]
         );
-        
+
         // Criar sessão
         const sid = require('crypto').randomUUID();
         await pool.execute(
           'INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())',
           [sid, mail, customerId]
         );
-        
+
         // Configurar cookie
         const { getSecureCookieOptions } = require('./utils/security.cjs');
         res.cookie('session_id', sid, getSecureCookieOptions({
-          maxAge: 1000*60*60*24*30
+          maxAge: 1000 * 60 * 60 * 24 * 30
         }));
-        
+
         setAuthCookie(res, { id: customerId, email: mail });
         logger.info('User registration completed (existing customer)', { email: mail });
-        
-        return res.json({ 
+
+        return res.json({
           ok: true,
           message: 'Conta criada com sucesso!',
           user: {
@@ -4890,11 +4890,11 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
       console.error('❌ Erro ao verificar email existente:', checkError);
       // Continuar mesmo se houver erro na verificação (tentar inserir e capturar ER_DUP_ENTRY)
     }
-    
+
     // Criar novo usuário
     const id = crypto.randomUUID();
     const pw = await hashPassword(pass);
-    
+
     try {
       // 1) Inserir em users
       await pool.execute(
@@ -4902,7 +4902,7 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
         [id, mail, pw, nome || null]
       );
       console.log('✅ Usuário registrado com sucesso:', mail);
-      
+
       // 2) Garantir registro correspondente em customers (para aparecer no Admin > Clientes)
       try {
         await pool.execute(
@@ -4914,24 +4914,24 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
         console.error('⚠️ Erro ao criar registro em customers para novo usuário:', customerError.message);
         // Não falhar o registro se apenas a criação em customers falhar
       }
-      
+
       // 3) Criar sessão automaticamente após registro
       const sid = require('crypto').randomUUID();
       await pool.execute(
         'INSERT INTO sessions (id, user_email, user_id, created_at, last_seen) VALUES (?, ?, ?, NOW(), NOW())',
         [sid, mail, id]
       );
-      
+
       // 4) Configurar cookie de sessão
       const { getSecureCookieOptions } = require('./utils/security.cjs');
       res.cookie('session_id', sid, getSecureCookieOptions({
-        maxAge: 1000*60*60*24*30 // 30 dias
+        maxAge: 1000 * 60 * 60 * 24 * 30 // 30 dias
       }));
-      
-    setAuthCookie(res, { id, email: mail });
-    logger.info('New user registered', { email: mail });
-      
-      res.json({ 
+
+      setAuthCookie(res, { id, email: mail });
+      logger.info('New user registered', { email: mail });
+
+      res.json({
         ok: true,
         message: 'Conta criada com sucesso!',
         user: {
@@ -4944,8 +4944,8 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
       // Se ainda assim houver ER_DUP_ENTRY (race condition)
       if (insertError && insertError.code === 'ER_DUP_ENTRY') {
         console.log('⚠️ ER_DUP_ENTRY capturado (race condition):', mail);
-        return res.status(409).json({ 
-          ok: false, 
+        return res.status(409).json({
+          ok: false,
           error: 'email_in_use',
           message: 'Este email já está cadastrado. Tente fazer login ou use outro email.'
         });
@@ -4955,8 +4955,8 @@ app.post('/api/auth/register', createAccountLimiter, async (req, res) => {
   } catch (e) {
     console.error('❌ Erro no registro:', e);
     logger.logError(e, req);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: 'register_failed',
       message: 'Erro ao criar conta. Tente novamente mais tarde.'
     });
@@ -5006,7 +5006,7 @@ app.post('/api/admin/customers/sync-users', authenticateAdmin, async (req, res) 
 
     res.json({
       success: true,
-      message: inserted > 0 
+      message: inserted > 0
         ? `Sincronização concluída. ${inserted} cliente(s) adicionados.`
         : 'Sincronização concluída. Nenhum novo cliente para adicionar.',
       inserted,
@@ -5032,37 +5032,37 @@ app.post('/api/admin/customers/sync-users', authenticateAdmin, async (req, res) 
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   try {
     const { hashPassword } = require('./utils/security.cjs');
-    
+
     const { token, new_password } = req.body || {};
-    
+
     if (!token || !new_password) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'missing_params',
         message: 'Token e nova senha são obrigatórios'
       });
     }
-    
+
     if (String(new_password).length < 6) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'weak_password',
         message: 'Senha deve ter no mínimo 6 caracteres'
       });
     }
-    
+
     console.log('🔐 Tentativa de reset de senha com token');
-    
+
     // Buscar usuário com token válido em users
     let userId = null;
     let expires = null;
-    
+
     try {
       const [users] = await pool.execute(
         'SELECT id, reset_expires FROM `rare_toy_companion`.`users` WHERE reset_token = ? LIMIT 1',
         [token]
       );
-      
+
       if (users && users.length > 0) {
         userId = users[0].id;
         expires = users[0].reset_expires ? new Date(users[0].reset_expires) : null;
@@ -5073,7 +5073,7 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
           'SELECT id, reset_expires FROM `rare_toy_companion`.`customers` WHERE reset_token = ? LIMIT 1',
           [token]
         );
-        
+
         if (customers && customers.length > 0) {
           userId = customers[0].id;
           expires = customers[0].reset_expires ? new Date(customers[0].reset_expires) : null;
@@ -5083,26 +5083,26 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     } catch (e) {
       console.error('❌ Erro ao buscar token:', e);
     }
-    
+
     if (!userId) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'invalid_token',
         message: 'Token inválido ou expirado'
       });
     }
-    
+
     if (!expires || expires.getTime() < Date.now()) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'expired_token',
         message: 'Token expirado. Solicite um novo link de redefinição.'
       });
     }
-    
+
     // Gerar hash da nova senha
     const hash = await hashPassword(String(new_password));
-    
+
     // Atualizar senha em users ou customers
     try {
       // Verificar em qual tabela o usuário está e atualizar
@@ -5130,25 +5130,25 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
           console.log('✅ Senha atualizada em customers (senha_hash)');
         }
       }
-      
+
       console.log(`✅ Senha resetada com sucesso para usuário ID: ${userId}`);
-      
-      return res.json({ 
-        ok: true, 
+
+      return res.json({
+        ok: true,
         message: 'Senha redefinida com sucesso! Você já pode fazer login.'
       });
     } catch (e) {
       console.error('❌ Erro ao atualizar senha:', e);
-      return res.status(500).json({ 
-        ok: false, 
+      return res.status(500).json({
+        ok: false,
         error: 'reset_failed',
         message: 'Erro ao redefinir senha. Tente novamente.'
       });
     }
   } catch (e) {
     console.error('❌ Erro em reset-password:', e);
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: 'reset_failed',
       message: 'Erro ao redefinir senha. Tente novamente.'
     });
@@ -5160,39 +5160,39 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
 app.get('/api/auth/me', authRoutesLimiter, async (req, res) => {
   try {
     console.log('🔍 GET /api/auth/me - Verificando autenticação');
-    
+
     // Verificar sessão ativa
     const sessionId = req.cookies?.session_id;
     console.log('🔍 Session ID:', sessionId ? 'presente' : 'ausente');
-    
+
     if (sessionId) {
       const [sessions] = await pool.execute('SELECT * FROM sessions WHERE id = ?', [sessionId]);
       console.log('🔍 Sessão encontrada:', sessions && sessions[0] ? 'sim' : 'não');
-      
+
       if (sessions && sessions[0] && sessions[0].user_id) {
         // Buscar dados completos do usuário
         const [users] = await pool.execute('SELECT id, email, nome, avatar_url, telefone, created_at FROM users WHERE id = ? LIMIT 1', [sessions[0].user_id]);
         if (users && users[0]) {
           console.log('✅ Usuário autenticado via sessão:', users[0].email);
-          
+
           // Atualizar last_seen da sessão
           await pool.execute('UPDATE sessions SET last_seen = NOW() WHERE id = ?', [sessionId]);
-          
-          return res.json({ 
-            authenticated: true, 
+
+          return res.json({
+            authenticated: true,
             user: users[0],
             sessionId: sessionId
           });
         }
       }
-      
+
       // Se sessão existe mas usuário não foi encontrado, remover sessão inválida
       if (sessions && sessions[0]) {
         await pool.execute('DELETE FROM sessions WHERE id = ?', [sessionId]);
         console.log('🗑️ Sessão inválida removida:', sessionId);
       }
     }
-    
+
     // Fallback para auth_token (sistema antigo) - apenas para compatibilidade
     const token = req.cookies && req.cookies.auth_token;
     if (token) {
@@ -5206,14 +5206,14 @@ app.get('/api/auth/me', authRoutesLimiter, async (req, res) => {
         }
       }
     }
-    
+
     // Fallback para mock_email (sistema de desenvolvimento)
     const email = req.cookies?.mock_email;
     if (email) {
       console.log('✅ Usuário autenticado via mock_email:', email);
       return res.json({ authenticated: true, user: { email, id: email, nome: email } });
     }
-    
+
     console.log('❌ Nenhuma autenticação encontrada');
     return res.json({ authenticated: false });
   } catch (e) {
@@ -5261,11 +5261,11 @@ function getOrCreateCartId(req, res) {
     // Cookie para cart_id (pode ser false httpOnly pois é usado no frontend)
     // Mas mantemos secure e sameSite para segurança
     const isHttps = (req.headers['x-forwarded-proto'] || req.protocol) === 'https' || process.env.NODE_ENV === 'production';
-    res.cookie('cart_id', cartId, { 
+    res.cookie('cart_id', cartId, {
       httpOnly: false, // Necessário para acesso no frontend
-      sameSite: 'lax', 
-      secure: isHttps, 
-      maxAge: 1000*60*60*24*30 // 30 dias
+      sameSite: 'lax',
+      secure: isHttps,
+      maxAge: 1000 * 60 * 60 * 24 * 30 // 30 dias
     });
   }
   return cartId;
@@ -5376,22 +5376,22 @@ app.post('/api/orders', async (req, res) => {
     console.log('🛒 ========== INICIANDO CRIAÇÃO DE PEDIDO ==========');
     console.log('📦 Body recebido:', JSON.stringify(req.body, null, 2));
     console.log('🍪 Cookies:', req.cookies);
-    
+
     const cartId = getOrCreateCartId(req, res);
     console.log('🛒 Cart ID:', cartId);
-    
+
     const [rows] = await pool.execute('SELECT * FROM cart_items WHERE cart_id = ?', [cartId]);
     console.log(`📊 Itens no carrinho: ${rows.length}`);
-    
+
     if (!rows.length) {
       console.log('❌ Carrinho vazio!');
       return res.status(400).json({ error: 'carrinho_vazio', message: 'Adicione itens ao carrinho antes de finalizar' });
     }
-    
+
     // Validar e limpar produtos inexistentes do carrinho
     const validItems = [];
     const invalidItems = [];
-    
+
     for (const item of rows) {
       try {
         const [product] = await pool.execute('SELECT id FROM produtos WHERE id = ?', [item.product_id]);
@@ -5406,24 +5406,24 @@ app.post('/api/orders', async (req, res) => {
         invalidItems.push(item.id);
       }
     }
-    
+
     // Remover itens inválidos do carrinho
     if (invalidItems.length > 0) {
       await pool.execute(`DELETE FROM cart_items WHERE id IN (${invalidItems.map(() => '?').join(',')})`, invalidItems);
       console.log(`✅ Removidos ${invalidItems.length} itens inválidos do carrinho`);
     }
-    
+
     if (!validItems.length) {
       return res.status(400).json({ error: 'carrinho_vazio', message: 'Todos os produtos do carrinho foram removidos pois não existem mais' });
     }
-    
+
     const items = validItems;
     const total = items.reduce((sum, it) => sum + Number(it.price) * Number(it.quantity), 0);
     const orderId = require('crypto').randomUUID();
-    
+
     // Dados de entrega/pagamento do body
     const { nome, email, telefone, endereco, metodoPagamento, payment_status = 'pending', user_id, coupon_code, discount_amount } = req.body || {};
-    
+
     // Obter user_id da sessão se disponível
     let userId = user_id;
     if (!userId) {
@@ -5447,7 +5447,7 @@ app.post('/api/orders', async (req, res) => {
         }
       }
     }
-    
+
     // Se ainda não temos userId, tentar buscar pelo email fornecido
     if (!userId && email) {
       try {
@@ -5460,10 +5460,10 @@ app.post('/api/orders', async (req, res) => {
         console.log('⚠️ Erro ao buscar cliente por email:', e.message);
       }
     }
-    
+
     // Inserir pedido com dados de entrega
     console.log('🔍 Debug order insert:', { orderId, cartId, userId, total, nome, email, telefone, endereco, metodoPagamento, payment_status });
-    
+
     // Testar estrutura e inserir usando colunas existentes (compatível com schema atual)
     try {
       const [testRows] = await pool.execute('DESCRIBE orders');
@@ -5495,7 +5495,7 @@ app.post('/api/orders', async (req, res) => {
         insertCols.splice(1, 0, 'customer_id');
         values.splice(1, 0, userId);
       }
-      
+
       if (hasUserId && userId) {
         insertCols.splice(1, 0, 'user_id');
         values.splice(1, 0, userId);
@@ -5550,9 +5550,9 @@ app.post('/api/orders', async (req, res) => {
       const placeholders = insertCols.map(() => '?').join(',');
       const sql = `INSERT INTO orders (${insertCols.join(', ')}) VALUES (${placeholders})`;
       await pool.execute(sql, values);
-      
+
       console.log(`✅ Cupom aplicado: ${coupon_code} - Desconto: R$ ${Number(discount_amount || 0).toFixed(2)}`);
-      
+
       console.log(`✅ Pedido criado: ${orderId} para ${userId ? `user_id=${userId}` : `cart_id=${cartId}`}`);
     } catch (e) {
       console.log('❌ Erro ao verificar estrutura da tabela orders:', e.message);
@@ -5601,7 +5601,7 @@ app.post('/api/orders', async (req, res) => {
     // Limpa carrinho
     await pool.execute('DELETE FROM cart_items WHERE cart_id = ?', [cartId]);
     console.log(`🗑️ Carrinho limpo: ${cartId}`);
-    
+
     // Buscar dados completos do cliente para automações
     let customerData = null;
     if (userId) {
@@ -5617,7 +5617,7 @@ app.post('/api/orders', async (req, res) => {
         console.log('⚠️ Erro ao buscar dados do cliente:', e.message);
       }
     }
-    
+
     // Processar automações para pedido criado
     if (orderAutomationService) {
       try {
@@ -5635,7 +5635,7 @@ app.post('/api/orders', async (req, res) => {
             price: it.price
           }))
         };
-        
+
         await orderAutomationService.processEvent('order_created', eventData);
         console.log('✅ Automações processadas para pedido criado');
       } catch (autoError) {
@@ -5643,26 +5643,26 @@ app.post('/api/orders', async (req, res) => {
         // Não falhar o pedido por erro de automação
       }
     }
-    
-    const response = { 
-      id: orderId, 
-      status: 'criado', 
+
+    const response = {
+      id: orderId,
+      status: 'criado',
       total,
       payment_status: payment_status,
       customer_id: userId || null,
       dadosEntrega: { nome: nome || null, email: email || null, telefone: telefone || null, endereco: endereco || null, metodoPagamento: metodoPagamento || null }
     };
-    
+
     console.log('✅ ========== PEDIDO CRIADO COM SUCESSO ==========');
     console.log('📝 Resposta:', JSON.stringify(response, null, 2));
-    
+
     res.status(201).json(response);
   } catch (e) {
     console.error('❌ ========== ERRO AO CRIAR PEDIDO ==========');
     console.error('💥 Erro completo:', e);
     console.error('📍 Stack:', e.stack);
-    res.status(500).json({ 
-      error: 'order_create_failed', 
+    res.status(500).json({
+      error: 'order_create_failed',
       message: e.message || 'Erro ao criar pedido',
       details: process.env.NODE_ENV === 'development' ? e.stack : undefined
     });
@@ -5674,7 +5674,7 @@ app.post('/api/orders/:id/pix', async (req, res) => {
   try {
     const { id } = req.params;
     const { total } = req.body;
-    
+
     if (!total || !Number(total)) {
       return res.status(400).json({ error: 'Total inválido' });
     }
@@ -5683,7 +5683,7 @@ app.post('/api/orders/:id/pix', async (req, res) => {
     const [settingsRows] = await pool.execute('SELECT key_name, value_text FROM settings WHERE key_name IN (?, ?, ?, ?)', [
       'pix_key', 'pix_key_type', 'pix_merchant_name', 'pix_city'
     ]);
-    
+
     const settings = {};
     settingsRows.forEach(row => {
       settings[row.key_name] = row.value_text;
@@ -5712,7 +5712,7 @@ app.post('/api/orders/:id/pix', async (req, res) => {
 
     // Gerar QR Code usando uma biblioteca simples (ou mock para demo)
     const qrCodeUrl = await generateQRCodeImage(pixCode);
-    
+
     // Atualizar pedido com dados do Pix
     await pool.execute(`
       UPDATE orders 
@@ -5732,7 +5732,7 @@ app.post('/api/orders/:id/pix', async (req, res) => {
       }),
       id
     ]);
-    
+
     res.json({
       success: true,
       qr_code: pixCode,
@@ -5767,13 +5767,13 @@ function generatePixCode({ pixKey, merchantName, city, amount, orderId }) {
   // Adicionar chave PIX
   const pixKeyLength = pixKey.length.toString().padStart(2, '0');
   const pixKeyField = '01' + pixKeyLength + pixKey;
-  
+
   const fullPayload = payload.replace('520400005303986', '52' + (pixKeyField.length + 4).toString().padStart(2, '0') + '0001' + pixKeyField);
-  
+
   // Calcular CRC16 (simplificado)
   const crc = calculateCRC16(fullPayload.substring(0, fullPayload.length - 4));
   const finalPayload = fullPayload.substring(0, fullPayload.length - 4) + crc.toString(16).padStart(4, '0').toUpperCase();
-  
+
   return finalPayload;
 }
 
@@ -5800,14 +5800,14 @@ async function generateQRCodeImage(pixCode) {
     // Tamanho: 300x300 pixels, formato PNG
     const encodedCode = encodeURIComponent(pixCode);
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedCode}&format=png&margin=1`;
-    
+
     // Verificar se a URL foi gerada corretamente
     if (!qrCodeUrl || !pixCode) {
       console.warn('⚠️ Erro ao gerar URL do QR Code');
       // Fallback: retornar URL que gera QR Code vazio
       return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=error&format=png`;
     }
-    
+
     console.log('✅ QR Code URL gerada:', qrCodeUrl.substring(0, 100) + '...');
     return qrCodeUrl;
   } catch (error) {
@@ -5821,7 +5821,7 @@ async function generateQRCodeImage(pixCode) {
 app.post('/api/cart/pix-qr', async (req, res) => {
   try {
     const { total } = req.body;
-    
+
     if (!total || !Number(total)) {
       return res.status(400).json({ error: 'Total inválido' });
     }
@@ -5830,7 +5830,7 @@ app.post('/api/cart/pix-qr', async (req, res) => {
     const [settingsRows] = await pool.execute('SELECT key_name, value_text FROM settings WHERE key_name IN (?, ?, ?, ?, ?)', [
       'pix_key', 'pix_key_type', 'pix_merchant_name', 'pix_city', 'pix_show_qr_cart'
     ]);
-    
+
     const settings = {};
     settingsRows.forEach(row => {
       settings[row.key_name] = row.value_text;
@@ -5839,9 +5839,9 @@ app.post('/api/cart/pix-qr', async (req, res) => {
     // Verificar se deve mostrar QR no carrinho
     if (settings.pix_show_qr_cart !== 'true') {
       logger.info('PIX no carrinho desabilitado', { settings: settings.pix_show_qr_cart });
-      return res.status(200).json({ 
-        enabled: false, 
-        message: 'PIX no carrinho está desabilitado. Ative nas configurações.' 
+      return res.status(200).json({
+        enabled: false,
+        message: 'PIX no carrinho está desabilitado. Ative nas configurações.'
       });
     }
 
@@ -5868,7 +5868,7 @@ app.post('/api/cart/pix-qr', async (req, res) => {
 
     // Gerar QR Code
     const qrCodeUrl = await generateQRCodeImage(pixCode);
-    
+
     res.json({
       success: true,
       qr_code: pixCode,
@@ -5889,20 +5889,20 @@ app.post('/api/cart/pix-qr', async (req, res) => {
 app.get('/api/orders/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [rows] = await pool.execute(`
       SELECT id, status, payment_status, total, payment_data, created_at 
       FROM orders 
       WHERE id = ?
     `, [id]);
-    
+
     if (!rows.length) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
-    
+
     const order = rows[0];
     const paymentData = order.payment_data ? (typeof order.payment_data === 'string' ? JSON.parse(order.payment_data) : order.payment_data) : null;
-    
+
     res.json({
       id: order.id,
       status: order.status,
@@ -5928,7 +5928,7 @@ app.post('/api/orders/:id/infinitetap-result', async (req, res) => {
 
     // Validar campos obrigatórios
     if (!nsu || !aut) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Campos obrigatórios faltando',
         message: 'nsu e aut são obrigatórios'
       });
@@ -6022,9 +6022,9 @@ app.post('/api/orders/:id/infinitetap-result', async (req, res) => {
 
   } catch (error) {
     console.error('❌ [InfiniteTap] Erro ao processar resultado:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao processar resultado do InfiniteTap',
-      message: error?.message 
+      message: error?.message
     });
   }
 });
@@ -6032,7 +6032,7 @@ app.post('/api/orders/:id/infinitetap-result', async (req, res) => {
 app.post('/api/orders/:id/confirm-payment', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Atualizar status do pedido
     await pool.execute(`
       UPDATE orders 
@@ -6040,7 +6040,7 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
           status = 'processing'
       WHERE id = ?
     `, [id]);
-    
+
     res.json({
       success: true,
       message: 'Pagamento confirmado com sucesso',
@@ -6057,18 +6057,18 @@ app.post('/api/orders/:id/confirm-payment', async (req, res) => {
 app.get('/api/orders', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📦 GET /api/orders - Listando pedidos');
-    
+
     // Primeiro, tentar obter usuário da sessão
     let userId = null;
     const sessionId = req.cookies?.session_id;
-    
+
     if (sessionId) {
       try {
         const [sessions] = await pool.execute('SELECT * FROM sessions WHERE id = ?', [sessionId]);
         if (sessions && sessions[0] && sessions[0].user_email) {
           const userEmail = sessions[0].user_email;
           console.log('👤 Usuário logado via sessão:', userEmail);
-          
+
           // Buscar o user_id na tabela customers baseado no email
           const [customers] = await pool.execute('SELECT id FROM customers WHERE email = ?', [userEmail]);
           if (customers && customers[0]) {
@@ -6082,19 +6082,19 @@ app.get('/api/orders', highFrequencyLimiter, async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // Se não tem userId da sessão, tentar do query param (para compatibilidade)
     if (!userId && req.query.user_id) {
       userId = req.query.user_id;
       console.log('👤 User ID do query param:', userId);
     }
-    
+
     // SEGURANÇA: Se não há userId da sessão, NÃO retornar pedidos
     if (!userId) {
       console.log('🚫 Nenhum usuário autenticado - retornando lista vazia');
       return res.json([]);
     }
-    
+
     // Buscar APENAS pedidos do usuário logado
     console.log('🔍 Buscando pedidos para user_id:', userId);
     const [orders] = await pool.execute(
@@ -6113,7 +6113,7 @@ app.get('/api/orders', highFrequencyLimiter, async (req, res) => {
         if (rawStatus === 0) {
           friendlyStatus = 'pending';
         }
-      } catch (_e) {}
+      } catch (_e) { }
       const count = Number(o.items_count || 0);
       return {
         id: o.id,
@@ -6144,7 +6144,7 @@ app.get('/api/orders', highFrequencyLimiter, async (req, res) => {
 app.get('/api/admin/audit-logs', authenticateAdmin, async (req, res) => {
   try {
     const { getAuditLogs } = require('./utils/audit.cjs');
-    
+
     const {
       userId,
       action,
@@ -6155,9 +6155,9 @@ app.get('/api/admin/audit-logs', authenticateAdmin, async (req, res) => {
       page = 1,
       limit = 50
     } = req.query;
-    
+
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     const logs = await getAuditLogs({
       userId: userId ? parseInt(userId) : null,
       action: action || null,
@@ -6168,13 +6168,13 @@ app.get('/api/admin/audit-logs', authenticateAdmin, async (req, res) => {
       limit: parseInt(limit),
       offset
     });
-    
+
     // Contar total
     const { getPool } = require('./utils/audit.cjs');
     const dbPool = getPool();
     let countQuery = 'SELECT COUNT(*) as total FROM audit_logs WHERE 1=1';
     const countParams = [];
-    
+
     if (userId) {
       countQuery += ' AND user_id = ?';
       countParams.push(userId);
@@ -6187,10 +6187,10 @@ app.get('/api/admin/audit-logs', authenticateAdmin, async (req, res) => {
       countQuery += ' AND resource_type = ?';
       countParams.push(resourceType);
     }
-    
+
     const [countResult] = await dbPool.execute(countQuery, countParams);
     const total = countResult[0].total;
-    
+
     res.json({
       logs,
       pagination: {
@@ -6200,7 +6200,7 @@ app.get('/api/admin/audit-logs', authenticateAdmin, async (req, res) => {
         pages: Math.ceil(total / limit)
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar logs de auditoria:', error);
     res.status(500).json({ error: 'Erro ao buscar logs de auditoria' });
@@ -6212,7 +6212,7 @@ app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
   try {
     const { getPool } = require('./utils/audit.cjs');
     const dbPool = getPool();
-    
+
     // Estatísticas gerais
     const [totalLogs] = await dbPool.execute('SELECT COUNT(*) as total FROM audit_logs');
     const [todayLogs] = await dbPool.execute(
@@ -6221,7 +6221,7 @@ app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
     const [thisWeekLogs] = await dbPool.execute(
       'SELECT COUNT(*) as total FROM audit_logs WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)'
     );
-    
+
     // Ações mais frequentes
     const [topActions] = await dbPool.execute(
       `SELECT action, COUNT(*) as count 
@@ -6231,7 +6231,7 @@ app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
        ORDER BY count DESC 
        LIMIT 10`
     );
-    
+
     // Recursos mais acessados
     const [topResources] = await dbPool.execute(
       `SELECT resource_type, COUNT(*) as count 
@@ -6241,7 +6241,7 @@ app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
        ORDER BY count DESC 
        LIMIT 10`
     );
-    
+
     // Usuários mais ativos
     const [topUsers] = await dbPool.execute(
       `SELECT user_id, user_email, COUNT(*) as count 
@@ -6252,7 +6252,7 @@ app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
        ORDER BY count DESC 
        LIMIT 10`
     );
-    
+
     res.json({
       total: totalLogs[0].total,
       today: todayLogs[0].total,
@@ -6261,7 +6261,7 @@ app.get('/api/admin/audit-logs/stats', authenticateAdmin, async (req, res) => {
       topResources,
       topUsers
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas de auditoria:', error);
     res.status(500).json({ error: 'Erro ao buscar estatísticas' });
@@ -6273,13 +6273,13 @@ app.post('/api/admin/audit-logs/clean', authenticateAdmin, async (req, res) => {
   try {
     const { cleanOldAuditLogs } = require('./utils/audit.cjs');
     const { daysToKeep = 90 } = req.body;
-    
+
     if (daysToKeep < 30) {
       return res.status(400).json({ error: 'Mínimo de 30 dias para manter logs' });
     }
-    
+
     const deletedCount = await cleanOldAuditLogs(parseInt(daysToKeep));
-    
+
     // Registrar ação de limpeza
     const { logAudit } = require('./utils/audit.cjs');
     await logAudit({
@@ -6293,13 +6293,13 @@ app.post('/api/admin/audit-logs/clean', authenticateAdmin, async (req, res) => {
         deletedCount
       }
     });
-    
+
     res.json({
       success: true,
       message: `Limpeza concluída: ${deletedCount} registros removidos`,
       deletedCount
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao limpar logs:', error);
     res.status(500).json({ error: 'Erro ao limpar logs' });
@@ -6623,7 +6623,7 @@ app.patch('/api/admin/customers/:id', authenticateAdmin, async (req, res) => {
     ];
 
     const fieldsToUpdate = Object.keys(updateData).filter(key => allowedFields.includes(key));
-    
+
     if (fieldsToUpdate.length === 0) {
       return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     }
@@ -6701,7 +6701,7 @@ app.post('/api/admin/customers/bulk-action', authenticateAdmin, async (req, res)
     }
 
     const validCustomerIds = customerIds.filter(id => id !== null && id !== undefined && id !== '');
-    
+
     if (validCustomerIds.length === 0) {
       return res.status(400).json({ error: 'Nenhum ID de cliente válido encontrado' });
     }
@@ -6748,7 +6748,7 @@ app.post('/api/admin/customers/bulk-action', authenticateAdmin, async (req, res)
           `SELECT user_id, COUNT(*) as count FROM \`rare_toy_companion\`.\`orders\` WHERE user_id IN (${placeholders}) GROUP BY user_id`,
           validCustomerIds
         );
-        
+
         if (ordersCheck.length > 0) {
           return res.status(400).json({
             error: 'Alguns clientes possuem pedidos associados',
@@ -6866,7 +6866,7 @@ app.get('/api/admin/customers/export', authenticateAdmin, async (req, res) => {
       const csv = [headers, ...rows]
         .map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
         .join('\n');
-      
+
       res.setHeader('Content-Type', 'text/csv;charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=clientes_export_${new Date().toISOString().slice(0, 10)}.csv`);
       res.send('\ufeff' + csv); // BOM para Excel
@@ -6882,62 +6882,62 @@ app.get('/api/admin/customers/export', authenticateAdmin, async (req, res) => {
 // GET /api/admin/orders - Lista pedidos com filtros, paginação e busca
 app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 50, 
-      status, 
-      search, 
-      sort = 'created_at', 
+    const {
+      page = 1,
+      limit = 50,
+      status,
+      search,
+      sort = 'created_at',
       order = 'DESC',
       payment_method,
       payment_status,
       date_from,
       date_to
     } = req.query;
-    
+
     // Garantir que page e limit são números válidos
     const pageNum = isNaN(Number(page)) || Number(page) < 1 ? 1 : Math.floor(Number(page));
     const limitNum = isNaN(Number(limit)) || Number(limit) < 1 ? 50 : Math.floor(Number(limit));
     const offsetNum = (pageNum - 1) * limitNum;
-    
+
     // Construir query base
     let whereClause = '';
     let queryParams = [];
-    
+
     // Filtro por status
     if (status && status !== 'all') {
       whereClause += ' WHERE o.status = ?';
       queryParams.push(status);
     }
-    
+
     // Filtro por método de pagamento
     if (payment_method && payment_method !== 'all') {
       const condition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${condition} o.metodo_pagamento = ?`;
       queryParams.push(payment_method);
     }
-    
+
     // Filtro por status de pagamento
     if (payment_status && payment_status !== 'all') {
       const condition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${condition} o.payment_status = ?`;
       queryParams.push(payment_status);
     }
-    
+
     // Filtro por data (de)
     if (date_from) {
       const condition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${condition} DATE(o.created_at) >= ?`;
       queryParams.push(date_from);
     }
-    
+
     // Filtro por data (até)
     if (date_to) {
       const condition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${condition} DATE(o.created_at) <= ?`;
       queryParams.push(date_to);
     }
-    
+
     // Filtro por busca (nome, email, telefone, ID do pedido)
     if (search) {
       const condition = whereClause ? ' AND' : ' WHERE';
@@ -6950,21 +6950,21 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
-    
+
     // Validar sort
     const allowedSorts = ['created_at', 'updated_at', 'total', 'status', 'nome', 'email'];
     const sortField = allowedSorts.includes(sort) ? sort : 'created_at';
     const sortOrderValue = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    
+
     // Query principal - garantir que limit e offset são números inteiros válidos
     // Usar parseInt explicitamente como em outras partes do código (linha 1331-1332)
     const limitInt = parseInt(String(limitNum), 10) || 50;
     const offsetInt = parseInt(String(offsetNum), 10) || 0;
-    
+
     // Garantir valores mínimos válidos
     const limitValue = Math.max(1, limitInt);
     const offsetValue = Math.max(0, offsetInt);
-    
+
     // Usar interpolação direta para LIMIT e OFFSET (seguro pois são números validados)
     // Algumas versões do MySQL não aceitam placeholders para LIMIT/OFFSET
     const [orders] = await pool.execute(`
@@ -6976,12 +6976,12 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
       ORDER BY o.${sortField} ${sortOrderValue}
       LIMIT ${limitValue} OFFSET ${offsetValue}
     `, queryParams);
-    
+
     // Buscar itens de cada pedido
     const ordersWithItems = await Promise.all(
       orders.map(async (order) => {
         try {
-        const [items] = await pool.execute(`
+          const [items] = await pool.execute(`
           SELECT 
             oi.id,
             oi.product_id,
@@ -6996,31 +6996,31 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
           WHERE oi.order_id = ?
           ORDER BY oi.created_at ASC
         `, [order.id]);
-        
-        return {
-          id: order.id,
-          user_id: order.user_id,
-          customer_id: order.user_id,
-          status: order.status || 'pending',
-          total: Number(order.total || 0),
-          created_at: order.created_at,
-          updated_at: order.updated_at,
-          items_count: Number(order.items_count || 0),
-          items: items || [],
-          
-          // Dados do cliente
-          customer_name: order.nome || 'Cliente não identificado',
-          customer_email: order.email || 'Email não informado',
-          customer_phone: order.telefone || null,
-          
-          // Campos de pagamento e entrega
-          shipping_address: order.endereco || null,
-          payment_method: order.metodo_pagamento || null,
-          payment_status: order.payment_status || 'pending',
-          tracking_code: order.tracking_code || null,
-          estimated_delivery: order.estimated_delivery || null,
-          notes: order.notes || null,
-        };
+
+          return {
+            id: order.id,
+            user_id: order.user_id,
+            customer_id: order.user_id,
+            status: order.status || 'pending',
+            total: Number(order.total || 0),
+            created_at: order.created_at,
+            updated_at: order.updated_at,
+            items_count: Number(order.items_count || 0),
+            items: items || [],
+
+            // Dados do cliente
+            customer_name: order.nome || 'Cliente não identificado',
+            customer_email: order.email || 'Email não informado',
+            customer_phone: order.telefone || null,
+
+            // Campos de pagamento e entrega
+            shipping_address: order.endereco || null,
+            payment_method: order.metodo_pagamento || null,
+            payment_status: order.payment_status || 'pending',
+            tracking_code: order.tracking_code || null,
+            estimated_delivery: order.estimated_delivery || null,
+            notes: order.notes || null,
+          };
         } catch (itemError) {
           console.error(`❌ Erro ao buscar itens do pedido ${order.id}:`, itemError);
           return {
@@ -7046,18 +7046,18 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
         }
       })
     );
-    
+
     // Contar total para paginação
     const [countResult] = await pool.execute(`
       SELECT COUNT(*) as total
       FROM orders o
       ${whereClause}
     `, queryParams);
-    
+
     const total = countResult[0]?.total || 0;
-    
+
     console.log(`✅ [Admin Orders] ${ordersWithItems.length} pedidos retornados (total: ${total})`);
-    
+
     res.json({
       orders: ordersWithItems,
       pagination: {
@@ -7081,12 +7081,12 @@ app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) =>
     console.log(`[Bulk Action] Body completo recebido:`, JSON.stringify(req.body, null, 2));
     console.log(`[Bulk Action] Tipo do body:`, typeof req.body);
     console.log(`[Bulk Action] Keys do body:`, Object.keys(req.body || {}));
-    
+
     // Tentar extrair os dados corretamente
     let orderIds = req.body.orderIds;
     let action = req.body.action;
     let value = req.body.value;
-    
+
     // Se os dados estão invertidos (orderIds é string e action é array), corrigir
     if (typeof orderIds === 'string' && Array.isArray(action)) {
       console.warn(`[Bulk Action] Parâmetros invertidos detectados! Corrigindo...`);
@@ -7095,47 +7095,47 @@ app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) =>
       action = temp;
       console.log(`[Bulk Action] Após correção:`, { orderIds, action, value });
     }
-    
-    console.log(`[Bulk Action] Dados finais:`, { 
-      orderIds, 
-      action, 
-      value, 
+
+    console.log(`[Bulk Action] Dados finais:`, {
+      orderIds,
+      action,
+      value,
       orderIdsType: Array.isArray(orderIds) ? typeof orderIds[0] : 'not array',
       orderIdsLength: Array.isArray(orderIds) ? orderIds.length : 'not array'
     });
-    
+
     if (!orderIds) {
       console.warn(`[Bulk Action] orderIds é null/undefined`);
       return res.status(400).json({ error: 'IDs dos pedidos são obrigatórios' });
     }
-    
+
     if (!Array.isArray(orderIds)) {
       console.warn(`[Bulk Action] orderIds não é um array:`, typeof orderIds, orderIds);
       return res.status(400).json({ error: 'IDs dos pedidos devem ser um array' });
     }
-    
+
     if (orderIds.length === 0) {
       console.warn(`[Bulk Action] orderIds está vazio`);
       return res.status(400).json({ error: 'Pelo menos um ID de pedido é necessário' });
     }
-    
+
     // Filtrar IDs válidos (não null, não undefined, não string vazia)
     const validOrderIds = orderIds.filter(id => id !== null && id !== undefined && id !== '');
-    
+
     if (validOrderIds.length === 0) {
       console.warn(`[Bulk Action] Nenhum ID válido após filtragem:`, orderIds);
       return res.status(400).json({ error: 'Nenhum ID de pedido válido encontrado' });
     }
-    
+
     if (!action || typeof action !== 'string') {
       console.warn(`[Bulk Action] action inválido:`, action);
       return res.status(400).json({ error: 'Ação é obrigatória e deve ser uma string' });
     }
-    
+
     let updateQuery = '';
     let updateParams = [];
     let affectedRows = 0;
-    
+
     // Usar validOrderIds em vez de orderIds
     switch (action) {
       case 'update_status':
@@ -7149,7 +7149,7 @@ app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) =>
         );
         affectedRows = result.affectedRows;
         break;
-        
+
       case 'delete':
         // Primeiro, deletar os itens dos pedidos
         const deleteItemsPlaceholders = validOrderIds.map(() => '?').join(',');
@@ -7157,7 +7157,7 @@ app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) =>
           `DELETE FROM order_items WHERE order_id IN (${deleteItemsPlaceholders})`,
           validOrderIds
         );
-        
+
         // Depois, deletar os pedidos
         const deletePlaceholders = validOrderIds.map(() => '?').join(',');
         const [deleteResult] = await pool.execute(
@@ -7166,18 +7166,18 @@ app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) =>
         );
         affectedRows = deleteResult.affectedRows;
         break;
-        
+
       default:
         console.warn(`[Bulk Action] Ação inválida:`, action);
         return res.status(400).json({ error: `Ação inválida: ${action}. Ações suportadas: update_status, delete` });
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: `${affectedRows} pedido(s) processado(s) com sucesso`,
       affectedRows
     });
-    
+
   } catch (error) {
     logger.logError(error, req);
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -7188,7 +7188,7 @@ app.post('/api/admin/orders/bulk-action', authenticateAdmin, async (req, res) =>
 app.get('/api/admin/orders/stats', async (req, res) => {
   try {
     console.log('📊 Acessando API de estatísticas...');
-    
+
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
@@ -7234,22 +7234,22 @@ app.get('/api/admin/orders/stats', async (req, res) => {
 app.get('/api/admin/orders/export', authenticateAdmin, async (req, res) => {
   try {
     const { format = 'csv', ...filters } = req.query;
-    
+
     // Buscar pedidos com os mesmos filtros do endpoint principal
     const queryParams = [];
     let whereClause = '';
-    
+
     if (filters.status && filters.status !== 'all') {
       whereClause += ' WHERE o.status = ?';
       queryParams.push(filters.status);
     }
-    
+
     if (filters.payment_method && filters.payment_method !== 'all') {
       const condition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${condition} o.metodo_pagamento = ?`;
       queryParams.push(filters.payment_method);
     }
-    
+
     if (filters.search) {
       const condition = whereClause ? ' AND' : ' WHERE';
       whereClause += `${condition} (
@@ -7261,7 +7261,7 @@ app.get('/api/admin/orders/export', authenticateAdmin, async (req, res) => {
       const searchTerm = `%${filters.search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
-    
+
     const [orders] = await pool.execute(`
       SELECT 
         o.*,
@@ -7270,7 +7270,7 @@ app.get('/api/admin/orders/export', authenticateAdmin, async (req, res) => {
       ${whereClause}
       ORDER BY o.created_at DESC
     `, queryParams);
-    
+
     if (format === 'csv') {
       // Gerar CSV
       const headers = ['ID', 'Cliente', 'Email', 'Telefone', 'Status', 'Total', 'Método Pagamento', 'Data Criação', 'Itens'];
@@ -7285,12 +7285,12 @@ app.get('/api/admin/orders/export', authenticateAdmin, async (req, res) => {
         new Date(order.created_at).toLocaleDateString('pt-BR'),
         order.items_count || 0
       ]);
-      
+
       const csvContent = [
         headers.join(','),
         ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
-      
+
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=pedidos_${new Date().toISOString().split('T')[0]}.csv`);
       res.send('\ufeff' + csvContent); // BOM para Excel
@@ -7390,8 +7390,8 @@ app.post('/api/admin/orders/test-data', async (req, res) => {
       ]);
     }
 
-    res.json({ 
-      message: 'Pedidos de teste criados com sucesso', 
+    res.json({
+      message: 'Pedidos de teste criados com sucesso',
       count: testOrders.length,
       orders: testOrders.map(o => ({ id: o.id, nome: o.nome, total: o.total, status: o.status }))
     });
@@ -7493,7 +7493,7 @@ app.get('/api/admin/orders-stats-evolved', async (req, res) => {
 app.get('/api/admin/customers/search', async (req, res) => {
   try {
     const { q } = req.query;
-    
+
     if (!q || q.length < 2) {
       return res.json([]);
     }
@@ -7979,7 +7979,7 @@ app.patch('/api/orders/:id/associate-user', async (req, res) => {
         'SELECT id FROM users WHERE email = ?',
         [customer_email]
       );
-      
+
       if (users.length > 0) {
         userIdToUse = users[0].id;
       }
@@ -8001,8 +8001,8 @@ app.patch('/api/orders/:id/associate-user', async (req, res) => {
       [userIdToUse]
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Pedido associado ao cliente com sucesso',
       customer: users[0] || null
     });
@@ -8016,7 +8016,7 @@ app.patch('/api/orders/:id/associate-user', async (req, res) => {
 app.get('/api/admin/users/search', async (req, res) => {
   try {
     const { q } = req.query;
-    
+
     if (!q || q.length < 2) {
       return res.json([]);
     }
@@ -8060,8 +8060,8 @@ app.post('/api/orders/bulk-action', async (req, res) => {
       [action, ...orderIds]
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `${orderIds.length} pedido(s) atualizado(s)`,
       updated: orderIds.length
     });
@@ -8229,10 +8229,10 @@ const { randomUUID: uuidv4 } = require('crypto');
 app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📍 GET /api/addresses - Buscando endereços do usuário logado');
-    
+
     // Tentar obter o usuário da sessão
     let userId = null;
-    
+
     // Verificar se há session_id no cookie
     const sessionId = req.cookies?.session_id;
     if (sessionId) {
@@ -8247,7 +8247,7 @@ app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // Se não encontrou usuário na sessão, tentar obter do cart_id existente
     if (!userId) {
       // Primeiro, tentar obter cart_id do cookie sem criar um novo
@@ -8264,7 +8264,7 @@ app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
           console.log('⚠️ Erro ao buscar usuário pelo cart_id existente:', e.message);
         }
       }
-      
+
       // Se ainda não encontrou, criar novo cart_id
       if (!userId) {
         const cartId = getOrCreateCartId(req, res);
@@ -8280,7 +8280,7 @@ app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
         }
       }
     }
-    
+
     // Se ainda não tem userId, buscar endereços da tabela addresses (para usuários não logados)
     if (!userId) {
       console.log('🔍 Buscando endereços da tabela addresses (usuário não logado)');
@@ -8304,7 +8304,7 @@ app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
           WHERE cart_id = ?
           ORDER BY shipping_default DESC, created_at DESC
         `, [cartId]);
-        
+
         console.log(`✅ Encontrados ${addresses.length} endereços na tabela addresses`);
         res.json(addresses);
         return;
@@ -8312,7 +8312,7 @@ app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
         console.log('⚠️ Erro ao buscar endereços da tabela addresses:', e.message);
       }
     }
-    
+
     // Buscar endereços do usuário logado na tabela customer_addresses
     console.log('🔍 Buscando endereços do usuário logado na tabela customer_addresses');
     try {
@@ -8334,15 +8334,15 @@ app.get('/api/addresses', highFrequencyLimiter, async (req, res) => {
         WHERE customer_id = ?
         ORDER BY padrao DESC, created_at DESC
       `, [userId]);
-      
+
       console.log(`✅ Encontrados ${addresses.length} endereços para o usuário ${userId}`);
       res.json(addresses);
-      
+
     } catch (e) {
       console.error('❌ Erro ao buscar endereços do usuário:', e);
       res.status(500).json({ error: 'addresses_list_failed', details: e.message });
     }
-    
+
   } catch (e) {
     console.error('Addresses list error', e);
     res.status(500).json({ error: 'addresses_list_failed' });
@@ -8356,10 +8356,10 @@ app.post('/api/addresses', async (req, res) => {
     console.log('📍 Headers:', req.headers);
     console.log('📍 Cookies:', req.cookies);
     console.log('📍 Body:', req.body);
-    
+
     // Tentar obter o usuário da sessão
     let userId = null;
-    
+
     // Verificar se há session_id no cookie
     const sessionId = req.cookies?.session_id;
     if (sessionId) {
@@ -8374,7 +8374,7 @@ app.post('/api/addresses', async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // Se não encontrou usuário na sessão, tentar obter do cart_id existente
     if (!userId) {
       // Primeiro, tentar obter cart_id do cookie sem criar um novo
@@ -8391,7 +8391,7 @@ app.post('/api/addresses', async (req, res) => {
           console.log('⚠️ Erro ao buscar usuário pelo cart_id existente:', e.message);
         }
       }
-      
+
       // Se ainda não encontrou, criar novo cart_id
       if (!userId) {
         const cartId = getOrCreateCartId(req, res);
@@ -8407,36 +8407,36 @@ app.post('/api/addresses', async (req, res) => {
         }
       }
     }
-    
+
     const { nome, telefone, cep, endereco, numero, complemento, bairro, cidade, estado, shipping_default, billing_default } = req.body || {};
     let savedAddressId = uuidv4();
-    
+
     console.log('📝 Dados do endereço:', { nome, cep, endereco, numero, cidade, estado, shipping_default });
 
     // Se tem usuário logado, salvar na tabela enderecos
     if (userId) {
       console.log('💾 Salvando endereço na tabela customer_addresses para usuário:', userId);
-      
+
       // Se for padrão, remover padrão dos outros endereços
       if (shipping_default) {
         await pool.execute('UPDATE customer_addresses SET padrao = 0 WHERE customer_id = ?', [userId]);
       }
-      
+
       savedAddressId = uuidv4();
       await pool.execute(
         `INSERT INTO customer_addresses (id, customer_id, tipo, nome, cep, rua, numero, complemento, bairro, cidade, estado, padrao, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [savedAddressId, userId, 'casa', nome || 'Endereço Principal', cep, endereco, numero || '', complemento || '', bairro || '', cidade, estado, shipping_default ? 1 : 0]
       );
-      
+
       console.log('✅ Endereço salvo na tabela customer_addresses com ID:', savedAddressId);
-      
+
     } else {
       // Se não tem usuário logado, salvar na tabela addresses
       console.log('💾 Salvando endereço na tabela addresses (usuário não logado)');
-      
+
       const cartId = getOrCreateCartId(req, res);
-      
+
       if (shipping_default) {
         await pool.execute('UPDATE addresses SET shipping_default = 0 WHERE cart_id = ?', [cartId]);
       }
@@ -8449,10 +8449,10 @@ app.post('/api/addresses', async (req, res) => {
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [savedAddressId, cartId, nome || null, telefone || null, cep || null, endereco || null, numero || null, complemento || null, bairro || null, cidade || null, estado || null, shipping_default ? 1 : 0, billing_default ? 1 : 0]
       );
-      
+
       console.log('✅ Endereço salvo na tabela addresses');
     }
-    
+
     // Retornar o endereço criado
     const responseData = {
       id: savedAddressId,
@@ -8468,10 +8468,10 @@ app.post('/api/addresses', async (req, res) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    
+
     console.log('✅ Endereço criado com sucesso:', savedAddressId);
     res.status(201).json(responseData);
-    
+
   } catch (e) {
     console.error('❌ Addresses create error:', e);
     res.status(500).json({ error: 'addresses_create_failed', details: e.message });
@@ -8481,10 +8481,10 @@ app.post('/api/addresses', async (req, res) => {
 app.put('/api/addresses/:id', async (req, res) => {
   try {
     console.log('📍 PUT /api/addresses/:id - Atualizando endereço');
-    
+
     // Tentar obter o usuário da sessão
     let userId = null;
-    
+
     // Verificar se há session_id no cookie
     const sessionId = req.cookies?.session_id;
     if (sessionId) {
@@ -8499,7 +8499,7 @@ app.put('/api/addresses/:id', async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // Se não encontrou usuário na sessão, tentar obter do cart_id
     if (!userId) {
       const cartId = getOrCreateCartId(req, res);
@@ -8514,34 +8514,34 @@ app.put('/api/addresses/:id', async (req, res) => {
         console.log('⚠️ Erro ao buscar usuário pelo cart_id:', e.message);
       }
     }
-    
+
     const { id } = req.params;
     const { nome, telefone, cep, endereco, numero, complemento, bairro, cidade, estado, shipping_default, billing_default } = req.body || {};
-    
+
     console.log('📝 Dados do endereço para atualizar:', { nome, cep, endereco, numero, cidade, estado, shipping_default });
 
     // Se tem usuário logado, atualizar na tabela customer_addresses
     if (userId) {
       console.log('💾 Atualizando endereço na tabela customer_addresses para usuário:', userId);
-      
+
       // Se for padrão, remover padrão dos outros endereços
       if (shipping_default) {
         await pool.execute('UPDATE customer_addresses SET padrao = 0 WHERE customer_id = ? AND id != ?', [userId, id]);
       }
-      
+
       await pool.execute(
         `UPDATE customer_addresses SET nome = ?, rua = ?, numero = ?, complemento = ?, bairro = ?, cidade = ?, estado = ?, cep = ?, padrao = ?, updated_at = NOW() WHERE id = ? AND customer_id = ?`,
         [nome || 'Endereço', endereco, numero || '', complemento || '', bairro || '', cidade, estado, cep, shipping_default ? 1 : 0, id, userId]
       );
-      
+
       console.log('✅ Endereço atualizado na tabela customer_addresses');
-      
+
     } else {
       // Se não tem usuário logado, atualizar na tabela addresses
       console.log('💾 Atualizando endereço na tabela addresses (usuário não logado)');
-      
+
       const cartId = getOrCreateCartId(req, res);
-      
+
       if (shipping_default) {
         await pool.execute('UPDATE addresses SET shipping_default = 0 WHERE cart_id = ?', [cartId]);
       }
@@ -8553,10 +8553,10 @@ app.put('/api/addresses/:id', async (req, res) => {
         `UPDATE addresses SET nome=?, telefone=?, cep=?, endereco=?, numero=?, complemento=?, bairro=?, cidade=?, estado=?, shipping_default=?, billing_default=? WHERE id = ? AND cart_id = ?`,
         [nome || null, telefone || null, cep || null, endereco || null, numero || null, complemento || null, bairro || null, cidade || null, estado || null, shipping_default ? 1 : 0, billing_default ? 1 : 0, id, cartId]
       );
-      
+
       console.log('✅ Endereço atualizado na tabela addresses');
     }
-    
+
     // Retornar o endereço atualizado
     const responseData = {
       id,
@@ -8571,7 +8571,7 @@ app.put('/api/addresses/:id', async (req, res) => {
       principal: shipping_default ? 1 : 0,
       updated_at: new Date().toISOString()
     };
-    
+
     console.log('✅ Endereço atualizado com sucesso:', id);
     res.json(responseData);
   } catch (e) {
@@ -8650,49 +8650,49 @@ app.post('/api/collections/:id/products', async (req, res) => {
 app.delete('/api/collections/:id/products/:productId', async (req, res) => {
   try {
     const { id, productId } = req.params;
-    
+
     console.log(`🗑️ Removendo produto ${productId} da coleção ${id}`);
-    
+
     // Verificar se o vínculo existe
     const [existing] = await pool.execute(
       'SELECT id FROM collection_products WHERE collection_id = ? AND product_id = ?',
       [id, productId]
     );
-    
+
     if (!existing || existing.length === 0) {
       console.log(`❌ Vínculo não encontrado: coleção ${id}, produto ${productId}`);
       return res.status(404).json({ error: 'Produto não encontrado nesta coleção' });
     }
-    
+
     // Remover o vínculo
     const [result] = await pool.execute(
       'DELETE FROM collection_products WHERE collection_id = ? AND product_id = ?',
       [id, productId]
     );
-    
+
     if (result.affectedRows === 0) {
       console.log(`❌ Nenhum vínculo foi removido`);
       return res.status(404).json({ error: 'Produto não encontrado nesta coleção' });
     }
-    
+
     console.log(`✅ Produto ${productId} removido da coleção ${id} (${result.affectedRows} vínculo(s) removido(s))`);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Produto removido com sucesso',
       removed_count: result.affectedRows
     });
-    
+
   } catch (error) {
-    console.error('❌ Erro ao remover produto da coleção:', { 
-      message: error?.message, 
+    console.error('❌ Erro ao remover produto da coleção:', {
+      message: error?.message,
       code: error?.code,
       collectionId: req.params.id,
       productId: req.params.productId
     });
-    res.status(500).json({ 
-      error: 'Erro interno do servidor', 
-      message: error?.message, 
-      code: error?.code 
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      message: error?.message,
+      code: error?.code
     });
   }
 });
@@ -8751,11 +8751,11 @@ app.put('/api/collections/reorder', async (req, res) => {
   try {
     const { ids } = req.body;
     console.log('🔄 Reordenando coleções...');
-    
+
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'Lista de IDs é obrigatória' });
     }
-    
+
     // Atualizar ordem de cada coleção (se a coluna ordem existir)
     const [cols] = await pool.execute("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'collections'");
     const hasOrdem = cols.some((c) => c.COLUMN_NAME === 'ordem');
@@ -8766,7 +8766,7 @@ app.put('/api/collections/reorder', async (req, res) => {
         await pool.execute('UPDATE collections SET updated_at = NOW() WHERE id = ?', [ids[i]]);
       }
     }
-    
+
     console.log(`✅ ${ids.length} coleções reordenadas com sucesso`);
     res.json({ message: 'Coleções reordenadas com sucesso' });
   } catch (error) {
@@ -8779,7 +8779,7 @@ app.put('/api/collections/reorder', async (req, res) => {
 app.post('/api/collections/seed', async (req, res) => {
   try {
     console.log('🔄 Populando coleções de exemplo...');
-    
+
     const colecoesExemplo = [
       {
         nome: 'Action Figures Premium',
@@ -8818,14 +8818,14 @@ app.post('/api/collections/seed', async (req, res) => {
         destaque: false
       }
     ];
-    
+
     for (const colecao of colecoesExemplo) {
       await pool.execute(
         'INSERT IGNORE INTO collections (nome, descricao, imagem_url, destaque, ativo, created_at, updated_at) VALUES (?, ?, ?, ?, 1, NOW(), NOW())',
         [colecao.nome, colecao.descricao, colecao.imagem_url, colecao.destaque]
       );
     }
-    
+
     console.log(`✅ ${colecoesExemplo.length} coleções de exemplo criadas`);
     res.json({ message: `${colecoesExemplo.length} coleções de exemplo criadas com sucesso` });
   } catch (error) {
@@ -8837,10 +8837,10 @@ app.post('/api/collections/seed', async (req, res) => {
 // Função utilitária para verificar se uma imagem existe
 function imageExists(imageUrl) {
   if (!imageUrl) return false;
-  
+
   // Remover query params e fragmentos
   const cleanUrl = imageUrl.split('?')[0].split('#')[0];
-  
+
   // Se for URL absoluta, extrair o path
   let filePath = cleanUrl;
   if (cleanUrl.startsWith('http')) {
@@ -8851,12 +8851,12 @@ function imageExists(imageUrl) {
       return false;
     }
   }
-  
+
   // Remover /lovable-uploads/ do início se existir
   const filename = filePath.replace(/^\/lovable-uploads\//, '');
   const uploadsDir = path.join(__dirname, '../public/lovable-uploads');
   const fullPath = path.join(uploadsDir, filename);
-  
+
   try {
     return fs.existsSync(fullPath) && fs.statSync(fullPath).isFile();
   } catch (e) {
@@ -8874,7 +8874,7 @@ app.post('/api/collections/upload-image', upload.single('image'), async (req, re
     // Verificar se o arquivo foi realmente salvo
     const uploadsDir = path.join(__dirname, '../public/lovable-uploads');
     const filePath = path.join(uploadsDir, req.file.filename);
-    
+
     if (!fs.existsSync(filePath)) {
       console.error(`❌ Arquivo não foi salvo: ${req.file.filename}`);
       return res.status(500).json({ error: 'Erro ao salvar arquivo' });
@@ -8882,14 +8882,14 @@ app.post('/api/collections/upload-image', upload.single('image'), async (req, re
 
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
     const fullUrl = getPublicUrl(req, imageUrl);
-    
+
     console.log(`✅ Imagem de coleção enviada e validada: ${req.file.filename}`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       imageUrl: imageUrl,
       fullUrl: fullUrl,
-      filename: req.file.filename 
+      filename: req.file.filename
     });
   } catch (error) {
     console.error('❌ Erro no upload de imagem:', error);
@@ -8933,28 +8933,28 @@ app.get('/api/debug/collections-structure', async (req, res) => {
 app.post('/api/debug/fix-collections-table', async (req, res) => {
   try {
     console.log('🔄 Verificando e corrigindo estrutura da tabela collections...');
-    
+
     // Verificar se a coluna destaque existe
     const [columns] = await pool.execute("SHOW COLUMNS FROM collections LIKE 'destaque'");
     if (columns.length === 0) {
       await pool.execute('ALTER TABLE collections ADD COLUMN destaque BOOLEAN DEFAULT FALSE');
       console.log('✅ Coluna destaque adicionada');
     }
-    
+
     // Verificar se a coluna tags existe
     const [tagsColumns] = await pool.execute("SHOW COLUMNS FROM collections LIKE 'tags'");
     if (tagsColumns.length === 0) {
       await pool.execute('ALTER TABLE collections ADD COLUMN tags JSON');
       console.log('✅ Coluna tags adicionada');
     }
-    
+
     // Verificar se a coluna ordem existe
     const [ordemColumns] = await pool.execute("SHOW COLUMNS FROM collections LIKE 'ordem'");
     if (ordemColumns.length === 0) {
       await pool.execute('ALTER TABLE collections ADD COLUMN ordem INT DEFAULT 0');
       console.log('✅ Coluna ordem adicionada');
     }
-    
+
     res.json({ message: 'Estrutura da tabela corrigida com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao corrigir tabela:', error);
@@ -8984,17 +8984,17 @@ app.put('/api/sobre/content/:section', async (req, res) => {
   try {
     const { section } = req.params;
     const { title, subtitle, description, image_url, metadata } = req.body;
-    
+
     const id = require('crypto').randomUUID();
-    
+
     // Garantir que os valores não sejam undefined
     const safeTitle = title || null;
     const safeSubtitle = subtitle || null;
     const safeDescription = description || null;
     const safeImageUrl = image_url || null;
     const safeMetadata = metadata ? JSON.stringify(metadata) : null;
-    
-    
+
+
     await pool.execute(`
       INSERT INTO sobre_content (id, section, title, subtitle, description, image_url, metadata, is_active)
       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
@@ -9006,7 +9006,7 @@ app.put('/api/sobre/content/:section', async (req, res) => {
         metadata = VALUES(metadata),
         updated_at = CURRENT_TIMESTAMP
     `, [id, section, safeTitle, safeSubtitle, safeDescription, safeImageUrl, safeMetadata]);
-    
+
     res.json({ success: true, message: 'Conteúdo atualizado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar conteúdo da página Sobre:', error);
@@ -9019,20 +9019,20 @@ app.put('/api/sobre/content/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, subtitle, description, image_url, metadata } = req.body;
-    
+
     // Garantir que os valores não sejam undefined
     const safeTitle = title || null;
     const safeSubtitle = subtitle || null;
     const safeDescription = description || null;
     const safeImageUrl = image_url || null;
     const safeMetadata = metadata ? JSON.stringify(metadata) : null;
-    
+
     await pool.execute(`
       UPDATE sobre_content 
       SET title = ?, subtitle = ?, description = ?, image_url = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [safeTitle, safeSubtitle, safeDescription, safeImageUrl, safeMetadata, id]);
-    
+
     res.json({ success: true, message: 'Conteúdo atualizado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar conteúdo da página Sobre:', error);
@@ -9048,10 +9048,10 @@ app.post('/api/sobre/upload-image', upload.single('image'), async (req, res) => 
     }
 
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       image_url: imageUrl,
-      message: 'Imagem enviada com sucesso' 
+      message: 'Imagem enviada com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro no upload de imagem da página Sobre:', error);
@@ -9079,12 +9079,12 @@ app.post('/api/sobre/values', async (req, res) => {
   try {
     const { title, description, icon, order_index } = req.body;
     const id = require('crypto').randomUUID();
-    
+
     await pool.execute(`
       INSERT INTO company_values (id, title, description, icon, order_index, is_active)
       VALUES (?, ?, ?, ?, ?, TRUE)
     `, [id, title, description, icon, order_index || 0]);
-    
+
     res.json({ success: true, id, message: 'Valor criado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao criar valor:', error);
@@ -9097,13 +9097,13 @@ app.put('/api/sobre/values/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, description, icon, order_index, is_active } = req.body;
-    
+
     await pool.execute(`
       UPDATE company_values 
       SET title = ?, description = ?, icon = ?, order_index = ?, is_active = ?
       WHERE id = ?
     `, [title, description, icon, order_index || 0, is_active !== false, id]);
-    
+
     res.json({ success: true, message: 'Valor atualizado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar valor:', error);
@@ -9115,9 +9115,9 @@ app.put('/api/sobre/values/:id', async (req, res) => {
 app.delete('/api/sobre/values/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.execute('DELETE FROM company_values WHERE id = ?', [id]);
-    
+
     res.json({ success: true, message: 'Valor deletado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao deletar valor:', error);
@@ -9145,28 +9145,28 @@ app.post('/api/sobre/team', async (req, res) => {
   try {
     const { name, position, description, image_url, order_index } = req.body;
     const id = require('crypto').randomUUID();
-    
+
     await pool.execute(`
       INSERT INTO team_members (id, name, position, description, image_url, order_index, is_active)
       VALUES (?, ?, ?, ?, ?, ?, TRUE)
     `, [
-      id, 
-      name ?? null, 
-      position ?? null, 
-      description ?? null, 
-      image_url ?? null, 
+      id,
+      name ?? null,
+      position ?? null,
+      description ?? null,
+      image_url ?? null,
       order_index ?? 0
     ]);
-    
+
     res.json({ success: true, id, message: 'Membro da equipe criado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao criar membro da equipe:', error);
     console.error('Detalhes do erro:', error.message);
     console.error('SQL State:', error.sqlState);
     console.error('Dados recebidos:', req.body);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro interno do servidor',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -9176,13 +9176,13 @@ app.put('/api/sobre/team/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, position, description, image_url, order_index, is_active } = req.body;
-    
+
     await pool.execute(`
       UPDATE team_members 
       SET name = ?, position = ?, description = ?, image_url = ?, order_index = ?, is_active = ?
       WHERE id = ?
     `, [name, position, description, image_url, order_index || 0, is_active !== false, id]);
-    
+
     res.json({ success: true, message: 'Membro da equipe atualizado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar membro da equipe:', error);
@@ -9194,9 +9194,9 @@ app.put('/api/sobre/team/:id', async (req, res) => {
 app.delete('/api/sobre/team/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.execute('DELETE FROM team_members WHERE id = ?', [id]);
-    
+
     res.json({ success: true, message: 'Membro da equipe deletado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao deletar membro da equipe:', error);
@@ -9224,12 +9224,12 @@ app.post('/api/sobre/stats', async (req, res) => {
   try {
     const { title, value, icon, order_index } = req.body;
     const id = require('crypto').randomUUID();
-    
+
     await pool.execute(`
       INSERT INTO company_stats (id, title, value, icon, order_index, is_active)
       VALUES (?, ?, ?, ?, ?, TRUE)
     `, [id, title, value, icon, order_index || 0]);
-    
+
     res.json({ success: true, id, message: 'Estatística criada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao criar estatística:', error);
@@ -9242,13 +9242,13 @@ app.put('/api/sobre/stats/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, value, icon, order_index, is_active } = req.body;
-    
+
     await pool.execute(`
       UPDATE company_stats 
       SET title = ?, value = ?, icon = ?, order_index = ?, is_active = ?
       WHERE id = ?
     `, [title, value, icon, order_index || 0, is_active !== false, id]);
-    
+
     res.json({ success: true, message: 'Estatística atualizada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar estatística:', error);
@@ -9260,9 +9260,9 @@ app.put('/api/sobre/stats/:id', async (req, res) => {
 app.delete('/api/sobre/stats/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.execute('DELETE FROM company_stats WHERE id = ?', [id]);
-    
+
     res.json({ success: true, message: 'Estatística deletada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao deletar estatística:', error);
@@ -9290,12 +9290,12 @@ app.post('/api/sobre/contact', async (req, res) => {
   try {
     const { type, title, value, icon, order_index } = req.body;
     const id = require('crypto').randomUUID();
-    
+
     await pool.execute(`
       INSERT INTO contact_info (id, type, title, value, icon, order_index, is_active)
       VALUES (?, ?, ?, ?, ?, ?, TRUE)
     `, [id, type, title, value, icon, order_index || 0]);
-    
+
     res.json({ success: true, id, message: 'Informação de contato criada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao criar informação de contato:', error);
@@ -9308,13 +9308,13 @@ app.put('/api/sobre/contact/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { type, title, value, icon, order_index, is_active } = req.body;
-    
+
     await pool.execute(`
       UPDATE contact_info 
       SET type = ?, title = ?, value = ?, icon = ?, order_index = ?, is_active = ?
       WHERE id = ?
     `, [type, title, value, icon, order_index || 0, is_active !== false, id]);
-    
+
     res.json({ success: true, message: 'Informação de contato atualizada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao atualizar informação de contato:', error);
@@ -9326,9 +9326,9 @@ app.put('/api/sobre/contact/:id', async (req, res) => {
 app.delete('/api/sobre/contact/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.execute('DELETE FROM contact_info WHERE id = ?', [id]);
-    
+
     res.json({ success: true, message: 'Informação de contato deletada com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao deletar informação de contato:', error);
@@ -9347,14 +9347,14 @@ app.post('/api/sobre/upload-image', upload.single('image'), async (req, res) => 
 
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
     const fullUrl = getPublicUrl(req, imageUrl);
-    
+
     console.log(`✅ Imagem da página sobre enviada: ${req.file.filename}`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       imageUrl: imageUrl,
       fullUrl: fullUrl,
-      filename: req.file.filename 
+      filename: req.file.filename
     });
   } catch (error) {
     console.error('❌ Erro no upload de imagem da página sobre:', error);
@@ -9367,23 +9367,23 @@ app.post('/api/sobre/team/:id/image', upload.single('image'), async (req, res) =
   try {
     const { id } = req.params;
     if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem foi enviada' });
-    
+
     const imageUrl = `/lovable-uploads/${req.file.filename}`;
     const fullUrl = getPublicUrl(req, imageUrl);
-    
+
     // Atualizar o registro do membro da equipe
     await pool.execute(
       'UPDATE team_members SET image_url = ? WHERE id = ?',
       [fullUrl, id]
     );
-    
+
     console.log(`✅ Imagem do membro da equipe ${id} atualizada: ${req.file.filename}`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       imageUrl: imageUrl,
       fullUrl: fullUrl,
-      filename: req.file.filename 
+      filename: req.file.filename
     });
   } catch (error) {
     console.error('❌ Erro no upload de imagem do membro da equipe:', error);
@@ -9468,7 +9468,7 @@ app.post('/api/push/subscribe', async (req, res) => {
 app.post('/api/push/unsubscribe', async (req, res) => {
   try {
     const { endpoint } = req.body;
-    
+
     await pool.execute(
       'UPDATE push_subscriptions SET is_active = FALSE WHERE endpoint = ?',
       [endpoint]
@@ -9534,7 +9534,7 @@ app.post('/api/push/campaign', async (req, res) => {
 
     // Buscar subscriptions ativas
     let query = 'SELECT id, endpoint, p256dh_key, auth_key FROM push_subscriptions WHERE is_active = TRUE';
-    
+
     if (targetAudience === 'mobile') {
       query += " AND device_type = 'mobile'";
     } else if (targetAudience === 'desktop') {
@@ -9579,11 +9579,11 @@ app.post('/api/push/campaign', async (req, res) => {
 app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📊 GET /api/customers/current/stats');
-    
+
     // Tentar obter o usuário da sessão
     let userId = null;
     let userEmail = null;
-    
+
     // 1. Tentar via session_id usando nome completo do banco
     const sessionId = req.cookies?.session_id;
     if (sessionId) {
@@ -9597,7 +9597,7 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // 2. Tentar via cart_id usando nome completo do banco
     if (!userId) {
       const cartId = req.cookies?.cart_id;
@@ -9613,7 +9613,7 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
         }
       }
     }
-    
+
     // 3. Tentar via Authorization header (JWT)
     if (!userId) {
       const authHeader = req.headers.authorization;
@@ -9627,13 +9627,13 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
         }
       }
     }
-    
+
     // 4. NÃO USAR FALLBACKS - Cada usuário deve ter sua própria sessão
     // Removido fallbacks que permitiam acesso a dados de outros usuários
-    
+
     if (!userId) {
       console.log('❌ Nenhum usuário identificado');
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Não autorizado - usuário não identificado',
         debug: {
           hasSessionId: !!sessionId,
@@ -9649,7 +9649,7 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
         cupons: 0
       });
     }
-    
+
     // Buscar estatísticas do usuário
     const [orders] = await pool.execute('SELECT COUNT(*) as total FROM orders WHERE user_id = ?', [userId]);
     const [pendingOrders] = await pool.execute('SELECT COUNT(*) as total FROM orders WHERE user_id = ? AND status IN ("pending", "processing")', [userId]);
@@ -9659,13 +9659,13 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
       const [userEmailResult] = await pool.execute('SELECT email FROM users WHERE id = ?', [userId]);
       userEmail = userEmailResult[0]?.email || userId; // Fallback para userId se for email
     }
-    
+
     const [favorites] = await pool.execute('SELECT COUNT(*) as total FROM favorites WHERE user_email = ?', [userEmail]);
     const [addresses] = await pool.execute('SELECT COUNT(*) as total FROM customer_addresses WHERE customer_id = ?', [userId]);
     // CORRIGIDO: customer_coupons não tem 'usado', usa 'status' ('active', 'used', 'expired')
     // E não tem 'data_fim', usa 'expires_at'
     const [coupons] = await pool.execute('SELECT COUNT(*) as total FROM customer_coupons WHERE customer_id = ? AND status = "active" AND expires_at >= NOW()', [userId]);
-    
+
     const stats = {
       totalPedidos: orders[0]?.total || 0,
       pedidosPendentes: pendingOrders[0]?.total || 0,
@@ -9674,12 +9674,12 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
       enderecos: addresses[0]?.total || 0,
       cupons: coupons[0]?.total || 0
     };
-    
+
     console.log('✅ Estatísticas do usuário calculadas:', stats);
     res.json(stats);
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas do usuário:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao buscar estatísticas',
       totalPedidos: 0,
       pedidosPendentes: 0,
@@ -9695,25 +9695,25 @@ app.get('/api/customers/current/stats', highFrequencyLimiter, async (req, res) =
 app.get('/api/customers/stats', highFrequencyLimiter, async (req, res) => {
   try {
     console.log('📊 GET /api/customers/stats');
-    
+
     // Buscar estatísticas gerais
     const [totalCustomers] = await pool.execute('SELECT COUNT(*) as total FROM customers');
     const [totalOrders] = await pool.execute('SELECT COUNT(*) as total FROM orders');
     const [totalRevenue] = await pool.execute('SELECT SUM(total) as total FROM orders WHERE status != "cancelled"');
     const [avgOrderValue] = await pool.execute('SELECT AVG(total) as average FROM orders WHERE status != "cancelled"');
-    
+
     const stats = {
       totalCustomers: totalCustomers[0]?.total || 0,
       totalOrders: totalOrders[0]?.total || 0,
       totalRevenue: parseFloat(totalRevenue[0]?.total || 0),
       averageOrderValue: parseFloat(avgOrderValue[0]?.average || 0)
     };
-    
+
     console.log('✅ Estatísticas gerais calculadas:', stats);
     res.json(stats);
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas gerais:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao buscar estatísticas',
       totalCustomers: 0,
       totalOrders: 0,
@@ -9728,11 +9728,11 @@ app.get('/api/customers/:userId', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`👤 GET /api/customers/${userId}`);
-    
+
     let customer = null;
     let actualUserId = userId;
     let searchedIn = [];
-    
+
     // Se userId parece ser email, buscar o ID primeiro
     if (userId.includes('@')) {
       console.log('🔍 Buscando ID por email:', userId);
@@ -9750,7 +9750,7 @@ app.get('/api/customers/:userId', async (req, res) => {
             console.log('✅ ID encontrado em customers:', actualUserId);
           } else {
             console.log('❌ Email não encontrado em users nem customers:', userId);
-            return res.status(404).json({ 
+            return res.status(404).json({
               error: 'Cliente não encontrado',
               message: 'Nenhum cliente encontrado com este email.',
               searchedIn: ['users', 'customers']
@@ -9762,11 +9762,11 @@ app.get('/api/customers/:userId', async (req, res) => {
         return res.status(500).json({ error: 'Erro ao buscar cliente', message: e.message });
       }
     }
-    
+
     // Tentar buscar em users primeiro
     try {
       console.log('🔍 Buscando em users com ID:', actualUserId);
-    const [users] = await pool.execute(`
+      const [users] = await pool.execute(`
       SELECT 
         id, nome, email, telefone, avatar_url, created_at,
           (SELECT COUNT(*) FROM \`rare_toy_companion\`.\`orders\` WHERE user_id = users.id) as total_orders,
@@ -9786,7 +9786,7 @@ app.get('/api/customers/:userId', async (req, res) => {
       console.error('⚠️ Erro ao buscar em users:', e.message);
       console.error('⚠️ Stack:', e.stack);
     }
-    
+
     // Se não encontrou em users, tentar em customers (sem avatar_url pois não existe nessa tabela)
     if (!customer) {
       try {
@@ -9812,7 +9812,7 @@ app.get('/api/customers/:userId', async (req, res) => {
         console.error('⚠️ Erro ao buscar em customers:', e);
         console.error('⚠️ Detalhes do erro:', e.message, e.code);
         console.error('⚠️ Stack:', e.stack);
-    }
+      }
     }
 
     if (!customer) {
@@ -9825,8 +9825,8 @@ app.get('/api/customers/:userId', async (req, res) => {
       } catch (e) {
         console.error('⚠️ Erro ao verificar existência:', e.message);
       }
-      
-      return res.status(404).json({ 
+
+      return res.status(404).json({
         error: 'Cliente não encontrado',
         message: 'Nenhum cliente encontrado com este ID.',
         searchedIn: searchedIn.length > 0 ? searchedIn : ['users', 'customers'],
@@ -9836,7 +9836,7 @@ app.get('/api/customers/:userId', async (req, res) => {
 
     // Calcular pontos de fidelidade
     customer.loyalty_points = Math.floor(Number(customer.total_spent || 0) / 10);
-    
+
     // Adicionar campos vazios para compatibilidade
     customer.cpf = customer.cpf || null;
     customer.data_nascimento = customer.data_nascimento || null;
@@ -9848,7 +9848,7 @@ app.get('/api/customers/:userId', async (req, res) => {
     console.error('❌ Erro ao buscar cliente:', error);
     console.error('❌ Stack:', error.stack);
     logger.logError(error, req);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao buscar cliente',
       message: error.message
     });
@@ -9880,7 +9880,7 @@ app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) =
   try {
     let { userId } = req.params;
     let userEmail = userId; // Preservar email original
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       try {
@@ -9910,7 +9910,7 @@ app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) =
         }
       } catch (e) {
         console.error('⚠️ Erro ao buscar usuário por email:', e);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: 'Erro ao buscar usuário',
           totalOrders: 0,
           totalSpent: 0,
@@ -9937,7 +9937,7 @@ app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) =
         // Continuar mesmo sem email
       }
     }
-    
+
     // Buscar estatísticas de pedidos
     // CORRIGIDO: orders não tem email, apenas user_id
     // Se userId é email, já foi convertido para ID antes
@@ -9953,7 +9953,7 @@ app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) =
     // Buscar favoritos (usar tabela favorites com email do usuário)
     let favoriteCount = 0;
     try {
-    const [favStats] = await pool.execute(`
+      const [favStats] = await pool.execute(`
       SELECT COUNT(*) as favorite_count
       FROM favorites
       WHERE user_email = ?
@@ -9980,7 +9980,7 @@ app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) =
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas do cliente:', error);
     logger.logError(error, req);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao buscar estatísticas do cliente',
       message: error.message,
       totalOrders: 0,
@@ -9997,7 +9997,7 @@ app.get('/api/customers/:userId/stats', highFrequencyLimiter, async (req, res) =
 app.get('/api/customers/:userId/order-stats', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
@@ -10029,7 +10029,7 @@ app.get('/api/orders/:orderId/status', async (req, res) => {
   try {
     const { orderId } = req.params;
     console.log(`📊 GET /api/orders/${orderId}/status`);
-    
+
     // Buscar status do pedido
     const [orders] = await pool.execute(`
       SELECT 
@@ -10043,15 +10043,15 @@ app.get('/api/orders/:orderId/status', async (req, res) => {
       FROM orders 
       WHERE id = ?
     `, [orderId]);
-    
+
     if (orders.length === 0) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
-    
+
     const order = orders[0];
     console.log(`✅ Status do pedido encontrado:`, order);
     res.json(order);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar status do pedido:', error);
     res.status(500).json({ error: 'Erro ao buscar status do pedido' });
@@ -10065,7 +10065,7 @@ app.get('/api/user-stats/stats/:userId', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📊 GET /api/user-stats/stats/${userId}`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     let actualUserId = userId;
     if (String(userId).includes('@')) {
@@ -10091,7 +10091,7 @@ app.get('/api/user-stats/stats/:userId', async (req, res) => {
         }
       } catch (e) {
         console.error('❌ Erro ao buscar usuário por email:', e);
-        return res.status(500).json({ 
+        return res.status(500).json({
           error: 'Erro ao buscar usuário',
           total_pedidos: 0,
           total_gasto: 0,
@@ -10099,7 +10099,7 @@ app.get('/api/user-stats/stats/:userId', async (req, res) => {
         });
       }
     }
-    
+
     // Buscar estatísticas do usuário
     // CORRIGIDO: orders não tem customer_id nem email, apenas user_id
     const [orders] = await pool.execute(`
@@ -10110,19 +10110,19 @@ app.get('/api/user-stats/stats/:userId', async (req, res) => {
       FROM orders 
       WHERE user_id = ?
     `, [actualUserId]);
-    
+
     const stats = orders[0] || {
       total_pedidos: 0,
       total_gasto: 0,
       ultimo_pedido: null
     };
-    
+
     console.log(`✅ Estatísticas encontradas:`, stats);
     res.json(stats);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao buscar estatísticas',
       message: error.message,
       total_pedidos: 0,
@@ -10138,11 +10138,11 @@ app.get('/api/user-stats/stats/:userId', async (req, res) => {
 app.post('/api/test/create-test-data', async (req, res) => {
   try {
     console.log('🧪 Criando dados de teste...');
-    
+
     // Criar usuário de teste se não existir
     const testEmail = 'cliente@exemplo.com';
     const [existingUser] = await pool.execute('SELECT id FROM users WHERE email = ?', [testEmail]);
-    
+
     let userId;
     if (existingUser.length === 0) {
       const [result] = await pool.execute(`
@@ -10153,14 +10153,14 @@ app.post('/api/test/create-test-data', async (req, res) => {
     } else {
       userId = existingUser[0].id;
     }
-    
+
     // Criar sessão de teste
     const sessionId = 'test-session-' + Date.now();
     await pool.execute(`
       INSERT INTO sessions (id, user_id, expires_at) 
       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 DAY))
     `, [sessionId, userId]);
-    
+
     // Criar endereço de teste
     const [existingAddress] = await pool.execute('SELECT id FROM customer_addresses WHERE customer_id = ?', [userId]);
     if (existingAddress.length === 0) {
@@ -10171,10 +10171,10 @@ app.post('/api/test/create-test-data', async (req, res) => {
         VALUES (?, ?, 'Casa', 'Rua das Flores', '123', 'Apto 45', 'Centro', 'São Paulo', 'SP', '01234567', 'casa', 1, NOW())
       `, [addressId, userId]);
     }
-    
-    res.json({ 
-      success: true, 
-      userId, 
+
+    res.json({
+      success: true,
+      userId,
       sessionId,
       message: 'Dados de teste criados com sucesso!'
     });
@@ -10189,19 +10189,19 @@ app.get('/api/test/stats', async (req, res) => {
   try {
     const testEmail = 'cliente@exemplo.com';
     const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [testEmail]);
-    
+
     if (user.length === 0) {
       return res.status(404).json({ error: 'Usuário de teste não encontrado' });
     }
-    
+
     const userId = user[0].id;
-    
+
     // Buscar estatísticas
     const [orders] = await pool.execute('SELECT COUNT(*) as total FROM orders WHERE user_id = ?', [userId]);
     const [pendingOrders] = await pool.execute('SELECT COUNT(*) as total FROM orders WHERE user_id = ? AND status IN ("pending", "processing")', [userId]);
     const [totalSpent] = await pool.execute('SELECT SUM(total) as total FROM orders WHERE user_id = ? AND status != "cancelled"', [userId]);
     const [addresses] = await pool.execute('SELECT COUNT(*) as total FROM customer_addresses WHERE customer_id = ?', [userId]);
-    
+
     const stats = {
       totalPedidos: orders[0]?.total || 0,
       pedidosPendentes: pendingOrders[0]?.total || 0,
@@ -10210,7 +10210,7 @@ app.get('/api/test/stats', async (req, res) => {
       enderecos: addresses[0]?.total || 0,
       cupons: 0
     };
-    
+
     res.json(stats);
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas de teste:', error);
@@ -10224,7 +10224,7 @@ app.get('/api/test/stats', async (req, res) => {
 app.get('/api/customers/addresses', async (req, res) => {
   try {
     console.log('🏠 GET /api/customers/addresses');
-    
+
     // Obter usuário da sessão (mesma lógica do stats)
     let userId = null;
     const sessionId = req.cookies?.session_id;
@@ -10234,7 +10234,7 @@ app.get('/api/customers/addresses', async (req, res) => {
         if (sessions && sessions[0] && sessions[0].user_email) {
           const userEmail = sessions[0].user_email;
           console.log('👤 Usuário logado via sessão:', userEmail);
-          
+
           // Buscar o user_id na tabela customers baseado no email
           const [customers] = await pool.execute('SELECT id FROM customers WHERE email = ?', [userEmail]);
           if (customers && customers[0]) {
@@ -10248,20 +10248,20 @@ app.get('/api/customers/addresses', async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // NÃO USAR FALLBACKS - Cada usuário deve ter sua própria sessão
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado' });
     }
-    
+
     // Buscar endereços
     const [addresses] = await pool.execute(`
       SELECT * FROM customer_addresses 
       WHERE customer_id = ? 
       ORDER BY padrao DESC, created_at DESC
     `, [userId]);
-    
+
     res.json(addresses);
   } catch (error) {
     console.error('❌ Erro ao buscar endereços:', error);
@@ -10273,14 +10273,14 @@ app.get('/api/customers/addresses', async (req, res) => {
 app.post('/api/customers/addresses', async (req, res) => {
   try {
     console.log('🏠 POST /api/customers/addresses');
-    
+
     const { nome, rua, numero, complemento, bairro, cidade, estado, cep, tipo, is_default } = req.body;
-    
+
     // Validar dados obrigatórios
     if (!nome || !rua || !cidade || !estado || !cep) {
       return res.status(400).json({ error: 'Dados obrigatórios não fornecidos' });
     }
-    
+
     // Obter usuário da sessão
     let userId = null;
     const sessionId = req.cookies?.session_id;
@@ -10290,7 +10290,7 @@ app.post('/api/customers/addresses', async (req, res) => {
         if (sessions && sessions[0] && sessions[0].user_email) {
           const userEmail = sessions[0].user_email;
           console.log('👤 Usuário logado via sessão:', userEmail);
-          
+
           // Buscar o user_id na tabela customers baseado no email
           const [customers] = await pool.execute('SELECT id FROM customers WHERE email = ?', [userEmail]);
           if (customers && customers[0]) {
@@ -10304,25 +10304,25 @@ app.post('/api/customers/addresses', async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // NÃO USAR FALLBACKS - Cada usuário deve ter sua própria sessão
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado' });
     }
-    
+
     // Se for endereço padrão, remover padrão dos outros
     if (is_default) {
       await pool.execute('UPDATE customer_addresses SET padrao = 0 WHERE customer_id = ?', [userId]);
     }
-    
+
     // Inserir novo endereço
     const [result] = await pool.execute(`
       INSERT INTO customer_addresses 
       (customer_id, nome, rua, numero, complemento, bairro, cidade, estado, cep, tipo, padrao, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [userId, nome, rua, numero, complemento, bairro, cidade, estado, cep, tipo, is_default || 0]);
-    
+
     res.json({ success: true, id: result.insertId });
   } catch (error) {
     console.error('❌ Erro ao salvar endereço:', error);
@@ -10334,10 +10334,10 @@ app.post('/api/customers/addresses', async (req, res) => {
 app.put('/api/customers/addresses/:id', async (req, res) => {
   try {
     console.log('🏠 PUT /api/customers/addresses/' + req.params.id);
-    
+
     const { id } = req.params;
     const { nome, rua, numero, complemento, bairro, cidade, estado, cep, tipo, is_default } = req.body;
-    
+
     // Obter usuário da sessão
     let userId = null;
     const sessionId = req.cookies?.session_id;
@@ -10347,7 +10347,7 @@ app.put('/api/customers/addresses/:id', async (req, res) => {
         if (sessions && sessions[0] && sessions[0].user_email) {
           const userEmail = sessions[0].user_email;
           console.log('👤 Usuário logado via sessão:', userEmail);
-          
+
           // Buscar o user_id na tabela customers baseado no email
           const [customers] = await pool.execute('SELECT id FROM customers WHERE email = ?', [userEmail]);
           if (customers && customers[0]) {
@@ -10361,18 +10361,18 @@ app.put('/api/customers/addresses/:id', async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // NÃO USAR FALLBACKS - Cada usuário deve ter sua própria sessão
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado' });
     }
-    
+
     // Se for endereço padrão, remover padrão dos outros
     if (is_default) {
       await pool.execute('UPDATE customer_addresses SET padrao = 0 WHERE customer_id = ?', [userId]);
     }
-    
+
     // Atualizar endereço
     await pool.execute(`
       UPDATE customer_addresses 
@@ -10380,7 +10380,7 @@ app.put('/api/customers/addresses/:id', async (req, res) => {
           cidade = ?, estado = ?, cep = ?, tipo = ?, padrao = ?, updated_at = NOW()
       WHERE id = ? AND customer_id = ?
     `, [nome, rua, numero, complemento, bairro, cidade, estado, cep, tipo, is_default || 0, id, userId]);
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao atualizar endereço:', error);
@@ -10392,9 +10392,9 @@ app.put('/api/customers/addresses/:id', async (req, res) => {
 app.delete('/api/customers/addresses/:id', async (req, res) => {
   try {
     console.log('🏠 DELETE /api/customers/addresses/' + req.params.id);
-    
+
     const { id } = req.params;
-    
+
     // Obter usuário da sessão
     let userId = null;
     const sessionId = req.cookies?.session_id;
@@ -10404,7 +10404,7 @@ app.delete('/api/customers/addresses/:id', async (req, res) => {
         if (sessions && sessions[0] && sessions[0].user_email) {
           const userEmail = sessions[0].user_email;
           console.log('👤 Usuário logado via sessão:', userEmail);
-          
+
           // Buscar o user_id na tabela customers baseado no email
           const [customers] = await pool.execute('SELECT id FROM customers WHERE email = ?', [userEmail]);
           if (customers && customers[0]) {
@@ -10418,16 +10418,16 @@ app.delete('/api/customers/addresses/:id', async (req, res) => {
         console.log('⚠️ Erro ao verificar sessão:', e.message);
       }
     }
-    
+
     // NÃO USAR FALLBACKS - Cada usuário deve ter sua própria sessão
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'Não autorizado' });
     }
-    
+
     // Deletar endereço
     await pool.execute('DELETE FROM customer_addresses WHERE id = ? AND customer_id = ?', [id, userId]);
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao deletar endereço:', error);
@@ -10441,26 +10441,26 @@ app.delete('/api/customers/addresses/:id', async (req, res) => {
 app.get('/api/debug/connection', async (req, res) => {
   try {
     console.log('🔍 Testando conexão...');
-    
+
     // Testar SELECT DATABASE()
     const [db] = await pool.execute('SELECT DATABASE() as db');
     console.log('📍 Banco:', db[0].db);
-    
+
     // Testar SHOW TABLES
     const [tables] = await pool.execute('SHOW TABLES');
     const tableNames = tables.map(t => Object.values(t)[0]);
     console.log('📋 Tabelas:', tableNames);
-    
+
     // Verificar se customer_addresses existe
     if (tableNames.includes('customer_addresses')) {
       console.log('✅ Tabela customer_addresses encontrada!');
-      
+
       // Testar SELECT na tabela
       const [count] = await pool.execute('SELECT COUNT(*) as total FROM customer_addresses');
       console.log('🏠 Total de endereços:', count[0].total);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         database: db[0].db,
         tables: tableNames,
         customer_addresses_exists: true,
@@ -10468,8 +10468,8 @@ app.get('/api/debug/connection', async (req, res) => {
       });
     } else {
       console.log('❌ Tabela customer_addresses NÃO encontrada!');
-      res.json({ 
-        success: false, 
+      res.json({
+        success: false,
         database: db[0].db,
         tables: tableNames,
         customer_addresses_exists: false
@@ -10486,7 +10486,7 @@ app.get('/api/customers/:userId/addresses', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📍 GET /api/customers/${userId}/addresses`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       try {
@@ -10504,17 +10504,17 @@ app.get('/api/customers/:userId/addresses', async (req, res) => {
         return res.status(500).json({ error: 'Erro ao buscar usuário', details: e.message, addresses: [] });
       }
     }
-    
+
     // Debug: verificar banco atual
     console.log(`🔍 Verificando banco atual...`);
     const [dbInfo] = await pool.execute('SELECT DATABASE() as current_db');
     console.log(`📍 Banco atual: ${dbInfo[0].current_db}`);
-    
+
     // Debug: listar tabelas
     console.log(`🔍 Listando tabelas...`);
     const [tables] = await pool.execute('SHOW TABLES');
     console.log(`📋 Tabelas encontradas:`, tables.map(t => Object.values(t)[0]));
-    
+
     // Buscar endereços
     console.log(`🔍 Buscando endereços para userId: ${userId}`);
     const [addresses] = await pool.execute(`
@@ -10529,8 +10529,8 @@ app.get('/api/customers/:userId/addresses', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao buscar endereços:', error);
     logger.logError(error, req);
-    res.status(500).json({ 
-      error: 'Erro ao buscar endereços', 
+    res.status(500).json({
+      error: 'Erro ao buscar endereços',
       details: error.message,
       addresses: [] // Sempre retornar array vazio em caso de erro
     });
@@ -10542,7 +10542,7 @@ app.post('/api/customers/:userId/addresses', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`🔍 POST /api/customers/${userId}/addresses - Iniciando...`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       try {
@@ -10560,10 +10560,10 @@ app.post('/api/customers/:userId/addresses', async (req, res) => {
         return res.status(500).json({ error: 'Erro ao buscar usuário' });
       }
     }
-    
+
     const { label, cep, endereco, numero, complemento, bairro, cidade, estado, is_default } = req.body;
     const id = crypto.randomUUID();
-    
+
     console.log(`📝 Dados do endereço:`, { label, cep, endereco, numero, complemento, bairro, cidade, estado, is_default });
 
     // Verificar banco atual
@@ -10583,7 +10583,7 @@ app.post('/api/customers/:userId/addresses', async (req, res) => {
       INSERT INTO customer_addresses (id, customer_id, tipo, nome, rua, numero, complemento, bairro, cidade, estado, cep, padrao)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, userId, label.toLowerCase(), label, endereco, numero, complemento || null, bairro, cidade, estado, cep, is_default ? 1 : 0]);
-    
+
     // Se for padrão, remover padrão dos outros
     if (is_default) {
       console.log(`🔄 Removendo padrão dos outros endereços...`);
@@ -10602,14 +10602,14 @@ app.post('/api/customers/:userId/addresses', async (req, res) => {
 app.put('/api/customers/:userId/addresses/:addressId', async (req, res) => {
   try {
     let { userId, addressId } = req.params;
-    
+
     // Converter email para userId se necessário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
       if (user && user[0]) userId = user[0].id;
       else return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     const { label, cep, endereco, numero, complemento, bairro, cidade, estado, is_default } = req.body;
 
     if (is_default) {
@@ -10634,14 +10634,14 @@ app.put('/api/customers/:userId/addresses/:addressId', async (req, res) => {
 app.delete('/api/customers/:userId/addresses/:addressId', async (req, res) => {
   try {
     let { userId, addressId } = req.params;
-    
+
     // Converter email para userId se necessário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
       if (user && user[0]) userId = user[0].id;
       else return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     await pool.execute('DELETE FROM customer_addresses WHERE id = ? AND customer_id = ?', [addressId, userId]);
 
     console.log(`✅ Endereço ${addressId} deletado para user_id=${userId}`);
@@ -10656,14 +10656,14 @@ app.delete('/api/customers/:userId/addresses/:addressId', async (req, res) => {
 app.patch('/api/customers/:userId/addresses/:addressId/set-default', async (req, res) => {
   try {
     let { userId, addressId } = req.params;
-    
+
     // Converter email para userId se necessário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
       if (user && user[0]) userId = user[0].id;
       else return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     await pool.execute('UPDATE customer_addresses SET padrao = 0 WHERE customer_id = ?', [userId]);
     await pool.execute('UPDATE customer_addresses SET padrao = 1 WHERE id = ? AND customer_id = ?', [addressId, userId]);
 
@@ -10681,15 +10681,15 @@ app.patch('/api/customers/:userId/addresses/:addressId/set-default', async (req,
 app.get('/api/customers/:userId/favorites', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     // Buscar email do usuário
     const [userEmail] = await pool.execute('SELECT email FROM users WHERE id = ?', [userId]);
     const email = userEmail[0]?.email || null;
-    
+
     if (!email) {
       return res.json({ favorites: [] });
     }
-    
+
     const [favorites] = await pool.execute(`
       SELECT p.*
       FROM favorites f
@@ -10709,15 +10709,15 @@ app.get('/api/customers/:userId/favorites', async (req, res) => {
 app.post('/api/customers/:userId/favorites/:productId', async (req, res) => {
   try {
     const { userId, productId } = req.params;
-    
+
     // Buscar email do usuário
     const [userEmail] = await pool.execute('SELECT email FROM users WHERE id = ?', [userId]);
     const email = userEmail[0]?.email || null;
-    
+
     if (!email) {
       return res.status(400).json({ error: 'Usuário não encontrado' });
     }
-    
+
     const id = crypto.randomUUID();
 
     await pool.execute(`
@@ -10736,15 +10736,15 @@ app.post('/api/customers/:userId/favorites/:productId', async (req, res) => {
 app.delete('/api/customers/:userId/favorites/:productId', async (req, res) => {
   try {
     const { userId, productId } = req.params;
-    
+
     // Buscar email do usuário
     const [userEmail] = await pool.execute('SELECT email FROM users WHERE id = ?', [userId]);
     const email = userEmail[0]?.email || null;
-    
+
     if (!email) {
       return res.status(400).json({ error: 'Usuário não encontrado' });
     }
-    
+
     await pool.execute('DELETE FROM favorites WHERE user_email = ? AND product_id = ?', [email, productId]);
 
     res.json({ success: true });
@@ -10869,7 +10869,7 @@ app.post('/api/reviews/:reviewId/helpful', async (req, res) => {
 app.get('/api/products/:productId/reviews/stats', async (req, res) => {
   try {
     const { productId } = req.params;
-    
+
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total_reviews,
@@ -10931,27 +10931,27 @@ app.post('/api/reviews/:reviewId/report', async (req, res) => {
 app.get('/api/admin/reviews', async (req, res) => {
   try {
     const { status, product_id } = req.query;
-    
+
     // Query corrigida usando nome completo do banco e tabela correta
     // Usar subquery ou nome completo da coluna no WHERE para evitar problemas com alias
     let whereConditions = [];
     const params = [];
-    
+
     // Filtrar por status usando nome completo da tabela no WHERE
     if (status && status !== 'all') {
       whereConditions.push('\`rare_toy_companion\`.\`product_reviews\`.\`status\` = ?');
       params.push(status);
     }
-    
+
     if (product_id) {
       whereConditions.push('r.product_id = ?');
       params.push(product_id);
     }
-    
-    const whereClause = whereConditions.length > 0 
+
+    const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
-    
+
     let query = `
       SELECT 
         r.id,
@@ -10980,10 +10980,10 @@ app.get('/api/admin/reviews', async (req, res) => {
       ORDER BY r.created_at DESC
       LIMIT 500
     `;
-    
+
     console.log('🔍 Query reviews:', query);
     console.log('📊 Params:', params);
-    
+
     const [reviews] = await pool.execute(query, params);
 
     logger.info('Reviews carregados (admin)', { count: reviews.length, status });
@@ -11001,7 +11001,7 @@ app.get('/api/admin/reviews', async (req, res) => {
 app.put('/api/admin/reviews/:reviewId/approve', async (req, res) => {
   try {
     const { reviewId } = req.params;
-    
+
     // Atualizar status do review
     await pool.execute(
       'UPDATE product_reviews SET status = ?, updated_at = NOW() WHERE id = ?',
@@ -11013,10 +11013,10 @@ app.put('/api/admin/reviews/:reviewId/approve', async (req, res) => {
       'SELECT product_id FROM product_reviews WHERE id = ?',
       [reviewId]
     );
-    
+
     if (review.length > 0) {
       const productId = review[0].product_id;
-      
+
       const [avgResult] = await pool.execute(`
         SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews
         FROM product_reviews
@@ -11043,7 +11043,7 @@ app.put('/api/admin/reviews/:reviewId/reject', async (req, res) => {
   try {
     const { reviewId } = req.params;
     const { admin_notes } = req.body;
-    
+
     await pool.execute(
       'UPDATE product_reviews SET status = ?, admin_notes = ?, updated_at = NOW() WHERE id = ?',
       ['rejected', admin_notes || 'Rejeitado pelo administrador', reviewId]
@@ -11061,22 +11061,22 @@ app.put('/api/admin/reviews/:reviewId/reject', async (req, res) => {
 app.delete('/api/admin/reviews/:reviewId', async (req, res) => {
   try {
     const { reviewId } = req.params;
-    
+
     // Buscar informação do produto antes de deletar
     const [review] = await pool.execute(
       'SELECT product_id FROM product_reviews WHERE id = ?',
       [reviewId]
     );
-    
+
     if (review.length === 0) {
       return res.status(404).json({ error: 'Avaliação não encontrada' });
     }
-    
+
     const productId = review[0].product_id;
-    
+
     // Deletar review
     await pool.execute('DELETE FROM product_reviews WHERE id = ?', [reviewId]);
-    
+
     // Recalcular média de avaliações do produto
     const [avgResult] = await pool.execute(`
       SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews
@@ -11137,7 +11137,7 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     const { status } = req.body;
 
     await pool.execute('UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
-    
+
     logger.info('Status do pedido atualizado', { orderId: id, newStatus: status });
     res.json({ success: true });
   } catch (error) {
@@ -11206,9 +11206,9 @@ app.put('/api/orders/:id', async (req, res) => {
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Nenhum campo para atualizar' 
+        error: 'Nenhum campo para atualizar'
       });
     }
 
@@ -11217,26 +11217,26 @@ app.put('/api/orders/:id', async (req, res) => {
 
     const query = `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`;
     await pool.execute(query, values);
-    
+
     logger.info('Pedido atualizado', { orderId: id, updates: { status, payment_method, tracking_code } });
-    
+
     // Buscar pedido atualizado
     const [updatedOrders] = await pool.execute(
       'SELECT * FROM orders WHERE id = ?',
       [id]
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Pedido atualizado com sucesso',
       data: updatedOrders[0]
     });
   } catch (error) {
     logger.logError(error, req);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Erro ao atualizar pedido',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -11275,7 +11275,7 @@ app.patch('/api/orders/:id', async (req, res) => {
 
     const query = `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`;
     await pool.execute(query, values);
-    
+
     logger.info('Pedido atualizado', { orderId: id, updates: { status, payment_method, tracking_code } });
     res.json({ success: true, message: 'Pedido atualizado com sucesso' });
   } catch (error) {
@@ -11288,28 +11288,28 @@ app.patch('/api/orders/:id', async (req, res) => {
 app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     console.log(`🗑️ [Admin] Tentando excluir pedido ${id}`);
-    
+
     // Verificar se o pedido existe
     const [orders] = await pool.execute('SELECT * FROM orders WHERE id = ?', [id]);
-    
+
     if (orders.length === 0) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
-    
+
     const order = orders[0];
-    
+
     // Validação: apenas pedidos pendentes ou cancelados podem ser deletados
     // Pedidos processados, enviados ou entregues não devem ser deletados
     const deletableStatuses = ['pending', 'cancelled'];
     if (!deletableStatuses.includes(order.status)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Não é possível excluir este pedido',
         message: `Pedidos com status "${order.status}" não podem ser excluídos. Apenas pedidos pendentes ou cancelados podem ser excluídos.`
       });
     }
-    
+
     // Deletar itens do pedido primeiro (se houver)
     try {
       await pool.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
@@ -11318,7 +11318,7 @@ app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
       console.warn(`⚠️ [Admin] Erro ao excluir itens do pedido ${id}:`, itemsError);
       // Continuar mesmo se houver erro ao deletar itens
     }
-    
+
     // Deletar histórico de status (se existir)
     try {
       await pool.execute('DELETE FROM order_status_history WHERE order_id = ?', [id]);
@@ -11326,10 +11326,10 @@ app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
       console.warn(`⚠️ [Admin] Erro ao excluir histórico do pedido ${id}:`, historyError);
       // Continuar mesmo se houver erro
     }
-    
+
     // Deletar o pedido
     await pool.execute('DELETE FROM orders WHERE id = ?', [id]);
-    
+
     // Log de auditoria
     try {
       const { logAudit } = require('./utils/audit.cjs');
@@ -11351,20 +11351,20 @@ app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
     } catch (auditError) {
       console.warn('⚠️ Erro ao registrar auditoria:', auditError);
     }
-    
+
     console.log(`✅ [Admin] Pedido ${id} excluído com sucesso`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Pedido excluído com sucesso',
       order_id: id
     });
   } catch (error) {
     console.error('❌ [Admin] Erro ao excluir pedido:', error);
     logger.logError(error, req);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Erro ao excluir pedido',
-      message: error?.message 
+      message: error?.message
     });
   }
 });
@@ -11373,20 +11373,20 @@ app.delete('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
 app.delete('/api/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Verificar se o pedido existe
     const [order] = await pool.execute('SELECT * FROM orders WHERE id = ?', [id]);
-    
+
     if (order.length === 0) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
-    
+
     // Deletar itens do pedido primeiro
     await pool.execute('DELETE FROM order_items WHERE order_id = ?', [id]);
-    
+
     // Deletar o pedido
     await pool.execute('DELETE FROM orders WHERE id = ?', [id]);
-    
+
     logger.info('Pedido excluído', { orderId: id });
     res.json({ success: true, message: 'Pedido excluído com sucesso' });
   } catch (error) {
@@ -11438,7 +11438,7 @@ app.post('/api/orders/:id/reorder', async (req, res) => {
 app.get('/api/orders/:id/invoice', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [orders] = await pool.execute('SELECT * FROM orders WHERE id = ?', [id]);
     if (orders.length === 0) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
@@ -11495,7 +11495,7 @@ app.get('/api/orders/:id/invoice', async (req, res) => {
 app.get('/api/suppliers', async (req, res) => {
   try {
     console.log('🔍 Iniciando busca de fornecedores...');
-    
+
     // Primeiro, verificar se a tabela existe e criar se necessário
     console.log('📋 Verificando/criando tabela fornecedores...');
     await pool.execute(`
@@ -11519,7 +11519,7 @@ app.get('/api/suppliers', async (req, res) => {
     console.log('🔢 Verificando quantidade de fornecedores...');
     const [countRows] = await pool.execute('SELECT COUNT(*) as count FROM fornecedores');
     console.log('📊 Quantidade atual:', countRows[0].count);
-    
+
     if (countRows[0].count === 0) {
       console.log('➕ Inserindo dados de exemplo...');
       await pool.execute(`
@@ -11549,7 +11549,7 @@ app.get('/api/suppliers', async (req, res) => {
       FROM fornecedores 
       ORDER BY nome ASC
     `);
-    
+
     console.log('✅ Fornecedores carregados:', rows.length);
     logger.info('Fornecedores carregados', { count: rows.length });
     res.json({ suppliers: rows, total: rows.length });
@@ -11566,11 +11566,11 @@ app.get('/api/suppliers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await pool.execute('SELECT * FROM fornecedores WHERE id = ?', [id]);
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Fornecedor não encontrado' });
     }
-    
+
     res.json(rows[0]);
   } catch (error) {
     logger.logError(error, req);
@@ -11583,12 +11583,12 @@ app.post('/api/suppliers', async (req, res) => {
   try {
     const { nome, cnpj, telefone, email, endereco, cidade, estado, cep, contato } = req.body;
     const id = crypto.randomUUID();
-    
+
     await pool.execute(`
       INSERT INTO fornecedores (id, nome, cnpj, telefone, email, endereco, cidade, estado, cep, contato)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, nome, cnpj || null, telefone || null, email || null, endereco || null, cidade || null, estado || null, cep || null, contato || null]);
-    
+
     logger.info('Fornecedor criado', { id, nome });
     res.json({ success: true, id });
   } catch (error) {
@@ -11602,13 +11602,13 @@ app.put('/api/suppliers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { nome, cnpj, telefone, email, endereco, cidade, estado, cep, contato } = req.body;
-    
+
     await pool.execute(`
       UPDATE fornecedores 
       SET nome = ?, cnpj = ?, telefone = ?, email = ?, endereco = ?, cidade = ?, estado = ?, cep = ?, contato = ?, updated_at = NOW()
       WHERE id = ?
     `, [nome, cnpj || null, telefone || null, email || null, endereco || null, cidade || null, estado || null, cep || null, contato || null, id]);
-    
+
     logger.info('Fornecedor atualizado', { id, nome });
     res.json({ success: true });
   } catch (error) {
@@ -11622,7 +11622,7 @@ app.delete('/api/suppliers/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await pool.execute('DELETE FROM fornecedores WHERE id = ?', [id]);
-    
+
     logger.info('Fornecedor deletado', { id });
     res.json({ success: true });
   } catch (error) {
@@ -11715,7 +11715,7 @@ app.post('/api/payments/mercadopago/webhook', async (req, res) => {
     if (result.success && result.action_needed === 'confirm_order') {
       // Atualizar status do pedido no banco
       const externalRef = result.payment.external_reference;
-      
+
       // Aqui você pode atualizar o status do pedido no banco de dados
       logger.info('Pedido aprovado via webhook', {
         external_reference: externalRef,
@@ -11776,7 +11776,7 @@ app.get('/api/debug/database', async (req, res) => {
       ORDER BY ORDINAL_POSITION
     `);
     connection.release();
-    
+
     res.json({
       success: true,
       currentDatabase: db[0].db,
@@ -11790,20 +11790,20 @@ app.get('/api/debug/database', async (req, res) => {
         DB_NAME: process.env.DB_NAME
       },
       tables: tables.map(t => t.TABLE_NAME),
-      produtosColumns: produtosCols.map(c => ({ 
-        name: c.COLUMN_NAME, 
-        type: c.DATA_TYPE, 
-        nullable: c.IS_NULLABLE 
+      produtosColumns: produtosCols.map(c => ({
+        name: c.COLUMN_NAME,
+        type: c.DATA_TYPE,
+        nullable: c.IS_NULLABLE
       })),
-      fornecedoresColumns: fornecedoresCols.map(c => ({ 
-        name: c.COLUMN_NAME, 
-        type: c.DATA_TYPE, 
-        nullable: c.IS_NULLABLE 
+      fornecedoresColumns: fornecedoresCols.map(c => ({
+        name: c.COLUMN_NAME,
+        type: c.DATA_TYPE,
+        nullable: c.IS_NULLABLE
       })),
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: error.message,
       code: error.code,
@@ -11818,16 +11818,16 @@ app.get('/api/health', async (req, res) => {
     const connection = await pool.getConnection();
     const [db] = await connection.query('SELECT DATABASE() as db');
     connection.release();
-    
-    res.json({ 
-      status: 'ok', 
+
+    res.json({
+      status: 'ok',
       database: db[0].db,
       timestamp: new Date().toISOString(),
       uptime: process.uptime()
     });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
+    res.status(500).json({
+      status: 'error',
       error: error.message,
       timestamp: new Date().toISOString()
     });
@@ -11842,10 +11842,10 @@ app.use((err, req, res, next) => {
     method: req.method,
     ip: req.ip,
   });
-  
+
   res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' 
-      ? 'Erro interno do servidor' 
+    error: process.env.NODE_ENV === 'production'
+      ? 'Erro interno do servidor'
       : err.message,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
   });
@@ -11864,13 +11864,13 @@ app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down server...');
-  
+
   // Flush Sentry events
   await sentry.flush(2000);
-  
+
   // Fechar conexões
   await pool.end();
-  
+
   console.log('✅ Server shut down gracefully');
   process.exit(0);
 });
@@ -11923,9 +11923,9 @@ app.get('/api/orders/:id', async (req, res) => {
           const pFields = Array.isArray(pCols) ? pCols.map(c => c.Field) : [];
           const nameCol = pFields.includes('nome') ? 'nome' : (pFields.includes('name') ? 'name' : null);
           const imgCol = pFields.includes('imagem_url') ? 'imagem_url'
-                         : (pFields.includes('image_url') ? 'image_url'
-                         : (pFields.includes('imagemUrl') ? 'imagemUrl'
-                         : (pFields.includes('image') ? 'image' : null)));
+            : (pFields.includes('image_url') ? 'image_url'
+              : (pFields.includes('imagemUrl') ? 'imagemUrl'
+                : (pFields.includes('image') ? 'image' : null)));
           const selectNome = nameCol ? nameCol : "NULL";
           const selectImg = imgCol ? imgCol : "NULL";
           const [rows] = await pool.query(
@@ -11955,7 +11955,7 @@ app.get('/api/orders/:id', async (req, res) => {
           return i;
         });
       }
-    } catch {}
+    } catch { }
 
     // Mapear campos conforme schema atual
     const paymentMethod = order.payment_method || order.metodo_pagamento || null;
@@ -11966,7 +11966,7 @@ app.get('/api/orders/:id', async (req, res) => {
       if (rawStatus === 0) {
         friendlyStatus = 'pending';
       }
-    } catch (_e) {}
+    } catch (_e) { }
 
     res.json({
       id: order.id,
@@ -12058,9 +12058,9 @@ app.post('/api/orders/:id/resend', async (req, res) => {
       const pFields = Array.isArray(pCols) ? pCols.map(c => c.Field) : [];
       const nameCol = pFields.includes('nome') ? 'nome' : (pFields.includes('name') ? 'name' : null);
       const imgCol = pFields.includes('imagem_url') ? 'imagem_url'
-                     : (pFields.includes('image_url') ? 'image_url'
-                     : (pFields.includes('imagemUrl') ? 'imagemUrl'
-                     : (pFields.includes('image') ? 'image' : null)));
+        : (pFields.includes('image_url') ? 'image_url'
+          : (pFields.includes('imagemUrl') ? 'imagemUrl'
+            : (pFields.includes('image') ? 'image' : null)));
       const selectNome = nameCol ? nameCol : "NULL";
       const selectImg = imgCol ? imgCol : "NULL";
       const [pRows] = await pool.query(`SELECT id, ${selectNome} AS nome, ${selectImg} AS imagem_url FROM produtos WHERE id IN (${placeholders})`, productIds);
@@ -12201,13 +12201,13 @@ app.post('/api/shipping/quote', async (req, res) => {
     const prefix = cepStr.slice(0, 2);
     let base = 19.9; // padrão
     let days = 5;
-    if (["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49"].includes(prefix)) { // Sudeste/Sul aproximado
+    if (["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49"].includes(prefix)) { // Sudeste/Sul aproximado
       base = 15.0; days = 4;
     }
-    if (["50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69"].includes(prefix)) { // Centro-Oeste/Norte
+    if (["50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69"].includes(prefix)) { // Centro-Oeste/Norte
       base = 24.9; days = 7;
     }
-    if (["70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89","90","91","92","93","94","95","96","97","98","99"].includes(prefix)) { // Nordeste/Norte
+    if (["70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96", "97", "98", "99"].includes(prefix)) { // Nordeste/Norte
       base = 29.9; days = 8;
     }
     res.json({ price: Number(base.toFixed(2)), estimated_days: days, rule: 'region_base' });
@@ -12288,7 +12288,7 @@ app.get('/api/whatsapp/config', async (req, res) => {
       FROM settings 
       WHERE key_name IN ('whatsapp_webhook_url', 'whatsapp_token', 'whatsapp_phone_id', 'whatsapp_webhook_secret', 'whatsapp_auto_reply', 'whatsapp_welcome_message')
     `);
-    
+
     const settings = {};
     settingsRows.forEach(row => {
       settings[row.key_name] = row.value_text;
@@ -12346,7 +12346,7 @@ app.put('/api/whatsapp/config', async (req, res) => {
 app.post('/api/whatsapp/test-webhook', async (req, res) => {
   try {
     const { webhook_url } = req.body;
-    
+
     if (!webhook_url) {
       return res.status(400).json({ error: 'URL do webhook é obrigatória' });
     }
@@ -12361,8 +12361,8 @@ app.post('/api/whatsapp/test-webhook', async (req, res) => {
     // Aqui você faria uma requisição real para testar o webhook
     // const response = await fetch(webhook_url, { method: 'POST', body: JSON.stringify(testData) });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Webhook testado com sucesso!',
       test_data: testData
     });
@@ -12416,7 +12416,7 @@ app.get('/api/whatsapp/stats', async (req, res) => {
 app.post('/api/whatsapp/send-message', async (req, res) => {
   try {
     const { to, message } = req.body;
-    
+
     if (!to || !message) {
       return res.status(400).json({ error: 'Número e mensagem são obrigatórios' });
     }
@@ -12424,7 +12424,7 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
     // Buscar token WhatsApp
     const [tokenRows] = await pool.execute('SELECT value_text FROM settings WHERE key_name = ?', ['whatsapp_token']);
     const [phoneIdRows] = await pool.execute('SELECT value_text FROM settings WHERE key_name = ?', ['whatsapp_phone_id']);
-    
+
     if (tokenRows.length === 0 || phoneIdRows.length === 0) {
       return res.status(400).json({ error: 'Token ou Phone ID do WhatsApp não configurados' });
     }
@@ -12453,8 +12453,8 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
 
     const result = await response.json();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Mensagem enviada com sucesso!',
       whatsapp_response: result
     });
@@ -12626,17 +12626,17 @@ app.put('/api/customers/:userId/settings/privacy', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📝 PUT /api/customers/${userId}/settings/privacy`);
-    
+
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
       if (user && user[0]) userId = user[0].id;
     }
-    
+
     const privacySettings = req.body;
-    
+
     // Verificar se já existe configuração
     const [existing] = await pool.execute('SELECT id FROM customer_settings WHERE customer_id = ?', [userId]);
-    
+
     if (existing.length > 0) {
       // Atualizar
       await pool.execute(
@@ -12650,7 +12650,7 @@ app.put('/api/customers/:userId/settings/privacy', async (req, res) => {
         [require('crypto').randomUUID(), userId, JSON.stringify(privacySettings)]
       );
     }
-    
+
     console.log(`✅ Configurações de privacidade atualizadas para ${userId}`);
     res.json({ success: true, privacy: privacySettings });
   } catch (error) {
@@ -12670,11 +12670,11 @@ app.get('/api/customers/:userId/recommendations', async (req, res) => {
     // Buscar email do usuário para recommendations
     const [userEmail] = await pool.execute('SELECT email FROM users WHERE id = ?', [userId]);
     const email = userEmail[0]?.email || null;
-    
+
     if (!email) {
       return res.json({ recommendations: [] });
     }
-    
+
     const [products] = await pool.execute('SELECT p.* FROM products p LEFT JOIN favorites f ON p.id = f.product_id AND f.user_email = ? WHERE f.id IS NULL AND p.status = "ativo" ORDER BY p.created_at DESC LIMIT 10', [email]);
     res.json({ recommendations: products });
   } catch (error) {
@@ -12753,9 +12753,9 @@ async function ensureAdminUsersTable() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
     // Garantir colunas novas em instalações antigas
-    try { await pool.execute("ALTER TABLE admin_users ADD COLUMN must_change_password TINYINT(1) DEFAULT 0"); } catch(_) {}
-    try { await pool.execute("ALTER TABLE admin_users ADD COLUMN reset_token VARCHAR(255) NULL"); } catch(_) {}
-    try { await pool.execute("ALTER TABLE admin_users ADD COLUMN reset_expires DATETIME NULL"); } catch(_) {}
+    try { await pool.execute("ALTER TABLE admin_users ADD COLUMN must_change_password TINYINT(1) DEFAULT 0"); } catch (_) { }
+    try { await pool.execute("ALTER TABLE admin_users ADD COLUMN reset_token VARCHAR(255) NULL"); } catch (_) { }
+    try { await pool.execute("ALTER TABLE admin_users ADD COLUMN reset_expires DATETIME NULL"); } catch (_) { }
     // Garantir ao menos um admin
     const [countRows] = await pool.execute('SELECT COUNT(*) AS total FROM admin_users');
     const total = countRows && countRows[0] ? (countRows[0].total ?? countRows[0]['COUNT(*)'] ?? 0) : 0;
@@ -12782,26 +12782,26 @@ app.post('/api/admin/login', async (req, res) => {
     const { email, senha, password } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
     const pass = String(password || senha || '');
-    
+
     if (!mail || !pass) {
-      return res.status(400).json({ 
-        ok: false, 
+      return res.status(400).json({
+        ok: false,
         error: 'missing_credentials',
         message: 'Email e senha são obrigatórios'
       });
     }
 
     console.log(`🔐 Tentativa de login admin: ${mail}`);
-    
+
     // Importar utilitários de segurança
     const { verifyPassword, generateAdminToken, generateRefreshToken, getSecureCookieOptions } = require('./utils/security.cjs');
-    
+
     // Garantir estrutura e buscar usuário admin
     await ensureAdminUsersTable();
     let rows;
     try {
       [rows] = await pool.execute(
-        'SELECT id, nome, email, senha_hash, role, status, permissoes FROM admin_users WHERE email = ? LIMIT 1', 
+        'SELECT id, nome, email, senha_hash, role, status, permissoes FROM admin_users WHERE email = ? LIMIT 1',
         [mail]
       );
       console.log(`🔍 Busca no banco: ${rows.length} usuário(s) encontrado(s) para ${mail}`);
@@ -12819,7 +12819,7 @@ app.post('/api/admin/login', async (req, res) => {
         throw e;
       }
     }
-    
+
     if (!Array.isArray(rows) || rows.length === 0) {
       console.log(`❌ Usuário admin não encontrado: ${mail}`);
       // Listar todos os emails de admin disponíveis para debug (apenas em desenvolvimento)
@@ -12829,20 +12829,20 @@ app.post('/api/admin/login', async (req, res) => {
       } catch (e) {
         console.log(`⚠️ Não foi possível listar admins:`, e.message);
       }
-      return res.status(401).json({ 
-        ok: false, 
+      return res.status(401).json({
+        ok: false,
         error: 'invalid_credentials',
         message: 'Email ou senha incorretos'
       });
     }
 
     const user = rows[0];
-    
+
     // Verificar se usuário está ativo
     if (user.status !== 'ativo') {
       console.log(`❌ Usuário admin inativo: ${mail}`);
-      return res.status(401).json({ 
-        ok: false, 
+      return res.status(401).json({
+        ok: false,
         error: 'account_inactive',
         message: 'Conta inativa. Entre em contato com o administrador.'
       });
@@ -12850,11 +12850,11 @@ app.post('/api/admin/login', async (req, res) => {
 
     // Verificar senha usando bcrypt (com compatibilidade SHA256)
     const senhaCorreta = await verifyPassword(pass, user.senha_hash);
-    
+
     if (!senhaCorreta) {
       console.log(`❌ Senha incorreta para: ${mail}`);
-      return res.status(401).json({ 
-        ok: false, 
+      return res.status(401).json({
+        ok: false,
         error: 'invalid_credentials',
         message: 'Email ou senha incorretos'
       });
@@ -12873,17 +12873,17 @@ app.post('/api/admin/login', async (req, res) => {
       email: user.email,
       role: user.role
     });
-    
+
     const refreshToken = generateRefreshToken({
       id: user.id,
       email: user.email
     });
-    
+
     // Salvar tokens em cookies seguros
     const cookieOptions = getSecureCookieOptions({
       maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dias
     });
-    
+
     res.cookie('admin_token', adminToken, cookieOptions);
     res.cookie('admin_refresh_token', refreshToken, getSecureCookieOptions({
       maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dias
@@ -12909,7 +12909,7 @@ app.post('/api/admin/login', async (req, res) => {
 
     console.log(`✅ Login admin bem-sucedido: ${mail} (${user.role}) - JWT gerado`);
 
-    res.json({ 
+    res.json({
       ok: true,
       user: {
         id: user.id,
@@ -12926,8 +12926,8 @@ app.post('/api/admin/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro no login admin:', { message: error?.message, code: error?.code });
-    res.status(500).json({ 
-      ok: false, 
+    res.status(500).json({
+      ok: false,
       error: 'auth_error',
       message: 'Erro interno do servidor'
     });
@@ -12948,27 +12948,27 @@ app.post('/api/admin/change-password', async (req, res) => {
   try {
     const { verifyAdminToken } = require('./utils/security.cjs');
     const { hashPassword } = require('./utils/security.cjs');
-    
+
     const token = req.cookies?.admin_token || req.headers['x-admin-token'] || req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    
+
     // Verificar token (JWT ou legado)
     const tokenData = verifyAdminToken(token);
     if (!tokenData || tokenData.expired) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
-    
+
     const userId = tokenData.legacy ? String(token).split('_').pop() : tokenData.id;
     const { new_password } = req.body || {};
-    
+
     if (!new_password || String(new_password).length < 6) {
       return res.status(400).json({ ok: false, error: 'weak_password', message: 'Senha deve ter no mínimo 6 caracteres' });
     }
-    
+
     // Gerar hash bcrypt
     const hash = await hashPassword(String(new_password));
     await pool.execute('UPDATE admin_users SET senha_hash = ?, must_change_password = 0, updated_at = NOW() WHERE id = ?', [hash, userId]);
-    
+
     console.log(`✅ Senha alterada para usuário ID: ${userId}`);
     return res.json({ ok: true, message: 'Senha alterada com sucesso' });
   } catch (e) {
@@ -13002,33 +13002,33 @@ app.post('/api/admin/forgot-password', async (req, res) => {
 app.post('/api/admin/reset-password', async (req, res) => {
   try {
     const { hashPassword } = require('./utils/security.cjs');
-    
+
     const { token, new_password } = req.body || {};
     if (!token || !new_password) {
       return res.status(400).json({ ok: false, error: 'missing_params', message: 'Token e nova senha são obrigatórios' });
     }
-    
+
     if (String(new_password).length < 6) {
       return res.status(400).json({ ok: false, error: 'weak_password', message: 'Senha deve ter no mínimo 6 caracteres' });
     }
-    
+
     const [rows] = await pool.execute('SELECT id, reset_expires FROM admin_users WHERE reset_token = ? LIMIT 1', [token]);
     if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(400).json({ ok: false, error: 'invalid_token', message: 'Token inválido' });
     }
-    
+
     const expires = rows[0].reset_expires ? new Date(rows[0].reset_expires) : null;
     if (!expires || expires.getTime() < Date.now()) {
       return res.status(400).json({ ok: false, error: 'expired_token', message: 'Token expirado' });
     }
-    
+
     // Gerar hash bcrypt
     const hash = await hashPassword(String(new_password));
     await pool.execute(
-      'UPDATE admin_users SET senha_hash = ?, must_change_password = 0, reset_token = NULL, reset_expires = NULL, updated_at = NOW() WHERE id = ?', 
+      'UPDATE admin_users SET senha_hash = ?, must_change_password = 0, reset_token = NULL, reset_expires = NULL, updated_at = NOW() WHERE id = ?',
       [hash, rows[0].id]
     );
-    
+
     console.log(`✅ Senha resetada para usuário ID: ${rows[0].id}`);
     res.json({ ok: true, message: 'Senha resetada com sucesso' });
   } catch (e) {
@@ -13067,9 +13067,9 @@ app.post('/api/admin/seed', async (req, res) => {
 app.get('/api/admin/me', async (req, res) => {
   try {
     const adminToken = req.cookies?.admin_token || req.headers['x-admin-token'];
-    
+
     if (!adminToken || !adminToken.startsWith('admin_token_')) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         authenticated: false,
         message: 'Token de admin não encontrado'
       });
@@ -13077,9 +13077,9 @@ app.get('/api/admin/me', async (req, res) => {
 
     // Extrair ID do usuário do token
     const userId = adminToken.split('_')[2];
-    
+
     if (!userId) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         authenticated: false,
         message: 'Token inválido'
       });
@@ -13092,14 +13092,14 @@ app.get('/api/admin/me', async (req, res) => {
     );
 
     if (!Array.isArray(rows) || rows.length === 0) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         authenticated: false,
         message: 'Usuário não encontrado ou inativo'
       });
     }
 
     const user = rows[0];
-    
+
     res.json({
       authenticated: true,
       user: {
@@ -13113,7 +13113,7 @@ app.get('/api/admin/me', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro ao verificar sessão admin:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       authenticated: false,
       message: 'Erro interno do servidor'
     });
@@ -13127,7 +13127,7 @@ app.post('/api/admin/logout', async (req, res) => {
     res.json({ ok: true, message: 'Logout realizado com sucesso' });
   } catch (error) {
     console.error('❌ Erro no logout admin:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       ok: false,
       message: 'Erro interno do servidor'
     });
@@ -13145,77 +13145,77 @@ app.get('/api/admin/analytics/dashboard', authenticateAdmin, async (req, res) =>
     const cacheHelpers = require('./utils/cacheHelpers.cjs');
     const period = req.query.period || '30';
     const cached = await cacheHelpers.getCachedDashboardStats(period);
-    
+
     if (cached) {
       console.log('✅ Dashboard stats do cache');
       return res.json(cached);
     }
-    
+
     console.log('📊 Buscando métricas do dashboard...');
-    
+
     // Data de hoje e ontem
     const hoje = new Date().toISOString().split('T')[0];
     const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
+
     // Vendas de hoje vs ontem
     const [vendasHoje] = await pool.execute(`
       SELECT COALESCE(SUM(total), 0) as total_hoje
       FROM orders 
       WHERE DATE(created_at) = ? AND status NOT IN ('cancelado', 'rejeitado')
     `, [hoje]);
-    
+
     const [vendasOntem] = await pool.execute(`
       SELECT COALESCE(SUM(total), 0) as total_ontem
       FROM orders 
       WHERE DATE(created_at) = ? AND status NOT IN ('cancelado', 'rejeitado')
     `, [ontem]);
-    
+
     // Novos clientes hoje vs ontem
     const [clientesHoje] = await pool.execute(`
       SELECT COUNT(*) as total_hoje
       FROM users 
       WHERE DATE(created_at) = ?
     `, [hoje]);
-    
+
     const [clientesOntem] = await pool.execute(`
       SELECT COUNT(*) as total_ontem
       FROM users 
       WHERE DATE(created_at) = ?
     `, [ontem]);
-    
+
     // Pedidos hoje vs ontem
     const [pedidosHoje] = await pool.execute(`
       SELECT COUNT(*) as total_hoje
       FROM orders 
       WHERE DATE(created_at) = ? AND status NOT IN ('cancelado', 'rejeitado')
     `, [hoje]);
-    
+
     const [pedidosOntem] = await pool.execute(`
       SELECT COUNT(*) as total_ontem
       FROM orders 
       WHERE DATE(created_at) = ? AND status NOT IN ('cancelado', 'rejeitado')
     `, [ontem]);
-    
+
     // Produtos com baixo estoque
     const [baixoEstoque] = await pool.execute(`
       SELECT COUNT(*) as total
       FROM produtos 
       WHERE estoque <= 5 AND status = 'ativo'
     `);
-    
+
     // Calcular variações percentuais
     const vendasHojeVal = parseFloat(vendasHoje[0]?.total_hoje || 0);
     const vendasOntemVal = parseFloat(vendasOntem[0]?.total_ontem || 0);
     const variacaoVendas = vendasOntemVal > 0 ? ((vendasHojeVal - vendasOntemVal) / vendasOntemVal * 100) : 0;
-    
+
     const clientesHojeVal = parseInt(clientesHoje[0]?.total_hoje || 0);
     const clientesOntemVal = parseInt(clientesOntem[0]?.total_ontem || 0);
     const variacaoClientes = clientesOntemVal > 0 ? ((clientesHojeVal - clientesOntemVal) / clientesOntemVal * 100) : 0;
-    
+
     const pedidosHojeVal = parseInt(pedidosHoje[0]?.total_hoje || 0);
     const pedidosOntemVal = parseInt(pedidosOntem[0]?.total_ontem || 0);
     const variacaoPedidos = pedidosOntemVal > 0 ? ((pedidosHojeVal - pedidosOntemVal) / pedidosOntemVal * 100) : 0;
-    
+
     // Buscar totais gerais
     const [totalStats] = await pool.execute(`
       SELECT 
@@ -13225,18 +13225,18 @@ app.get('/api/admin/analytics/dashboard', authenticateAdmin, async (req, res) =>
         COUNT(DISTINCT o.user_id) as total_clientes
       FROM orders o
     `);
-    
+
     const [produtosStats] = await pool.execute(`
       SELECT COUNT(*) as total FROM produtos WHERE status = 'ativo'
     `);
-    
+
     const stats = totalStats[0] || {};
     const totalProdutos = parseInt(produtosStats[0]?.total || 0);
     const receitaTotal = parseFloat(stats.receita_total || 0);
     const ticketMedio = parseFloat(stats.ticket_medio || 0);
     const totalClientes = parseInt(stats.total_clientes || 0);
     const totalPedidos = parseInt(stats.total_pedidos || 0);
-    
+
     const dashboard = {
       vendas: {
         hoje: vendasHojeVal,
@@ -13275,13 +13275,13 @@ app.get('/api/admin/analytics/dashboard', authenticateAdmin, async (req, res) =>
       aovChange: 0,
       conversionChange: 0
     };
-    
+
     // Cachear resultado
     await cacheHelpers.setCachedDashboardStats(period, dashboard);
-    
+
     console.log('✅ Métricas do dashboard carregadas');
     res.json(dashboard);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar métricas do dashboard:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13292,7 +13292,7 @@ app.get('/api/admin/analytics/dashboard', authenticateAdmin, async (req, res) =>
 app.get('/api/admin/analytics/vendas', authenticateAdmin, async (req, res) => {
   try {
     console.log('📈 Buscando dados de vendas...');
-    
+
     const [vendasData] = await pool.execute(`
       SELECT 
         DATE(created_at) as data,
@@ -13304,10 +13304,10 @@ app.get('/api/admin/analytics/vendas', authenticateAdmin, async (req, res) => {
       GROUP BY DATE(created_at)
       ORDER BY data ASC
     `);
-    
+
     console.log(`✅ ${vendasData.length} dias de vendas carregados`);
     res.json(vendasData);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar dados de vendas:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13318,7 +13318,7 @@ app.get('/api/admin/analytics/vendas', authenticateAdmin, async (req, res) => {
 app.get('/api/admin/analytics/produtos-populares', authenticateAdmin, async (req, res) => {
   try {
     console.log('🏆 Buscando produtos populares...');
-    
+
     // Query corrigida para evitar problemas de collation
     const [produtosData] = await pool.execute(`
       SELECT 
@@ -13337,14 +13337,14 @@ app.get('/api/admin/analytics/produtos-populares', authenticateAdmin, async (req
       ORDER BY vendas DESC, quantidade_vendida DESC
       LIMIT 10
     `);
-    
+
     console.log(`✅ ${produtosData.length} produtos populares carregados`);
     res.json(produtosData);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar produtos populares:', error);
     console.error('Detalhes:', error.message);
-    
+
     // Fallback: retornar produtos sem dados de vendas se houver erro
     try {
       console.log('🔄 Tentando fallback sem JOIN...');
@@ -13361,7 +13361,7 @@ app.get('/api/admin/analytics/produtos-populares', authenticateAdmin, async (req
         ORDER BY nome
         LIMIT 10
       `);
-      
+
       console.log(`✅ ${produtosFallback.length} produtos carregados (fallback)`);
       res.json(produtosFallback);
     } catch (fallbackError) {
@@ -13375,7 +13375,7 @@ app.get('/api/admin/analytics/produtos-populares', authenticateAdmin, async (req
 app.get('/api/admin/analytics/vendas-por-periodo', authenticateAdmin, async (req, res) => {
   try {
     console.log('📈 Buscando vendas por período...');
-    
+
     // Query simplificada para evitar problemas de colunas
     const [vendasData] = await pool.execute(`
       SELECT 
@@ -13388,17 +13388,17 @@ app.get('/api/admin/analytics/vendas-por-periodo', authenticateAdmin, async (req
       GROUP BY DATE(created_at)
       ORDER BY data DESC
     `);
-    
+
     console.log(`✅ Vendas por período carregadas: ${vendasData.length} dias`);
     res.json({
       success: true,
       vendas_7_dias: vendasData,
       vendas_30_dias: [] // Simplificado por enquanto
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar vendas por período:', error);
-    
+
     // Fallback: retornar dados básicos
     try {
       const [fallbackData] = await pool.execute(`
@@ -13407,7 +13407,7 @@ app.get('/api/admin/analytics/vendas-por-periodo', authenticateAdmin, async (req
           0 as total_pedidos,
           0 as total_vendas
       `);
-      
+
       res.json({
         success: true,
         vendas_7_dias: fallbackData,
@@ -13423,7 +13423,7 @@ app.get('/api/admin/analytics/vendas-por-periodo', authenticateAdmin, async (req
 app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, res) => {
   try {
     console.log('📦 Buscando pedidos recentes...');
-    
+
     const [pedidosData] = await pool.execute(`
       SELECT 
         o.id,
@@ -13439,10 +13439,10 @@ app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, 
       ORDER BY o.created_at DESC
       LIMIT 10
     `);
-    
+
     console.log(`✅ ${pedidosData.length} pedidos recentes carregados`);
     res.json(pedidosData);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar pedidos recentes:', error);
     console.error('Detalhes:', error.message);
@@ -13455,26 +13455,26 @@ app.get('/api/admin/analytics/pedidos-recentes', authenticateAdmin, async (req, 
 app.get('/api/admin/analytics/estatisticas-gerais', authenticateAdmin, async (req, res) => {
   try {
     console.log('📊 Buscando estatísticas gerais...');
-    
+
     // Total de produtos
     const [totalProdutos] = await pool.execute('SELECT COUNT(*) as total FROM products WHERE status = "ativo"');
-    
+
     // Total de pedidos
     const [totalPedidos] = await pool.execute('SELECT COUNT(*) as total FROM orders WHERE status NOT IN ("cancelado", "rejeitado")');
-    
+
     // Total de clientes
     const [totalClientes] = await pool.execute('SELECT COUNT(*) as total FROM users');
-    
+
     // Receita total
     const [receitaTotal] = await pool.execute('SELECT COALESCE(SUM(total), 0) as total FROM orders WHERE status NOT IN ("cancelado", "rejeitado")');
-    
+
     // Ticket médio
     const [ticketMedio] = await pool.execute(`
       SELECT COALESCE(AVG(total), 0) as media 
       FROM orders 
       WHERE status NOT IN ("cancelado", "rejeitado")
     `);
-    
+
     // Produtos mais vendidos (top 3)
     const [topProdutos] = await pool.execute(`
       SELECT 
@@ -13488,7 +13488,7 @@ app.get('/api/admin/analytics/estatisticas-gerais', authenticateAdmin, async (re
       ORDER BY quantidade DESC
       LIMIT 3
     `);
-    
+
     const estatisticas = {
       produtos: {
         total: parseInt(totalProdutos[0]?.total || 0),
@@ -13507,10 +13507,10 @@ app.get('/api/admin/analytics/estatisticas-gerais', authenticateAdmin, async (re
         quantidade: parseInt(p.quantidade || 0)
       }))
     };
-    
+
     console.log('✅ Estatísticas gerais carregadas');
     res.json(estatisticas);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar estatísticas gerais:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13529,7 +13529,7 @@ app.get('/api/blog/posts', async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
     const destaque = req.query.destaque;
-    
+
     let query = `
       SELECT 
         id, titulo, slug, resumo, categoria, imagem_url, imagem_destaque,
@@ -13539,20 +13539,20 @@ app.get('/api/blog/posts', async (req, res) => {
       WHERE status = ?
     `;
     const params = [status];
-    
+
     if (categoria) {
       query += ' AND categoria = ?';
       params.push(categoria);
     }
-    
+
     if (destaque === 'true') {
       query += ' AND destaque = 1';
     }
-    
+
     query += ` ORDER BY publicado_em DESC, created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-    
+
     const [posts] = await pool.execute(query, params);
-    
+
     // Parse tags JSON com tratamento de erro
     const postsFormatted = posts.map(post => {
       let tags = [];
@@ -13564,17 +13564,17 @@ app.get('/api/blog/posts', async (req, res) => {
         console.error('Erro ao parsear tags:', e);
         tags = [];
       }
-      
+
       return {
         ...post,
         tags,
         destaque: Boolean(post.destaque)
       };
     });
-    
+
     console.log(`✅ ${postsFormatted.length} posts carregados`);
     res.json(postsFormatted);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar posts:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13585,9 +13585,9 @@ app.get('/api/blog/posts', async (req, res) => {
 app.get('/api/blog/posts/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    
+
     console.log(`📰 Buscando post com slug: ${slug}`);
-    
+
     const [posts] = await pool.execute(
       `SELECT 
         id, titulo, slug, resumo, conteudo, categoria, imagem_url, imagem_destaque,
@@ -13598,12 +13598,12 @@ app.get('/api/blog/posts/:slug', async (req, res) => {
       WHERE slug = ? AND status = 'publicado'`,
       [slug]
     );
-    
+
     if (!posts || posts.length === 0) {
       console.log(`❌ Post não encontrado: ${slug}`);
       return res.status(404).json({ error: 'Post não encontrado' });
     }
-    
+
     let tags = [];
     try {
       if (posts[0].tags) {
@@ -13612,22 +13612,22 @@ app.get('/api/blog/posts/:slug', async (req, res) => {
     } catch (e) {
       console.error('Erro ao parsear tags:', e);
     }
-    
+
     const post = {
       ...posts[0],
       tags,
       destaque: Boolean(posts[0].destaque)
     };
-    
+
     // Incrementar visualizações
     await pool.execute(
       'UPDATE blog_posts SET visualizacoes = visualizacoes + 1 WHERE id = ?',
       [post.id]
     );
-    
+
     console.log(`✅ Post "${post.titulo}" carregado (${post.visualizacoes + 1} visualizações)`);
     res.json(post);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar post:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13646,9 +13646,9 @@ app.get('/api/blog/categorias', async (req, res) => {
       GROUP BY categoria
       ORDER BY total DESC
     `);
-    
+
     res.json(categorias);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar categorias:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13663,7 +13663,7 @@ app.get('/api/blog/categorias', async (req, res) => {
 app.get('/api/admin/blog/posts', async (req, res) => {
   try {
     const { status, categoria, busca } = req.query;
-    
+
     let query = `
       SELECT 
         id, titulo, slug, resumo, categoria, imagem_url,
@@ -13673,35 +13673,35 @@ app.get('/api/admin/blog/posts', async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
-    
+
     if (status) {
       query += ' AND status = ?';
       params.push(status);
     }
-    
+
     if (categoria) {
       query += ' AND categoria = ?';
       params.push(categoria);
     }
-    
+
     if (busca) {
       query += ' AND (titulo LIKE ? OR resumo LIKE ? OR conteudo LIKE ?)';
       const searchTerm = `%${busca}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
-    
+
     query += ' ORDER BY created_at DESC';
-    
+
     const [posts] = await pool.execute(query, params);
-    
+
     const postsFormatted = posts.map(post => ({
       ...post,
       destaque: Boolean(post.destaque)
     }));
-    
+
     console.log(`✅ ${postsFormatted.length} posts admin carregados`);
     res.json(postsFormatted);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar posts admin:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13712,16 +13712,16 @@ app.get('/api/admin/blog/posts', async (req, res) => {
 app.get('/api/admin/blog/posts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [posts] = await pool.execute(
       `SELECT * FROM blog_posts WHERE id = ?`,
       [id]
     );
-    
+
     if (posts.length === 0) {
       return res.status(404).json({ error: 'Post não encontrado' });
     }
-    
+
     let tags = [];
     try {
       if (posts[0].tags) {
@@ -13730,15 +13730,15 @@ app.get('/api/admin/blog/posts/:id', async (req, res) => {
     } catch (e) {
       console.error('Erro ao parsear tags:', e);
     }
-    
+
     const post = {
       ...posts[0],
       tags,
       destaque: Boolean(posts[0].destaque)
     };
-    
+
     res.json(post);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar post admin:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13764,15 +13764,15 @@ app.post('/api/admin/blog/posts', async (req, res) => {
       tags = [],
       publicado_em
     } = req.body;
-    
+
     if (!titulo || !resumo || !conteudo) {
       return res.status(400).json({ error: 'Título, resumo e conteúdo são obrigatórios' });
     }
-    
+
     // Validar URLs de imagens antes de salvar
     let validImagemUrl = null;
     let validImagemDestaque = null;
-    
+
     if (imagem_url) {
       if (imageExists(imagem_url)) {
         validImagemUrl = imagem_url;
@@ -13780,7 +13780,7 @@ app.post('/api/admin/blog/posts', async (req, res) => {
         console.warn(`⚠️ Imagem URL não encontrada: ${imagem_url} - será ignorada`);
       }
     }
-    
+
     if (imagem_destaque) {
       if (imageExists(imagem_destaque)) {
         validImagemDestaque = imagem_destaque;
@@ -13788,7 +13788,7 @@ app.post('/api/admin/blog/posts', async (req, res) => {
         console.warn(`⚠️ Imagem destaque não encontrada: ${imagem_destaque} - será ignorada`);
       }
     }
-    
+
     // Gerar slug se não fornecido
     const finalSlug = slug || titulo.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
@@ -13796,9 +13796,9 @@ app.post('/api/admin/blog/posts', async (req, res) => {
       .replace(/\s+/g, '-') // Substitui espaços por hífens
       .replace(/-+/g, '-') // Remove hífens duplicados
       .trim();
-    
+
     const newId = require('crypto').randomUUID();
-    
+
     const [result] = await pool.execute(
       `INSERT INTO blog_posts (
         id, titulo, slug, resumo, conteudo, categoria,
@@ -13812,15 +13812,15 @@ app.post('/api/admin/blog/posts', async (req, res) => {
         publicado_em || (status === 'publicado' ? new Date() : null)
       ]
     );
-    
+
     console.log(`✅ Post criado: ${titulo}`);
-    res.status(201).json({ 
+    res.status(201).json({
       id: newId,
       titulo,
       slug: finalSlug,
       message: 'Post criado com sucesso'
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao criar post:', error);
     if (error.code === 'ER_DUP_ENTRY') {
@@ -13837,29 +13837,29 @@ app.post('/api/admin/blog/clean-broken-images', async (req, res) => {
     const [posts] = await pool.execute(
       'SELECT id, titulo, imagem_url, imagem_destaque FROM blog_posts WHERE imagem_url IS NOT NULL OR imagem_destaque IS NOT NULL'
     );
-    
+
     let cleaned = 0;
     let errors = [];
-    
+
     for (const post of posts) {
       let needsUpdate = false;
       let newImagemUrl = post.imagem_url;
       let newImagemDestaque = post.imagem_destaque;
-      
+
       // Verificar imagem_url
       if (post.imagem_url && !imageExists(post.imagem_url)) {
         console.warn(`⚠️ Limpando imagem quebrada: ${post.imagem_url} (post: ${post.titulo})`);
         newImagemUrl = null;
         needsUpdate = true;
       }
-      
+
       // Verificar imagem_destaque
       if (post.imagem_destaque && !imageExists(post.imagem_destaque)) {
         console.warn(`⚠️ Limpando imagem destaque quebrada: ${post.imagem_destaque} (post: ${post.titulo})`);
         newImagemDestaque = null;
         needsUpdate = true;
       }
-      
+
       if (needsUpdate) {
         try {
           await pool.execute(
@@ -13872,7 +13872,7 @@ app.post('/api/admin/blog/clean-broken-images', async (req, res) => {
         }
       }
     }
-    
+
     res.json({
       success: true,
       total: posts.length,
@@ -13880,7 +13880,7 @@ app.post('/api/admin/blog/clean-broken-images', async (req, res) => {
       errors: errors.length > 0 ? errors : undefined,
       message: `${cleaned} post(s) limpo(s) com sucesso`
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao limpar imagens quebradas:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -13891,11 +13891,11 @@ app.post('/api/admin/blog/clean-broken-images', async (req, res) => {
 app.put('/api/admin/blog/posts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Validar URLs de imagens antes de atualizar
     let validImagemUrl = undefined; // undefined = não alterar, null = limpar, string = atualizar
     let validImagemDestaque = undefined;
-    
+
     if (req.body.imagem_url !== undefined) {
       if (req.body.imagem_url && imageExists(req.body.imagem_url)) {
         validImagemUrl = req.body.imagem_url;
@@ -13906,7 +13906,7 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
         validImagemUrl = null; // Permite limpar a imagem (string vazia)
       }
     }
-    
+
     if (req.body.imagem_destaque !== undefined) {
       if (req.body.imagem_destaque && imageExists(req.body.imagem_destaque)) {
         validImagemDestaque = req.body.imagem_destaque;
@@ -13933,14 +13933,14 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
       tags,
       publicado_em
     } = req.body;
-    
+
     // Converter undefined para null
     const tagsValue = tags !== undefined ? (Array.isArray(tags) ? JSON.stringify(tags) : tags) : null;
-    
+
     // Construir query UPDATE dinamicamente
     const updateFields = [];
     const updateValues = [];
-    
+
     if (titulo !== undefined) { updateFields.push('titulo = ?'); updateValues.push(titulo); }
     if (slug !== undefined) { updateFields.push('slug = ?'); updateValues.push(slug); }
     if (resumo !== undefined) { updateFields.push('resumo = ?'); updateValues.push(resumo); }
@@ -13955,22 +13955,22 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
     if (status !== undefined) { updateFields.push('status = ?'); updateValues.push(status); }
     if (tags !== undefined) { updateFields.push('tags = ?'); updateValues.push(tagsValue); }
     if (publicado_em !== undefined) { updateFields.push('publicado_em = ?'); updateValues.push(publicado_em); }
-    
+
     updateFields.push('updated_at = NOW()');
     updateValues.push(id);
-    
+
     const [result] = await pool.execute(
       `UPDATE blog_posts SET ${updateFields.join(', ')} WHERE id = ?`,
       updateValues
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Post não encontrado' });
     }
-    
+
     console.log(`✅ Post atualizado: ${id}`);
     res.json({ message: 'Post atualizado com sucesso' });
-    
+
   } catch (error) {
     console.error('❌ Erro ao atualizar post:', error);
     if (error.code === 'ER_DUP_ENTRY') {
@@ -13984,19 +13984,19 @@ app.put('/api/admin/blog/posts/:id', async (req, res) => {
 app.delete('/api/admin/blog/posts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [result] = await pool.execute(
       'DELETE FROM blog_posts WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Post não encontrado' });
     }
-    
+
     console.log(`✅ Post deletado: ${id}`);
     res.json({ message: 'Post deletado com sucesso' });
-    
+
   } catch (error) {
     console.error('❌ Erro ao deletar post:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14008,25 +14008,25 @@ app.patch('/api/admin/blog/posts/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    
+
     if (!['publicado', 'rascunho', 'arquivado'].includes(status)) {
       return res.status(400).json({ error: 'Status inválido' });
     }
-    
+
     const publicado_em = status === 'publicado' ? new Date() : null;
-    
+
     const [result] = await pool.execute(
       'UPDATE blog_posts SET status = ?, publicado_em = COALESCE(publicado_em, ?), updated_at = NOW() WHERE id = ?',
       [status, publicado_em, id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Post não encontrado' });
     }
-    
+
     console.log(`✅ Status do post alterado para: ${status}`);
     res.json({ message: 'Status atualizado com sucesso', status });
-    
+
   } catch (error) {
     console.error('❌ Erro ao alterar status:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14044,7 +14044,7 @@ app.get('/api/marketplace/sellers', async (req, res) => {
     const destaque = req.query.destaque;
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    
+
     let query = `
       SELECT 
         id, nome, slug, descricao, especialidade, categoria,
@@ -14056,32 +14056,32 @@ app.get('/api/marketplace/sellers', async (req, res) => {
       WHERE ativo = 1
     `;
     const params = [];
-    
+
     if (categoria && categoria !== 'todos') {
       query += ' AND categoria = ?';
       params.push(categoria);
     }
-    
+
     if (destaque === 'true') {
       query += ' AND destaque = 1';
     }
-    
+
     query += ` ORDER BY destaque DESC, avaliacao DESC, total_vendas DESC LIMIT ${limit} OFFSET ${offset}`;
-    
+
     const [sellers] = await pool.execute(query, params);
-    
+
     // Parse JSON fields
     const sellersFormatted = sellers.map(seller => {
       let tags = [];
       let certificacoes = [];
-      
+
       try {
         if (seller.tags) tags = typeof seller.tags === 'string' ? JSON.parse(seller.tags) : seller.tags;
         if (seller.certificacoes) certificacoes = typeof seller.certificacoes === 'string' ? JSON.parse(seller.certificacoes) : seller.certificacoes;
       } catch (e) {
         console.error('Erro ao parsear JSON:', e);
       }
-      
+
       return {
         ...seller,
         tags,
@@ -14091,10 +14091,10 @@ app.get('/api/marketplace/sellers', async (req, res) => {
         avaliacao: parseFloat(seller.avaliacao || 0)
       };
     });
-    
+
     console.log(`✅ ${sellersFormatted.length} vendedores carregados`);
     res.json(sellersFormatted);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar vendedores:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14105,26 +14105,26 @@ app.get('/api/marketplace/sellers', async (req, res) => {
 app.get('/api/marketplace/sellers/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    
+
     const [sellers] = await pool.execute(
       `SELECT * FROM marketplace_sellers WHERE slug = ? AND ativo = 1`,
       [slug]
     );
-    
+
     if (!sellers || sellers.length === 0) {
       return res.status(404).json({ error: 'Vendedor não encontrado' });
     }
-    
+
     let tags = [];
     let certificacoes = [];
-    
+
     try {
       if (sellers[0].tags) tags = typeof sellers[0].tags === 'string' ? JSON.parse(sellers[0].tags) : sellers[0].tags;
       if (sellers[0].certificacoes) certificacoes = typeof sellers[0].certificacoes === 'string' ? JSON.parse(sellers[0].certificacoes) : sellers[0].certificacoes;
     } catch (e) {
       console.error('Erro ao parsear JSON:', e);
     }
-    
+
     const seller = {
       ...sellers[0],
       tags,
@@ -14134,10 +14134,10 @@ app.get('/api/marketplace/sellers/:slug', async (req, res) => {
       ativo: Boolean(sellers[0].ativo),
       avaliacao: parseFloat(sellers[0].avaliacao || 0)
     };
-    
+
     console.log(`✅ Vendedor "${seller.nome}" carregado`);
     res.json(seller);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar vendedor:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14156,9 +14156,9 @@ app.get('/api/marketplace/categorias', async (req, res) => {
       GROUP BY categoria
       ORDER BY total DESC
     `);
-    
+
     res.json(categorias);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar categorias:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14187,10 +14187,10 @@ app.get('/api/admin/marketplace/sellers', async (req, res) => {
   if (!isAdminRequest(req)) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
   }
-  
+
   try {
     const { categoria, busca, ativo } = req.query;
-    
+
     let query = `
       SELECT 
         id, nome, slug, descricao, especialidade, categoria,
@@ -14200,27 +14200,27 @@ app.get('/api/admin/marketplace/sellers', async (req, res) => {
       WHERE 1=1
     `;
     const params = [];
-    
+
     if (categoria && categoria !== 'todos') {
       query += ' AND categoria = ?';
       params.push(categoria);
     }
-    
+
     if (ativo !== undefined) {
       query += ' AND ativo = ?';
       params.push(ativo === 'true' ? 1 : 0);
     }
-    
+
     if (busca) {
       query += ' AND (nome LIKE ? OR descricao LIKE ? OR especialidade LIKE ?)';
       const searchTerm = `%${busca}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
-    
+
     query += ' ORDER BY created_at DESC';
-    
+
     const [sellers] = await pool.execute(query, params);
-    
+
     const sellersFormatted = sellers.map(seller => ({
       ...seller,
       destaque: Boolean(seller.destaque),
@@ -14228,10 +14228,10 @@ app.get('/api/admin/marketplace/sellers', async (req, res) => {
       ativo: Boolean(seller.ativo),
       avaliacao: parseFloat(seller.avaliacao || 0)
     }));
-    
+
     console.log(`✅ ${sellersFormatted.length} vendedores admin carregados`);
     res.json(sellersFormatted);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar vendedores admin:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14244,29 +14244,29 @@ app.get('/api/admin/marketplace/sellers/:id', async (req, res) => {
   if (!isAdminRequest(req)) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
   }
-  
+
   try {
     const { id } = req.params;
-    
+
     const [sellers] = await pool.execute(
       `SELECT * FROM marketplace_sellers WHERE id = ?`,
       [id]
     );
-    
+
     if (sellers.length === 0) {
       return res.status(404).json({ error: 'Vendedor não encontrado' });
     }
-    
+
     let tags = [];
     let certificacoes = [];
-    
+
     try {
       if (sellers[0].tags) tags = typeof sellers[0].tags === 'string' ? JSON.parse(sellers[0].tags) : sellers[0].tags;
       if (sellers[0].certificacoes) certificacoes = typeof sellers[0].certificacoes === 'string' ? JSON.parse(sellers[0].certificacoes) : sellers[0].certificacoes;
     } catch (e) {
       console.error('Erro ao parsear JSON:', e);
     }
-    
+
     const seller = {
       ...sellers[0],
       tags,
@@ -14276,9 +14276,9 @@ app.get('/api/admin/marketplace/sellers/:id', async (req, res) => {
       ativo: Boolean(sellers[0].ativo),
       avaliacao: parseFloat(sellers[0].avaliacao || 0)
     };
-    
+
     res.json(seller);
-    
+
   } catch (error) {
     console.error('❌ Erro ao buscar vendedor admin:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14290,15 +14290,15 @@ app.get('/api/admin/marketplace/sellers/structure', async (req, res) => {
   if (!isAdminRequest(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
+
   try {
     const [columns] = await pool.execute('DESCRIBE marketplace_sellers');
     res.json({ columns, count: columns.length });
   } catch (error) {
-    res.status(500).json({ 
-      error: error.message, 
+    res.status(500).json({
+      error: error.message,
       code: error.code,
-      sqlMessage: error.sqlMessage 
+      sqlMessage: error.sqlMessage
     });
   }
 });
@@ -14309,7 +14309,7 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
   if (!isAdminRequest(req)) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
   }
-  
+
   try {
     const {
       nome,
@@ -14338,11 +14338,11 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
       tags = [],
       certificacoes = []
     } = req.body;
-    
+
     if (!nome || !descricao || !categoria) {
       return res.status(400).json({ error: 'Nome, descrição e categoria são obrigatórios' });
     }
-    
+
     // Gerar slug se não fornecido
     const finalSlug = slug || nome.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -14350,9 +14350,9 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim();
-    
+
     const newId = require('crypto').randomUUID();
-    
+
     // Campos que realmente existem na tabela (baseado no SELECT)
     // Removendo: email, telefone, whatsapp, instagram, website, politica_troca, politica_envio, horario_atendimento
     const [result] = await pool.execute(
@@ -14369,15 +14369,15 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
         JSON.stringify(tags || []), JSON.stringify(certificacoes || [])
       ]
     );
-    
+
     console.log(`✅ Vendedor criado: ${nome}`);
-    res.status(201).json({ 
+    res.status(201).json({
       id: newId,
       nome,
       slug: finalSlug,
       message: 'Vendedor criado com sucesso'
     });
-    
+
   } catch (error) {
     console.error('❌ Erro ao criar vendedor:', error);
     console.error('❌ Stack trace:', error.stack);
@@ -14385,33 +14385,33 @@ app.post('/api/admin/marketplace/sellers', async (req, res) => {
     console.error('❌ SQL Message:', error.sqlMessage);
     console.error('❌ Error Code:', error.code);
     console.error('❌ SQL State:', error.sqlState);
-    
+
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Já existe um vendedor com este slug' });
     }
-    
+
     if (error.code === 'ER_NO_SUCH_TABLE') {
-      return res.status(500).json({ 
-        error: 'Tabela não encontrada', 
-        message: 'A tabela marketplace_sellers não existe. Execute a migração do banco de dados.' 
+      return res.status(500).json({
+        error: 'Tabela não encontrada',
+        message: 'A tabela marketplace_sellers não existe. Execute a migração do banco de dados.'
       });
     }
-    
+
     if (error.code === 'ER_BAD_FIELD_ERROR') {
       const fieldMatch = error.sqlMessage?.match(/Unknown column ['"]([^'"]+)['"]/i);
       const fieldName = fieldMatch ? fieldMatch[1] : 'desconhecido';
       console.error(`❌ Campo inválido identificado: ${fieldName}`);
       console.error(`❌ SQL completo: ${error.sql}`);
-      return res.status(500).json({ 
-        error: 'Campo inválido', 
+      return res.status(500).json({
+        error: 'Campo inválido',
         message: `Campo não encontrado na tabela: ${fieldName}`,
         field: fieldName,
         sqlMessage: error.sqlMessage
       });
     }
-    
-    res.status(500).json({ 
-      error: 'Erro interno do servidor', 
+
+    res.status(500).json({
+      error: 'Erro interno do servidor',
       message: error?.message || 'Erro desconhecido',
       code: error?.code,
       sqlState: error?.sqlState,
@@ -14426,7 +14426,7 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
   if (!isAdminRequest(req)) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
   }
-  
+
   try {
     const { id } = req.params;
     const {
@@ -14437,7 +14437,7 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
       politica_troca, politica_envio, horario_atendimento,
       tags, certificacoes
     } = req.body;
-    
+
     // Gerar slug se não fornecido
     const finalSlug = slug || nome.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -14445,7 +14445,7 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim();
-    
+
     // Campos que realmente existem na tabela (mesmos do INSERT)
     // Removendo: email, telefone, whatsapp, instagram, website, politica_troca, politica_envio, horario_atendimento
     const [result] = await pool.execute(
@@ -14463,14 +14463,14 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
         id
       ]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Vendedor não encontrado' });
     }
-    
+
     console.log(`✅ Vendedor atualizado: ${id}`);
     res.json({ message: 'Vendedor atualizado com sucesso' });
-    
+
   } catch (error) {
     console.error('❌ Erro ao atualizar vendedor:', error);
     console.error('❌ Stack trace:', error.stack);
@@ -14478,26 +14478,26 @@ app.put('/api/admin/marketplace/sellers/:id', async (req, res) => {
     console.error('❌ SQL Message:', error.sqlMessage);
     console.error('❌ Error Code:', error.code);
     console.error('❌ SQL State:', error.sqlState);
-    
+
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'Já existe um vendedor com este slug' });
     }
-    
+
     if (error.code === 'ER_BAD_FIELD_ERROR') {
       const fieldMatch = error.sqlMessage?.match(/Unknown column ['"]([^'"]+)['"]/i);
       const fieldName = fieldMatch ? fieldMatch[1] : 'desconhecido';
       console.error(`❌ Campo inválido identificado: ${fieldName}`);
       console.error(`❌ SQL completo: ${error.sql}`);
-      return res.status(500).json({ 
-        error: 'Campo inválido', 
+      return res.status(500).json({
+        error: 'Campo inválido',
         message: `Campo não encontrado na tabela: ${fieldName}`,
         field: fieldName,
         sqlMessage: error.sqlMessage
       });
     }
-    
-    res.status(500).json({ 
-      error: 'Erro interno do servidor', 
+
+    res.status(500).json({
+      error: 'Erro interno do servidor',
       message: error?.message || 'Erro desconhecido',
       code: error?.code,
       sqlState: error?.sqlState,
@@ -14512,22 +14512,22 @@ app.delete('/api/admin/marketplace/sellers/:id', async (req, res) => {
   if (!isAdminRequest(req)) {
     return res.status(401).json({ error: 'Unauthorized', message: 'Acesso negado. Faça login como administrador.' });
   }
-  
+
   try {
     const { id } = req.params;
-    
+
     const [result] = await pool.execute(
       'DELETE FROM marketplace_sellers WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Vendedor não encontrado' });
     }
-    
+
     console.log(`✅ Vendedor deletado: ${id}`);
     res.json({ message: 'Vendedor deletado com sucesso' });
-    
+
   } catch (error) {
     console.error('❌ Erro ao deletar vendedor:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14539,23 +14539,23 @@ app.patch('/api/admin/marketplace/sellers/:id/toggle', async (req, res) => {
   try {
     const { id } = req.params;
     const { field, value } = req.body;
-    
+
     if (!['ativo', 'destaque', 'verificado'].includes(field)) {
       return res.status(400).json({ error: 'Campo inválido' });
     }
-    
+
     const [result] = await pool.execute(
       `UPDATE marketplace_sellers SET ${field} = ?, updated_at = NOW() WHERE id = ?`,
       [value ? 1 : 0, id]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Vendedor não encontrado' });
     }
-    
+
     console.log(`✅ ${field} do vendedor alterado para: ${value}`);
     res.json({ message: `${field} atualizado com sucesso`, [field]: value });
-    
+
   } catch (error) {
     console.error('❌ Erro ao alternar status:', error);
     res.status(500).json({ error: 'Erro interno do servidor', message: error?.message });
@@ -14593,11 +14593,11 @@ app.get('/api/admin/usuarios/:id', async (req, res) => {
        WHERE id = ?`,
       [id]
     );
-    
+
     if (usuarios.length === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
     res.json(usuarios[0]);
   } catch (error) {
     console.error('❌ Erro ao buscar usuário:', error);
@@ -14609,26 +14609,26 @@ app.get('/api/admin/usuarios/:id', async (req, res) => {
 app.post('/api/admin/usuarios', async (req, res) => {
   try {
     const { nome, email, telefone, senha, role, status, permissoes } = req.body;
-    
+
     // Validações
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
     }
-    
+
     // Verificar se email já existe
     const [existing] = await pool.execute(
       'SELECT id FROM admin_users WHERE email = ?',
       [email]
     );
-    
+
     if (existing.length > 0) {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
-    
+
     // Hash da senha (se bcrypt não estiver disponível, use sha256 simples)
     const crypto = require('crypto');
     const senhaHash = crypto.createHash('sha256').update(senha).digest('hex');
-    
+
     // Inserir novo usuário
     const [result] = await pool.execute(
       `INSERT INTO admin_users 
@@ -14644,11 +14644,11 @@ app.post('/api/admin/usuarios', async (req, res) => {
         permissoes || '[]'
       ]
     );
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       id: result.insertId,
-      message: 'Usuário criado com sucesso' 
+      message: 'Usuário criado com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao criar usuário:', error);
@@ -14661,36 +14661,36 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { nome, email, telefone, senha, role, status, permissoes } = req.body;
-    
+
     // Validações
     if (!nome || !email) {
       return res.status(400).json({ error: 'Nome e email são obrigatórios' });
     }
-    
+
     // Verificar se email já existe em outro usuário
     const [existing] = await pool.execute(
       'SELECT id FROM admin_users WHERE email = ? AND id != ?',
       [email, id]
     );
-    
+
     if (existing.length > 0) {
       return res.status(400).json({ error: 'Email já cadastrado para outro usuário' });
     }
-    
+
     // Preparar update
     let query = `UPDATE admin_users SET 
                  nome = ?, email = ?, telefone = ?, 
                  role = ?, status = ?, permissoes = ?, 
                  updated_at = NOW()`;
     let params = [nome, email, telefone || null, role, status, permissoes || '[]'];
-    
+
     // Se senha foi fornecida, atualizar também
     if (senha) {
       // Validar comprimento mínimo
       if (senha.length < 6) {
         return res.status(400).json({ error: 'Senha muito curta. Mínimo 6 caracteres.' });
       }
-      
+
       // Usar hash seguro (bcrypt) ao invés de SHA256
       const { hashPassword } = require('./utils/security.cjs');
       const senhaHash = await hashPassword(senha);
@@ -14698,15 +14698,15 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
       params.push(senhaHash);
       console.log(`🔐 Senha atualizada para usuário ID: ${id}`);
     }
-    
+
     query += ' WHERE id = ?';
     params.push(id);
-    
+
     await pool.execute(query, params);
-    
-    res.json({ 
-      success: true, 
-      message: 'Usuário atualizado com sucesso' 
+
+    res.json({
+      success: true,
+      message: 'Usuário atualizado com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao atualizar usuário:', error);
@@ -14718,29 +14718,29 @@ app.put('/api/admin/usuarios/:id', async (req, res) => {
 app.delete('/api/admin/usuarios/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Não permitir excluir o último admin
     const [admins] = await pool.execute(
       'SELECT COUNT(*) as total FROM admin_users WHERE role = "admin" AND status = "ativo"'
     );
-    
+
     const [usuario] = await pool.execute(
       'SELECT role FROM admin_users WHERE id = ?',
       [id]
     );
-    
+
     if (usuario.length > 0 && usuario[0].role === 'admin' && admins[0].total <= 1) {
-      return res.status(400).json({ 
-        error: 'Não é possível excluir o último administrador ativo' 
+      return res.status(400).json({
+        error: 'Não é possível excluir o último administrador ativo'
       });
     }
-    
+
     // Excluir usuário
     await pool.execute('DELETE FROM admin_users WHERE id = ?', [id]);
-    
-    res.json({ 
-      success: true, 
-      message: 'Usuário excluído com sucesso' 
+
+    res.json({
+      success: true,
+      message: 'Usuário excluído com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao excluir usuário:', error);
@@ -14753,22 +14753,22 @@ app.post('/api/admin/usuarios/:id/reset-password', async (req, res) => {
   try {
     const { id } = req.params;
     const { novaSenha } = req.body;
-    
+
     if (!novaSenha) {
       return res.status(400).json({ error: 'Nova senha é obrigatória' });
     }
-    
+
     const crypto = require('crypto');
     const senhaHash = crypto.createHash('sha256').update(novaSenha).digest('hex');
-    
+
     await pool.execute(
       'UPDATE admin_users SET senha_hash = ?, updated_at = NOW() WHERE id = ?',
       [senhaHash, id]
     );
-    
-    res.json({ 
-      success: true, 
-      message: 'Senha resetada com sucesso' 
+
+    res.json({
+      success: true,
+      message: 'Senha resetada com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao resetar senha:', error);
@@ -14781,19 +14781,19 @@ app.put('/api/admin/usuarios/:id/toggle-status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    
+
     if (!['ativo', 'inativo', 'bloqueado'].includes(status)) {
       return res.status(400).json({ error: 'Status inválido' });
     }
-    
+
     await pool.execute(
       'UPDATE admin_users SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, id]
     );
-    
-    res.json({ 
-      success: true, 
-      message: 'Status atualizado com sucesso' 
+
+    res.json({
+      success: true,
+      message: 'Status atualizado com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao atualizar status:', error);
@@ -14898,7 +14898,7 @@ app.put('/api/financial/transactions', authenticateAdmin, async (req, res) => {
 
     // Normalizar tipo para minúsculo
     const tipoNormalizado = tipo.toLowerCase();
-    
+
     // Validar tipo
     if (!['entrada', 'saida'].includes(tipoNormalizado)) {
       return res.status(400).json({ error: 'Tipo deve ser "entrada" ou "saida"' });
@@ -14924,7 +14924,7 @@ app.put('/api/financial/transactions', authenticateAdmin, async (req, res) => {
             data = ?, hora = ?, origem = ?, metodo_pagamento = ?, observacoes = ?, updated_at = NOW()
         WHERE id = ?
       `, [descricao, categoria, tipoNormalizado, valor, status || 'Pago',
-          data || new Date().toISOString().split('T')[0], hora, origem || '', metodoPagamento, observacoes || '', id]);
+        data || new Date().toISOString().split('T')[0], hora, origem || '', metodoPagamento, observacoes || '', id]);
     } catch (schemaErr) {
       if ((schemaErr.message || '').toLowerCase().includes('unknown column') && (schemaErr.message || '').includes('hora')) {
         [result] = await pool.execute(`
@@ -14933,7 +14933,7 @@ app.put('/api/financial/transactions', authenticateAdmin, async (req, res) => {
               data = ?, origem = ?, metodo_pagamento = ?, observacoes = ?, updated_at = NOW()
           WHERE id = ?
         `, [descricao, categoria, tipoNormalizado, valor, status || 'Pago',
-            data || new Date().toISOString().split('T')[0], origem || '', metodoPagamento, observacoes || '', id]);
+          data || new Date().toISOString().split('T')[0], origem || '', metodoPagamento, observacoes || '', id]);
       } else {
         throw schemaErr;
       }
@@ -14945,8 +14945,8 @@ app.put('/api/financial/transactions', authenticateAdmin, async (req, res) => {
 
     console.log('✅ Transação atualizada com ID:', id);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Transação atualizada com sucesso',
       transaction: {
         id,
@@ -15089,8 +15089,8 @@ app.post('/api/financial/transactions/:id/reverse', authenticateAdmin, async (re
     `, [id]);
 
     logger.info('Transação estornada', { originalId: id, reversalId: result.insertId });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Transação estornada com sucesso',
       reversalId: result.insertId
     });
@@ -15116,8 +15116,8 @@ app.post('/api/financial/transactions/bulk-delete', authenticateAdmin, async (re
     );
 
     logger.info('Transações deletadas em lote', { count: result.affectedRows });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `${result.affectedRows} transações deletadas com sucesso`,
       deletedCount: result.affectedRows
     });
@@ -15147,8 +15147,8 @@ app.post('/api/financial/transactions/bulk-update-status', authenticateAdmin, as
     );
 
     logger.info('Status de transações atualizado em lote', { count: result.affectedRows, status });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `${result.affectedRows} transações atualizadas para ${status}`,
       updatedCount: result.affectedRows
     });
@@ -15162,11 +15162,11 @@ app.post('/api/financial/transactions/bulk-update-status', authenticateAdmin, as
 app.post('/api/financial/transactions', authenticateAdmin, async (req, res) => {
   try {
     const { descricao, categoria, tipo, valor, status, metodo_pagamento, data, origem, observacoes } = req.body;
-    
+
     // Validações básicas
     if (!descricao || !categoria || !tipo || !valor) {
-      return res.status(400).json({ 
-        error: 'Campos obrigatórios: descricao, categoria, tipo, valor' 
+      return res.status(400).json({
+        error: 'Campos obrigatórios: descricao, categoria, tipo, valor'
       });
     }
 
@@ -15242,7 +15242,7 @@ app.post('/api/financial/transactions', authenticateAdmin, async (req, res) => {
     }
 
     const insertedId = result.insertId;
-    
+
     logger.info('Transação financeira criada', { id: insertedId });
     res.json({
       success: true,
@@ -15516,7 +15516,7 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
 
     const pdfParse = require('pdf-parse');
     const pdfBuffer = fs.readFileSync(req.file.path);
-    
+
     let pdfText;
     try {
       // pdf-parse v2+ exporta uma classe PDFParse
@@ -15524,40 +15524,40 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
         // Usar a classe PDFParse com método getText()
         const parser = new pdfParse.PDFParse({ data: pdfBuffer });
         console.log('📄 Parser criado, chamando getText()...');
-        
+
         // Tentar getText() com diferentes opções
-        let result = await parser.getText({ 
+        let result = await parser.getText({
           pageJoiner: '\n',  // Junta páginas com quebra de linha
           lineEnforce: true, // Força quebras de linha
           cellSeparator: ' ' // Separador de células
         });
-        
+
         console.log('📄 Result do getText():', typeof result, result ? Object.keys(result) : 'null');
-        
+
         // getText() retorna { text: string, pages: [...] }
         pdfText = result?.text || (typeof result === 'string' ? result : '');
-        
+
         // Se ainda não tem texto suficiente, tentar sem pageJoiner ou com outras opções
         if (!pdfText || pdfText.length < 500) {
           console.log('⚠️ Texto muito curto, tentando sem pageJoiner...');
-          result = await parser.getText({ 
+          result = await parser.getText({
             pageJoiner: '',  // Sem separador de página
             lineEnforce: false
           });
           pdfText = result?.text || pdfText || '';
         }
-        
+
         // Se o texto está muito curto, tentar extrair das páginas individualmente
         if ((!pdfText || pdfText.length < 500) && result && result.pages) {
           console.log('📄 Tentando extrair texto das páginas individuais...');
           console.log('📄 Total de páginas:', result.pages.length);
-          
+
           // Extrair texto de cada página
           const pageTexts = [];
           for (let i = 0; i < result.pages.length; i++) {
             const page = result.pages[i];
             console.log(`📄 Página ${i + 1} estrutura:`, page ? Object.keys(page) : 'null');
-            
+
             if (page && page.text) {
               pageTexts.push(page.text);
               console.log(`📄 Página ${i + 1} tem ${page.text.length} caracteres`);
@@ -15574,13 +15574,13 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
               console.log(`⚠️ Página ${i + 1} não tem texto extraível (provavelmente é imagem escaneada)`);
             }
           }
-          
+
           if (pageTexts.length > 0) {
             pdfText = pageTexts.join('\n');
             console.log('📄 Texto combinado das páginas:', pdfText.length, 'caracteres');
           }
         }
-        
+
         // Se ainda não tem texto, verificar outras propriedades
         if (!pdfText && result) {
           console.log('📄 Tentando propriedades alternativas...');
@@ -15591,7 +15591,7 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
             pdfText = result.text || result.content || (result.pages && result.pages.map(p => p.text || p.content || '').join('\n')) || '';
           }
         }
-        
+
         // Destruir o parser
         await parser.destroy();
       } else if (typeof pdfParse === 'function') {
@@ -15604,9 +15604,9 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
     } catch (parseError) {
       console.error('❌ Erro ao fazer parse do PDF:', parseError);
       console.error('❌ Stack:', parseError.stack);
-      return res.status(500).json({ 
-        error: 'Erro ao processar PDF', 
-        details: parseError.message 
+      return res.status(500).json({
+        error: 'Erro ao processar PDF',
+        details: parseError.message
       });
     }
 
@@ -15626,19 +15626,19 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
 
     // Procurar padrão de tabela: Data | Hora | Tipo | Nome | Detalhe | Valor
     let currentDate = '';
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // Ignorar cabeçalhos e linhas de saldo
-      if (line.includes('Saldo do dia') || 
-          line.includes('Central de Ajuda') ||
-          line.includes('Relatório de movimentações') ||
-          line.toLowerCase().includes('infinitepay') ||
-          line.includes('CNPJ:') ||
-          line.match(/^Saldo final/) ||
-          line.match(/^\d{2}\/\d{2}\/\d{4} - \d{2}\/\d{2}\/\d{4}$/) || // Período
-          line.match(/^\|.*Data.*Hora.*Tipo.*Nome.*Detalhe.*Valor/i)) { // Cabeçalho de tabela
+      if (line.includes('Saldo do dia') ||
+        line.includes('Central de Ajuda') ||
+        line.includes('Relatório de movimentações') ||
+        line.toLowerCase().includes('infinitepay') ||
+        line.includes('CNPJ:') ||
+        line.match(/^Saldo final/) ||
+        line.match(/^\d{2}\/\d{2}\/\d{4} - \d{2}\/\d{2}\/\d{4}$/) || // Período
+        line.match(/^\|.*Data.*Hora.*Tipo.*Nome.*Detalhe.*Valor/i)) { // Cabeçalho de tabela
         continue;
       }
 
@@ -15653,7 +15653,7 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
       // Padrão 1: Linha com pipes (tabela estruturada)
       if (line.includes('|')) {
         const parts = line.split('|').map(p => p.trim()).filter(p => p.length > 0);
-        
+
         if (parts.length >= 4) {
           try {
             // Formato: Data | Hora | Tipo | Nome | Detalhe | Valor
@@ -15700,12 +15700,12 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
             // Parse do valor
             let valor = 0;
             let isCredito = false;
-            
+
             if (valorStr) {
               const cleaned = valorStr.replace(/R\$/g, '').replace(/\s/g, '').trim();
               isCredito = cleaned.startsWith('+');
               const signedCleaned = cleaned.replace(/^[+\-]/, '');
-              
+
               if (signedCleaned.includes('.') && signedCleaned.includes(',')) {
                 valor = parseFloat(signedCleaned.replace(/\./g, '').replace(',', '.'));
               } else if (signedCleaned.includes(',')) {
@@ -15719,7 +15719,7 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
               const dateParts = data.split('/');
               const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
 
-              const descricao = nome 
+              const descricao = nome
                 ? `${nome}${detalhe ? ` - ${detalhe}` : ''}${tipo ? ` (${tipo})` : ''}`
                 : `${detalhe || tipo || 'Transação importada'}`;
 
@@ -15741,19 +15741,19 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
         try {
           const horaMatch = line.match(/(\d{2}:\d{2})/);
           const valorMatch = line.match(/([+\-]?\s*R?\$?\s*\d+[.,]\d+)/);
-          
+
           if (horaMatch && valorMatch) {
             const hora = horaMatch[1];
             let valorStr = valorMatch[1];
             const partes = line.split(/\s+/);
-            
+
             // Remover hora e valor, o resto é tipo/nome/detalhe
             const resto = line.replace(/\d{2}:\d{2}/, '').replace(/([+\-]?\s*R?\$?\s*\d+[.,]\d+)/, '').trim();
-            
+
             let valor = 0;
             let isCredito = valorStr.includes('+');
             const cleaned = valorStr.replace(/R\$/g, '').replace(/\s/g, '').replace(/[+\-]/, '').trim();
-            
+
             if (cleaned.includes('.') && cleaned.includes(',')) {
               valor = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
             } else if (cleaned.includes(',')) {
@@ -15788,17 +15788,17 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
       if (fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
-      
+
       // Verificar se o PDF é escaneado (sem texto)
       const isScanned = !pdfText || pdfText.trim().length < 100;
-      
+
       if (isScanned) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'PDF escaneado detectado. Este PDF parece ser uma imagem e não contém texto extraível.',
           suggestion: 'Por favor, exporte o relatório diretamente como CSV do InfinitePay ou use um PDF com texto selecionável.'
         });
       } else {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Nenhuma transação encontrada no PDF. Verifique se é um relatório válido do InfinitePay.',
           suggestion: 'Certifique-se de que o PDF contém uma tabela com colunas: Data, Hora, Tipo, Nome, Detalhe, Valor'
         });
@@ -15817,7 +15817,7 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
 
         // Determinar tipo e status
         const tipo = trans.tipo === 'credito' ? 'entrada' : 'saida';
-        const metodoPagamento = contaId 
+        const metodoPagamento = contaId
           ? `Conta: ${contaId} (Importado do PDF InfinitePay)`
           : 'Importado do PDF InfinitePay';
 
@@ -15862,11 +15862,11 @@ app.post('/api/financial/bank-statements/import-pdf', authenticateAdmin, bankSta
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
+
     logger.logError(error, req);
-    res.status(500).json({ 
-      error: 'Erro ao processar PDF', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Erro ao processar PDF',
+      details: error.message
     });
   }
 });
@@ -15927,12 +15927,12 @@ function calculateNextOccurrence(lastDate, frequency, dayOfMonth = null, dayOfWe
 app.get('/api/financial/recurring', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Verificar qual banco está sendo usado
     const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
     logger.info('Banco atual da conexão:', dbCheck[0]);
-    
+
     // Verificar se a tabela existe e criar se não existir
     try {
       const [tableCheck] = await connection.query(`
@@ -15941,7 +15941,7 @@ app.get('/api/financial/recurring', authenticateAdmin, async (req, res) => {
         WHERE table_schema = DATABASE() 
         AND table_name = 'recurring_transactions'
       `);
-      
+
       if (tableCheck[0].count === 0) {
         logger.warn('Tabela recurring_transactions não encontrada, criando...');
         await connection.query(`
@@ -15983,9 +15983,9 @@ app.get('/api/financial/recurring', authenticateAdmin, async (req, res) => {
       logger.logError(createError, req);
       // Continuar mesmo se houver erro na verificação
     }
-    
+
     const { active_only } = req.query;
-    
+
     let query = `
       SELECT 
         id, descricao, categoria, tipo, valor, status, metodo_pagamento,
@@ -15995,16 +15995,16 @@ app.get('/api/financial/recurring', authenticateAdmin, async (req, res) => {
         created_at, updated_at, created_by
       FROM recurring_transactions
     `;
-    
+
     const params = [];
     if (active_only === 'true') {
       query += ' WHERE is_active = TRUE';
     }
-    
+
     query += ' ORDER BY next_occurrence ASC, created_at DESC';
 
     const [rows] = await connection.execute(query, params);
-    
+
     logger.info('Transações recorrentes carregadas', { count: rows.length });
     res.json({ recurring_transactions: rows, total: rows.length });
   } catch (error) {
@@ -16019,17 +16019,17 @@ app.get('/api/financial/recurring', authenticateAdmin, async (req, res) => {
 app.get('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Garantir que estamos usando o banco correto (com query, não execute)
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const [rows] = await connection.execute(
       'SELECT * FROM recurring_transactions WHERE id = ?',
       [id]
     );
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Transação recorrente não encontrada' });
     }
@@ -16047,12 +16047,12 @@ app.get('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
 app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Verificar qual banco está sendo usado
     const [dbCheck] = await connection.query('SELECT DATABASE() as current_db');
     logger.info('Banco atual da conexão (POST):', dbCheck[0]);
-    
+
     // Verificar se a tabela existe e criar se não existir
     try {
       const [tableCheck] = await connection.query(`
@@ -16061,7 +16061,7 @@ app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
         WHERE table_schema = DATABASE() 
         AND table_name = 'recurring_transactions'
       `);
-      
+
       if (tableCheck[0].count === 0) {
         logger.warn('Tabela recurring_transactions não encontrada, criando...');
         await connection.query(`
@@ -16103,7 +16103,7 @@ app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
       logger.logError(createError, req);
       // Continuar mesmo se houver erro na verificação
     }
-    
+
     const {
       descricao, categoria, tipo, valor, status, metodo_pagamento,
       origem, observacoes, frequency, start_date, end_date,
@@ -16114,8 +16114,8 @@ app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
     // Validações básicas
     if (!descricao || !categoria || !tipo || !valor || !frequency || !start_date) {
       connection.release();
-      return res.status(400).json({ 
-        error: 'Campos obrigatórios: descricao, categoria, tipo, valor, frequency, start_date' 
+      return res.status(400).json({
+        error: 'Campos obrigatórios: descricao, categoria, tipo, valor, frequency, start_date'
       });
     }
 
@@ -16138,9 +16138,9 @@ app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
 
     // Calcular próxima ocorrência
     const nextOccurrence = calculateNextOccurrence(
-      start_date, 
-      frequency, 
-      day_of_month, 
+      start_date,
+      frequency,
+      day_of_month,
       day_of_week
     );
 
@@ -16165,8 +16165,8 @@ app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
     ]);
 
     logger.info('Transação recorrente criada', { id });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Transação recorrente criada com sucesso',
       recurring_transaction: {
         id, descricao, categoria, tipo: tipoNormalizado, valor, status: safeStatus,
@@ -16185,11 +16185,11 @@ app.post('/api/financial/recurring', authenticateAdmin, async (req, res) => {
 app.put('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Garantir que estamos usando o banco correto (com query, não execute)
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const {
       descricao, categoria, tipo, valor, status, metodo_pagamento,
@@ -16210,11 +16210,11 @@ app.put('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
     }
 
     const current = existing[0];
-    
+
     // Se mudou data inicial ou frequência, recalcular próxima ocorrência
     let nextOccurrence = current.next_occurrence;
     if (start_date !== current.start_date || frequency !== current.frequency ||
-        day_of_month !== current.day_of_month || day_of_week !== current.day_of_week) {
+      day_of_month !== current.day_of_month || day_of_week !== current.day_of_week) {
       nextOccurrence = calculateNextOccurrence(
         start_date || current.start_date,
         frequency || current.frequency,
@@ -16269,11 +16269,11 @@ app.put('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
 app.delete('/api/financial/recurring/:id', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Garantir que estamos usando o banco correto (com query, não execute)
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
 
     const [result] = await connection.execute(
@@ -16300,13 +16300,13 @@ app.delete('/api/financial/recurring/:id', authenticateAdmin, async (req, res) =
 app.post('/api/financial/recurring/process', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Garantir que estamos usando o banco correto (com query, não execute)
     await connection.query('USE `rare_toy_companion`');
-    
+
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Buscar recorrências ativas com próxima ocorrência hoje ou antes
     const [recurring] = await connection.execute(`
       SELECT * FROM recurring_transactions
@@ -16367,9 +16367,9 @@ app.post('/api/financial/recurring/process', authenticateAdmin, async (req, res)
           date: rec.next_occurrence
         });
 
-        logger.info('Transação recorrente processada', { 
-          recurring_id: rec.id, 
-          transaction_id: transactionId 
+        logger.info('Transação recorrente processada', {
+          recurring_id: rec.id,
+          transaction_id: transactionId
         });
       } catch (error) {
         errors.push({
@@ -16398,23 +16398,23 @@ app.post('/api/financial/recurring/process', authenticateAdmin, async (req, res)
 app.post('/api/financial/recurring/notify', authenticateAdmin, async (req, res) => {
   const { notifyRecurringTransactions } = require('../scripts/notify-recurring-transactions.cjs');
   const { initializeEmailService } = require('../config/emailService.cjs');
-  
+
   try {
     // Inicializar serviço de email se necessário
     initializeEmailService();
-    
+
     // Processar notificações
     await notifyRecurringTransactions();
-    
-    res.json({ 
-      success: true, 
-      message: 'Notificações processadas com sucesso' 
+
+    res.json({
+      success: true,
+      message: 'Notificações processadas com sucesso'
     });
   } catch (error) {
     logger.logError(error, req);
-    res.status(500).json({ 
-      error: 'Erro ao processar notificações', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Erro ao processar notificações',
+      details: error.message
     });
   }
 });
@@ -16423,11 +16423,11 @@ app.post('/api/financial/recurring/notify', authenticateAdmin, async (req, res) 
 app.get('/api/financial/recurring/:id/occurrences', authenticateAdmin, async (req, res) => {
   // Obter conexão direta do pool (já configurada para rare_toy_companion)
   const connection = await pool.getConnection();
-  
+
   try {
     // Garantir que estamos usando o banco correto (com query, não execute)
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const [rows] = await connection.execute(`
       SELECT o.*, t.data as transaction_date, t.status as transaction_status
@@ -16452,14 +16452,14 @@ app.get('/api/financial/recurring/:id/occurrences', authenticateAdmin, async (re
 // Relatório P&L (Profit & Loss)
 app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { start_date, end_date } = req.query;
     const startDate = start_date || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = end_date || new Date().toISOString().split('T')[0];
-    
+
     // Receitas (entradas)
     const [receitas] = await connection.execute(`
       SELECT 
@@ -16473,7 +16473,7 @@ app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
       GROUP BY categoria
       ORDER BY total DESC
     `, [startDate, endDate]);
-    
+
     // Despesas (saídas)
     const [despesas] = await connection.execute(`
       SELECT 
@@ -16487,7 +16487,7 @@ app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
       GROUP BY categoria
       ORDER BY total DESC
     `, [startDate, endDate]);
-    
+
     // Totais
     const [totais] = await connection.execute(`
       SELECT 
@@ -16498,7 +16498,7 @@ app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
       FROM financial_transactions
       WHERE data BETWEEN ? AND ?
     `, [startDate, endDate]);
-    
+
     res.json({
       periodo: { start_date: startDate, end_date: endDate },
       receitas: receitas.map(r => ({ ...r, total: parseFloat(r.total) })),
@@ -16507,7 +16507,7 @@ app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
         total_receitas: parseFloat(totais[0].total_receitas),
         total_despesas: parseFloat(totais[0].total_despesas),
         lucro_liquido: parseFloat(totais[0].lucro_liquido),
-        margem_lucro: totais[0].total_receitas > 0 
+        margem_lucro: totais[0].total_receitas > 0
           ? ((totais[0].lucro_liquido / totais[0].total_receitas) * 100).toFixed(2)
           : 0
       }
@@ -16523,14 +16523,14 @@ app.get('/api/financial/reports/pl', authenticateAdmin, async (req, res) => {
 // Relatório DRE (Demonstração do Resultado do Exercício)
 app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { start_date, end_date } = req.query;
     const startDate = start_date || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const endDate = end_date || new Date().toISOString().split('T')[0];
-    
+
     // Receita Bruta
     const [receitaBruta] = await connection.execute(`
       SELECT COALESCE(SUM(valor), 0) as total
@@ -16539,7 +16539,7 @@ app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
         AND data BETWEEN ? AND ?
         AND status = 'Pago'
     `, [startDate, endDate]);
-    
+
     // Deduções (impostos, devoluções, etc) - categorias específicas
     const [deducoes] = await connection.execute(`
       SELECT COALESCE(SUM(valor), 0) as total
@@ -16549,10 +16549,10 @@ app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
         AND data BETWEEN ? AND ?
         AND status = 'Pago'
     `, [startDate, endDate]);
-    
+
     // Receita Líquida
     const receitaLiquida = parseFloat(receitaBruta[0].total) - parseFloat(deducoes[0].total);
-    
+
     // CMV (Custo das Mercadorias Vendidas)
     const [cmv] = await connection.execute(`
       SELECT COALESCE(SUM(valor), 0) as total
@@ -16562,10 +16562,10 @@ app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
         AND data BETWEEN ? AND ?
         AND status = 'Pago'
     `, [startDate, endDate]);
-    
+
     // Lucro Bruto
     const lucroBruto = receitaLiquida - parseFloat(cmv[0].total);
-    
+
     // Despesas Operacionais
     const [despesasOperacionais] = await connection.execute(`
       SELECT 
@@ -16578,12 +16578,12 @@ app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
         AND status = 'Pago'
       GROUP BY categoria
     `, [startDate, endDate]);
-    
+
     const totalDespesasOperacionais = despesasOperacionais.reduce((sum, d) => sum + parseFloat(d.total), 0);
-    
+
     // Lucro Operacional
     const lucroOperacional = lucroBruto - totalDespesasOperacionais;
-    
+
     // Receitas/Despesas Não Operacionais
     const [naoOperacionais] = await connection.execute(`
       SELECT 
@@ -16595,22 +16595,22 @@ app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
         AND data BETWEEN ? AND ?
         AND status = 'Pago'
     `, [startDate, endDate]);
-    
+
     const receitasNaoOp = parseFloat(naoOperacionais[0]?.receitas_nao_operacionais || 0);
     const despesasNaoOp = parseFloat(naoOperacionais[0]?.despesas_nao_operacionais || 0);
-    
+
     // Lucro Antes do IR
     const lucroAntesIR = lucroOperacional + receitasNaoOp - despesasNaoOp;
-    
+
     // IR e CSLL (simulado - pode ser configurável)
     const aliquotaIR = 0.15; // 15%
     const aliquotaCSLL = 0.09; // 9%
     const ir = lucroAntesIR > 0 ? lucroAntesIR * aliquotaIR : 0;
     const csll = lucroAntesIR > 0 ? lucroAntesIR * aliquotaCSLL : 0;
-    
+
     // Lucro Líquido
     const lucroLiquido = lucroAntesIR - ir - csll;
-    
+
     res.json({
       periodo: { start_date: startDate, end_date: endDate },
       receita_bruta: parseFloat(receitaBruta[0].total),
@@ -16652,15 +16652,15 @@ app.get('/api/financial/reports/dre', authenticateAdmin, async (req, res) => {
 // Análise de Tendências
 app.get('/api/financial/reports/trends', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { months = 12 } = req.query;
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - parseInt(months));
-    
+
     // Agrupar por mês
     const [monthlyData] = await connection.execute(`
       SELECT 
@@ -16675,28 +16675,28 @@ app.get('/api/financial/reports/trends', authenticateAdmin, async (req, res) => 
       GROUP BY DATE_FORMAT(data, '%Y-%m')
       ORDER BY mes ASC
     `, [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]);
-    
+
     // Calcular tendências
     const dadosComTendencias = monthlyData.map((mes, index) => {
       const receitas = parseFloat(mes.receitas);
       const despesas = parseFloat(mes.despesas);
       const saldo = receitas - despesas;
-      
+
       let tendenciaReceitas = 'estavel';
       let tendenciaDespesas = 'estavel';
-      
+
       if (index > 0) {
         const mesAnterior = monthlyData[index - 1];
         const receitasAnterior = parseFloat(mesAnterior.receitas);
         const despesasAnterior = parseFloat(mesAnterior.despesas);
-        
+
         const variacaoReceitas = ((receitas - receitasAnterior) / receitasAnterior) * 100;
         const variacaoDespesas = ((despesas - despesasAnterior) / despesasAnterior) * 100;
-        
+
         tendenciaReceitas = variacaoReceitas > 5 ? 'alta' : variacaoReceitas < -5 ? 'baixa' : 'estavel';
         tendenciaDespesas = variacaoDespesas > 5 ? 'alta' : variacaoDespesas < -5 ? 'baixa' : 'estavel';
       }
-      
+
       return {
         ...mes,
         receitas,
@@ -16706,13 +16706,13 @@ app.get('/api/financial/reports/trends', authenticateAdmin, async (req, res) => 
         tendencia_despesas: tendenciaDespesas
       };
     });
-    
+
     // Calcular médias e projeções
     const receitasMedias = dadosComTendencias.map(d => d.receitas);
     const despesasMedias = dadosComTendencias.map(d => d.despesas);
     const mediaReceitas = receitasMedias.reduce((a, b) => a + b, 0) / receitasMedias.length;
     const mediaDespesas = despesasMedias.reduce((a, b) => a + b, 0) / despesasMedias.length;
-    
+
     res.json({
       periodo: { meses: parseInt(months), start_date: startDate.toISOString().split('T')[0], end_date: endDate.toISOString().split('T')[0] },
       dados_mensais: dadosComTendencias,
@@ -16722,7 +16722,7 @@ app.get('/api/financial/reports/trends', authenticateAdmin, async (req, res) => 
         saldo: mediaReceitas - mediaDespesas
       },
       crescimento: {
-        receitas: dadosComTendencias.length > 1 
+        receitas: dadosComTendencias.length > 1
           ? ((dadosComTendencias[dadosComTendencias.length - 1].receitas - dadosComTendencias[0].receitas) / dadosComTendencias[0].receitas * 100).toFixed(2)
           : 0,
         despesas: dadosComTendencias.length > 1
@@ -16743,10 +16743,10 @@ app.get('/api/financial/reports/trends', authenticateAdmin, async (req, res) => 
 // Listar todos os orçamentos
 app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     // Verificar se tabela existe e criar se necessário
     try {
       const [tableCheck] = await connection.query(`
@@ -16755,7 +16755,7 @@ app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
         WHERE table_schema = DATABASE() 
         AND table_name = 'budgets'
       `);
-      
+
       if (tableCheck[0].count === 0) {
         const { createBudgetsTable } = require('./scripts/create-budgets-table.cjs');
         await createBudgetsTable();
@@ -16763,9 +16763,9 @@ app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
     } catch (createError) {
       // Continuar mesmo se houver erro na verificação
     }
-    
+
     const { active_only, tipo, categoria } = req.query;
-    
+
     let query = `
       SELECT 
         id, nome, descricao, tipo, categoria, valor_orcado, valor_real,
@@ -16778,27 +16778,27 @@ app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
       FROM budgets
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     if (active_only === 'true') {
       query += ' AND is_active = TRUE';
     }
-    
+
     if (tipo) {
       query += ' AND tipo = ?';
       params.push(tipo);
     }
-    
+
     if (categoria) {
       query += ' AND categoria = ?';
       params.push(categoria);
     }
-    
+
     query += ' ORDER BY data_inicio DESC, created_at DESC';
-    
+
     const [rows] = await connection.execute(query, params);
-    
+
     // Atualizar valores reais baseados em transações
     for (const budget of rows) {
       const [realValue] = await connection.execute(`
@@ -16809,23 +16809,23 @@ app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
           AND data BETWEEN ? AND ?
           AND status = 'Pago'
       `, [budget.categoria, budget.data_inicio, budget.data_fim]);
-      
+
       const valorReal = parseFloat(realValue[0].total);
-      
+
       if (valorReal !== budget.valor_real) {
         await connection.execute(`
           UPDATE budgets
           SET valor_real = ?
           WHERE id = ?
         `, [valorReal, budget.id]);
-        
+
         budget.valor_real = valorReal;
-        budget.percentual_atingido = budget.valor_orcado > 0 
+        budget.percentual_atingido = budget.valor_orcado > 0
           ? (valorReal / budget.valor_orcado * 100).toFixed(2)
           : 0;
       }
     }
-    
+
     res.json({ budgets: rows, total: rows.length });
   } catch (error) {
     logger.logError(error, req);
@@ -16838,20 +16838,20 @@ app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
 // Buscar orçamento por ID
 app.get('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const [rows] = await connection.execute(
       'SELECT * FROM budgets WHERE id = ?',
       [id]
     );
-    
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Orçamento não encontrado' });
     }
-    
+
     res.json({ budget: rows[0] });
   } catch (error) {
     logger.logError(error, req);
@@ -16864,44 +16864,44 @@ app.get('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
 // Criar orçamento
 app.post('/api/financial/budgets', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const {
       nome, descricao, tipo, categoria, valor_orcado,
       data_inicio, data_fim, alerta_percentual
     } = req.body;
-    
+
     if (!nome || !tipo || !valor_orcado || !data_inicio || !data_fim) {
       connection.release();
-      return res.status(400).json({ 
-        error: 'Campos obrigatórios: nome, tipo, valor_orcado, data_inicio, data_fim' 
+      return res.status(400).json({
+        error: 'Campos obrigatórios: nome, tipo, valor_orcado, data_inicio, data_fim'
       });
     }
-    
+
     if (new Date(data_fim) < new Date(data_inicio)) {
       connection.release();
       return res.status(400).json({ error: 'Data fim deve ser posterior à data início' });
     }
-    
+
     const id = crypto.randomUUID();
     const safeAlertaPercentual = alerta_percentual || 80;
-    
+
     await connection.execute(`
       INSERT INTO budgets (
         id, nome, descricao, tipo, categoria, valor_orcado, valor_real,
         data_inicio, data_fim, alerta_percentual, is_active, created_by
       ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, TRUE, ?)
     `, [
-      id, nome, descricao || null, tipo, categoria || null, 
+      id, nome, descricao || null, tipo, categoria || null,
       valor_orcado, data_inicio, data_fim, safeAlertaPercentual,
       req.user?.email || null
     ]);
-    
+
     logger.info('Orçamento criado', { id, nome });
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Orçamento criado com sucesso',
       budget: { id, nome, tipo, valor_orcado }
     });
@@ -16916,27 +16916,27 @@ app.post('/api/financial/budgets', authenticateAdmin, async (req, res) => {
 // Atualizar orçamento
 app.put('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const {
       nome, descricao, tipo, categoria, valor_orcado, valor_real,
       data_inicio, data_fim, alerta_percentual, is_active
     } = req.body;
-    
+
     // Verificar se existe
     const [existing] = await connection.execute(
       'SELECT * FROM budgets WHERE id = ?',
       [id]
     );
-    
+
     if (existing.length === 0) {
       connection.release();
       return res.status(404).json({ error: 'Orçamento não encontrado' });
     }
-    
+
     // Registrar histórico se valor mudou
     if (valor_orcado !== undefined && valor_orcado !== existing[0].valor_orcado) {
       await connection.execute(`
@@ -16950,11 +16950,11 @@ app.put('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
         req.user?.email || null
       ]);
     }
-    
+
     // Construir query de update dinamicamente
     const updates = [];
     const params = [];
-    
+
     if (nome !== undefined) { updates.push('nome = ?'); params.push(nome); }
     if (descricao !== undefined) { updates.push('descricao = ?'); params.push(descricao); }
     if (tipo !== undefined) { updates.push('tipo = ?'); params.push(tipo); }
@@ -16965,21 +16965,21 @@ app.put('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
     if (data_fim !== undefined) { updates.push('data_fim = ?'); params.push(data_fim); }
     if (alerta_percentual !== undefined) { updates.push('alerta_percentual = ?'); params.push(alerta_percentual); }
     if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
-    
+
     if (updates.length === 0) {
       connection.release();
       return res.status(400).json({ error: 'Nenhum campo para atualizar' });
     }
-    
+
     updates.push('updated_at = NOW()');
     params.push(id);
-    
+
     await connection.execute(`
       UPDATE budgets
       SET ${updates.join(', ')}
       WHERE id = ?
     `, params);
-    
+
     logger.info('Orçamento atualizado', { id });
     res.json({ success: true, message: 'Orçamento atualizado com sucesso' });
   } catch (error) {
@@ -16993,21 +16993,21 @@ app.put('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
 // Excluir orçamento
 app.delete('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const [result] = await connection.execute(
       'DELETE FROM budgets WHERE id = ?',
       [id]
     );
-    
+
     if (result.affectedRows === 0) {
       connection.release();
       return res.status(404).json({ error: 'Orçamento não encontrado' });
     }
-    
+
     logger.info('Orçamento excluído', { id });
     res.json({ success: true, message: 'Orçamento excluído com sucesso' });
   } catch (error) {
@@ -17021,16 +17021,16 @@ app.delete('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => 
 // Buscar alertas de orçamento
 app.get('/api/financial/budgets/:id/alerts', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { id } = req.params;
     const [rows] = await connection.execute(
       'SELECT * FROM budget_alerts WHERE budget_id = ? ORDER BY created_at DESC LIMIT 50',
       [id]
     );
-    
+
     res.json({ alerts: rows });
   } catch (error) {
     logger.logError(error, req);
@@ -17043,18 +17043,18 @@ app.get('/api/financial/budgets/:id/alerts', authenticateAdmin, async (req, res)
 // Processar alertas de orçamento (verificar e criar alertas)
 app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const [budgets] = await connection.execute(`
       SELECT * FROM budgets
       WHERE is_active = TRUE
         AND CURDATE() BETWEEN data_inicio AND data_fim
     `);
-    
+
     const alerts = [];
-    
+
     for (const budget of budgets) {
       // Atualizar valor real
       const [realValue] = await connection.execute(`
@@ -17065,22 +17065,22 @@ app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req,
           AND data BETWEEN ? AND ?
           AND status = 'Pago'
       `, [budget.categoria, budget.data_inicio, budget.data_fim]);
-      
+
       const valorReal = parseFloat(realValue[0].total);
-      const percentualAtingido = budget.valor_orcado > 0 
-        ? (valorReal / budget.valor_orcado) * 100 
+      const percentualAtingido = budget.valor_orcado > 0
+        ? (valorReal / budget.valor_orcado) * 100
         : 0;
-      
+
       // Atualizar valor real no orçamento
       await connection.execute(`
         UPDATE budgets SET valor_real = ? WHERE id = ?
       `, [valorReal, budget.id]);
-      
+
       // Verificar se precisa criar alerta
       if (percentualAtingido >= budget.alerta_percentual) {
         let tipoAlerta = 'alerta';
         let mensagem = '';
-        
+
         if (percentualAtingido >= 100) {
           tipoAlerta = 'extrapolado';
           mensagem = `Orçamento "${budget.nome}" foi extrapolado! Utilizado ${percentualAtingido.toFixed(2)}% do valor orçado.`;
@@ -17088,7 +17088,7 @@ app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req,
           tipoAlerta = 'alerta';
           mensagem = `Orçamento "${budget.nome}" atingiu ${percentualAtingido.toFixed(2)}% do valor orçado.`;
         }
-        
+
         // Verificar se já existe alerta recente (últimas 24h)
         const [existingAlert] = await connection.execute(`
           SELECT id FROM budget_alerts
@@ -17097,19 +17097,19 @@ app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req,
             AND created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
           LIMIT 1
         `, [budget.id, tipoAlerta]);
-        
+
         if (existingAlert.length === 0) {
           await connection.execute(`
             INSERT INTO budget_alerts (
               id, budget_id, tipo, percentual_atingido, mensagem, foi_notificado
             ) VALUES (UUID(), ?, ?, ?, ?, FALSE)
           `, [budget.id, tipoAlerta, percentualAtingido.toFixed(2), mensagem]);
-          
+
           alerts.push({ budget_id: budget.id, budget_nome: budget.nome, tipo: tipoAlerta, mensagem });
         }
       }
     }
-    
+
     res.json({
       success: true,
       processed: budgets.length,
@@ -17127,16 +17127,16 @@ app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req,
 // Comparativo Período a Período
 app.get('/api/financial/reports/comparative', authenticateAdmin, async (req, res) => {
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.query('USE `rare_toy_companion`');
-    
+
     const { period1_start, period1_end, period2_start, period2_end } = req.query;
-    
+
     if (!period1_start || !period1_end || !period2_start || !period2_end) {
       return res.status(400).json({ error: 'Todos os períodos devem ser informados' });
     }
-    
+
     // Período 1
     const [periodo1] = await connection.execute(`
       SELECT 
@@ -17146,7 +17146,7 @@ app.get('/api/financial/reports/comparative', authenticateAdmin, async (req, res
       FROM financial_transactions
       WHERE data BETWEEN ? AND ?
     `, [period1_start, period1_end]);
-    
+
     // Período 2
     const [periodo2] = await connection.execute(`
       SELECT 
@@ -17156,26 +17156,26 @@ app.get('/api/financial/reports/comparative', authenticateAdmin, async (req, res
       FROM financial_transactions
       WHERE data BETWEEN ? AND ?
     `, [period2_start, period2_end]);
-    
+
     const p1 = {
       receitas: parseFloat(periodo1[0].receitas),
       despesas: parseFloat(periodo1[0].despesas),
       saldo: parseFloat(periodo1[0].receitas) - parseFloat(periodo1[0].despesas),
       total_transacoes: periodo1[0].total_transacoes
     };
-    
+
     const p2 = {
       receitas: parseFloat(periodo2[0].receitas),
       despesas: parseFloat(periodo2[0].despesas),
       saldo: parseFloat(periodo2[0].receitas) - parseFloat(periodo2[0].despesas),
       total_transacoes: periodo2[0].total_transacoes
     };
-    
+
     // Calcular variações
     const variacaoReceitas = p1.receitas > 0 ? ((p2.receitas - p1.receitas) / p1.receitas) * 100 : 0;
     const variacaoDespesas = p1.despesas > 0 ? ((p2.despesas - p1.despesas) / p1.despesas) * 100 : 0;
     const variacaoSaldo = p1.saldo !== 0 ? ((p2.saldo - p1.saldo) / Math.abs(p1.saldo)) * 100 : 0;
-    
+
     res.json({
       periodo1: {
         ...p1,
@@ -17217,19 +17217,19 @@ app.get('/api/financial/reports/comparative', authenticateAdmin, async (req, res
 app.get('/api/test-contas-financial_cards', async (req, res) => {
   try {
     console.log('🔍 Testando acesso às tabelas financial_accounts e financial_cards...');
-    
+
     // Testar financial_accounts
     const [contasRows] = await pool.execute('SHOW TABLES LIKE "financial_accounts"');
     console.log('Financial accounts tables found:', contasRows.length);
-    
+
     // Testar financial_cards
     const [financial_cardsRows] = await pool.execute('SHOW TABLES LIKE "financial_cards"');
     console.log('Financial cards tables found:', financial_cardsRows.length);
-    
+
     // Tentar buscar dados
     const [contasData] = await pool.execute('SELECT COUNT(*) as total FROM financial_accounts');
     const [financial_cardsData] = await pool.execute('SELECT COUNT(*) as total FROM financial_cards');
-    
+
     res.json({
       success: true,
       contas_table_exists: contasRows.length > 0,
@@ -17281,7 +17281,7 @@ app.get('/api/financial/contas', async (req, res) => {
         updated_at: '2024-10-17'
       }
     ];
-    
+
     console.log('✅ Contas bancárias carregadas (simuladas):', contasSimuladas.length);
     res.json({ contas: contasSimuladas, total: contasSimuladas.length });
   } catch (error) {
@@ -17294,7 +17294,7 @@ app.get('/api/financial/contas', async (req, res) => {
 app.post('/api/financial/contas', async (req, res) => {
   try {
     const { nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes } = req.body;
-    
+
     if (!nome || !banco || !agencia || !conta) {
       return res.status(400).json({ error: 'Campos obrigatórios: nome, banco, agencia, conta' });
     }
@@ -17304,12 +17304,12 @@ app.post('/api/financial/contas', async (req, res) => {
         nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes, ultima_movimentacao
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [nome, banco, agencia, conta, tipo || 'corrente', saldo || 0, limite || 0, status || 'ativo', observacoes || '']);
-    
+
     const insertedId = result.insertId;
     console.log('✅ Conta bancária criada:', insertedId);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Conta bancária criada com sucesso',
       conta: { id: insertedId, nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes }
     });
@@ -17340,8 +17340,8 @@ app.put('/api/financial/contas/:id', async (req, res) => {
     }
 
     console.log('✅ Conta bancária atualizada:', id);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Conta bancária atualizada com sucesso',
       conta: { id, nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes }
     });
@@ -17358,9 +17358,9 @@ app.delete('/api/financial/contas/:id', async (req, res) => {
 
     // Simular exclusão por enquanto (retornar sucesso)
     console.log('✅ Conta bancária excluída (simulado):', id);
-    res.json({ 
-      success: true, 
-      message: 'Conta bancária excluída com sucesso' 
+    res.json({
+      success: true,
+      message: 'Conta bancária excluída com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao excluir conta bancária:', error);
@@ -17398,13 +17398,13 @@ app.post('/api/financial/transactions/:id/pay', async (req, res) => {
 
     // Buscar conta bancária (tentar banco primeiro, fallback para dados simulados)
     let account = null;
-    
+
     try {
       const [accounts] = await pool.execute(
         'SELECT * FROM financial_accounts WHERE id = ? AND status = ?',
         [account_id, 'ativo']
       );
-      
+
       if (accounts.length > 0) {
         account = accounts[0];
       }
@@ -17416,7 +17416,7 @@ app.post('/api/financial/transactions/:id/pay', async (req, res) => {
         throw dbError;
       }
     }
-    
+
     // Se não encontrou no banco, usar dados simulados
     if (!account) {
       const contasSimuladas = [
@@ -17451,9 +17451,9 @@ app.post('/api/financial/transactions/:id/pay', async (req, res) => {
           updated_at: '2024-10-17'
         }
       ];
-      
+
       account = contasSimuladas.find(c => c.id === parseInt(account_id) && c.status === 'ativo');
-      
+
       if (!account) {
         return res.status(404).json({ error: 'Conta bancária não encontrada ou inativa' });
       }
@@ -17463,8 +17463,8 @@ app.post('/api/financial/transactions/:id/pay', async (req, res) => {
     if (transaction.tipo === 'saida') {
       const saldoDisponivel = parseFloat(account.saldo) + (parseFloat(account.limite) || 0);
       if (saldoDisponivel < parseFloat(transaction.valor)) {
-        return res.status(400).json({ 
-          error: `Saldo insuficiente. Saldo disponível: R$ ${saldoDisponivel.toFixed(2)}` 
+        return res.status(400).json({
+          error: `Saldo insuficiente. Saldo disponível: R$ ${saldoDisponivel.toFixed(2)}`
         });
       }
     }
@@ -17475,9 +17475,9 @@ app.post('/api/financial/transactions/:id/pay', async (req, res) => {
 
     try {
       const dataPagamento = data_pagamento || new Date().toISOString().split('T')[0];
-      
+
       // 1. Atualizar status da transação
-      const observacoesCompletas = observacoes 
+      const observacoesCompletas = observacoes
         ? `${transaction.observacoes || ''}\n\n[Pagamento realizado via ${account.nome} - ${account.banco} em ${dataPagamento}] ${observacoes}`.trim()
         : `${transaction.observacoes || ''}\n\n[Pagamento realizado via ${account.nome} - ${account.banco} em ${dataPagamento}]`.trim();
 
@@ -17566,8 +17566,8 @@ app.post('/api/financial/transactions/:id/pay', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Erro ao processar pagamento:', error);
-    res.status(500).json({ 
-      error: 'Erro ao processar pagamento', 
+    res.status(500).json({
+      error: 'Erro ao processar pagamento',
       details: error?.message || 'Erro desconhecido'
     });
   }
@@ -17609,7 +17609,7 @@ app.get('/api/financial/cartoes', async (req, res) => {
         updated_at: '2024-10-18'
       }
     ];
-    
+
     console.log('✅ Cartões carregados (simulados):', cartoesSimulados.length);
     res.json({ cartoes: cartoesSimulados, total: cartoesSimulados.length });
   } catch (error) {
@@ -17622,7 +17622,7 @@ app.get('/api/financial/cartoes', async (req, res) => {
 app.post('/api/financial/financial_cards', async (req, res) => {
   try {
     const { nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes } = req.body;
-    
+
     if (!nome || !numero || !bandeira) {
       return res.status(400).json({ error: 'Campos obrigatórios: nome, numero, bandeira' });
     }
@@ -17632,12 +17632,12 @@ app.post('/api/financial/financial_cards', async (req, res) => {
         nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [nome, numero, bandeira, limite || 0, fatura_atual || 0, vencimento, status || 'ativo', tipo || 'credito', observacoes || '']);
-    
+
     const insertedId = result.insertId;
     console.log('✅ Cartão criado:', insertedId);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Cartão criado com sucesso',
       cartao: { id: insertedId, nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes }
     });
@@ -17668,8 +17668,8 @@ app.put('/api/financial/financial_cards/:id', async (req, res) => {
     }
 
     console.log('✅ Cartão atualizado:', id);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Cartão atualizado com sucesso',
       cartao: { id, nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes }
     });
@@ -17686,9 +17686,9 @@ app.delete('/api/financial/cartoes/:id', async (req, res) => {
 
     // Simular exclusão por enquanto (retornar sucesso)
     console.log('✅ Cartão excluído (simulado):', id);
-    res.json({ 
-      success: true, 
-      message: 'Cartão excluído com sucesso' 
+    res.json({
+      success: true,
+      message: 'Cartão excluído com sucesso'
     });
   } catch (error) {
     console.error('❌ Erro ao excluir cartão:', error);
@@ -17782,12 +17782,12 @@ app.post('/api/financial/suppliers/:id/transactions', async (req, res) => {
   try {
     const { id } = req.params;
     const { data, descricao, valor, tipo, status, forma_pagamento, observacoes } = req.body;
-    
+
     const [result] = await pool.execute(
       'INSERT INTO supplier_transactions (supplier_id, data, descricao, valor, tipo, status, forma_pagamento, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, data, descricao, valor, tipo, status || 'pendente', forma_pagamento || null, observacoes || null]
     );
-    
+
     res.json({ success: true, id: result.insertId, message: 'Transação criada com sucesso' });
   } catch (error) {
     logger.logError(error, req);
@@ -17814,12 +17814,12 @@ app.post('/api/financial/suppliers/:id/payments', async (req, res) => {
   try {
     const { id } = req.params;
     const { data_vencimento, data_pagamento, valor, status, forma_pagamento, observacoes } = req.body;
-    
+
     const [result] = await pool.execute(
       'INSERT INTO supplier_payments (supplier_id, data_vencimento, data_pagamento, valor, status, forma_pagamento, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [id, data_vencimento, data_pagamento || null, valor, status || 'pendente', forma_pagamento || null, observacoes || null]
     );
-    
+
     res.json({ success: true, id: result.insertId, message: 'Pagamento registrado com sucesso' });
   } catch (error) {
     logger.logError(error, req);
@@ -17831,14 +17831,14 @@ app.post('/api/financial/suppliers/:id/payments', async (req, res) => {
 app.post('/api/financial/suppliers/reset-expenses', async (req, res) => {
   try {
     console.log('🔄 Zerando despesas de fornecedores...');
-    
+
     // Zerar todas as despesas dos fornecedores diretamente na tabela fornecedores
     await pool.execute(`
       UPDATE fornecedores 
       SET total_expenses = 0, 
           updated_at = NOW()
     `);
-    
+
     // Limpar transações financeiras relacionadas a fornecedores (se existirem)
     try {
       await pool.execute(`
@@ -17849,22 +17849,22 @@ app.post('/api/financial/suppliers/reset-expenses', async (req, res) => {
     } catch (error) {
       console.log('⚠️ Aviso: Não foi possível limpar transações financeiras:', error.message);
     }
-    
+
     console.log('✅ Despesas de fornecedores zeradas com sucesso');
     logger.info('Despesas de fornecedores zeradas');
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Despesas de fornecedores zeradas com sucesso',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ ERRO ao zerar despesas:', error);
     logger.error('Erro ao zerar despesas de fornecedores', { error: error.message });
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erro interno do servidor', 
-      details: error.message 
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno do servidor',
+      details: error.message
     });
   }
 });
@@ -17875,14 +17875,14 @@ app.post('/api/financial/suppliers/reset-expenses', async (req, res) => {
 app.get('/api/financial/values', async (req, res) => {
   try {
     console.log('🔍 Buscando valores financeiros...');
-    
+
     // Buscar valores da tabela de configurações financeiras
     const [rows] = await pool.execute(`
       SELECT * FROM financial_values 
       ORDER BY created_at DESC 
       LIMIT 1
     `);
-    
+
     if (rows.length === 0) {
       // Se não existir, retornar valores calculados
       const [orders] = await pool.execute(`
@@ -17894,12 +17894,12 @@ app.get('/api/financial/values', async (req, res) => {
       const [suppliers] = await pool.execute(`
         SELECT SUM(total_expenses) as total FROM suppliers WHERE total_expenses IS NOT NULL
       `);
-      
+
       const revenue = (orders[0]?.total || 0) + (events[0]?.total || 0);
       const expenses = suppliers[0]?.total || 0;
       const profit = revenue - expenses;
       const balance = profit * 1.2;
-      
+
       res.json({
         totalRevenue: revenue,
         totalExpenses: expenses,
@@ -17925,16 +17925,16 @@ app.get('/api/financial/values', async (req, res) => {
 app.put('/api/financial/values', async (req, res) => {
   try {
     const { totalRevenue, totalExpenses, netProfit, projectedBalance } = req.body;
-    
+
     console.log('💾 Atualizando valores financeiros:', { totalRevenue, totalExpenses, netProfit, projectedBalance });
-    
+
     // Verificar se já existe registro
     const [existing] = await pool.execute(`
       SELECT id FROM financial_values 
       ORDER BY created_at DESC 
       LIMIT 1
     `);
-    
+
     if (existing.length > 0) {
       // Atualizar registro existente
       await pool.execute(`
@@ -17959,11 +17959,11 @@ app.put('/api/financial/values', async (req, res) => {
         1, new Date().toISOString(), new Date().toISOString()
       ]);
     }
-    
+
     console.log('✅ Valores financeiros atualizados com sucesso');
-    res.json({ 
-      success: true, 
-      message: 'Valores financeiros atualizados com sucesso' 
+    res.json({
+      success: true,
+      message: 'Valores financeiros atualizados com sucesso'
     });
   } catch (error) {
     console.error('❌ ERRO ao atualizar valores financeiros:', error);
@@ -17974,7 +17974,7 @@ app.put('/api/financial/values', async (req, res) => {
 app.post('/api/financial/values/reset', async (req, res) => {
   try {
     console.log('🔄 Resetando valores financeiros para calculados...');
-    
+
     // Calcular valores baseados nos dados reais
     const [orders] = await pool.execute(`
       SELECT SUM(total) as total FROM orders WHERE payment_status = 'paid'
@@ -17985,19 +17985,19 @@ app.post('/api/financial/values/reset', async (req, res) => {
     const [suppliers] = await pool.execute(`
       SELECT SUM(total_expenses) as total FROM suppliers WHERE total_expenses IS NOT NULL
     `);
-    
+
     const revenue = (orders[0]?.total || 0) + (events[0]?.total || 0);
     const expenses = suppliers[0]?.total || 0;
     const profit = revenue - expenses;
     const balance = profit * 1.2;
-    
+
     // Atualizar ou criar registro
     const [existing] = await pool.execute(`
       SELECT id FROM financial_values 
       ORDER BY created_at DESC 
       LIMIT 1
     `);
-    
+
     if (existing.length > 0) {
       await pool.execute(`
         UPDATE financial_values 
@@ -18020,10 +18020,10 @@ app.post('/api/financial/values/reset', async (req, res) => {
         0, new Date().toISOString(), new Date().toISOString()
       ]);
     }
-    
+
     console.log('✅ Valores financeiros resetados com sucesso');
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Valores resetados para os calculados automaticamente',
       values: { totalRevenue: revenue, totalExpenses: expenses, netProfit: profit, projectedBalance: balance }
     });
@@ -18038,10 +18038,10 @@ app.put('/api/financial/suppliers/:id/credit-limit', async (req, res) => {
   try {
     const { id } = req.params;
     const { limiteCredito } = req.body;
-    
+
     // Simular atualização - em produção, isso seria salvo em uma tabela de configurações
     console.log(`Atualizando limite de crédito do fornecedor ${id} para R$ ${limiteCredito}`);
-    
+
     res.json({ success: true, message: 'Limite de crédito atualizado com sucesso' });
   } catch (error) {
     logger.logError(error, req);
@@ -18141,7 +18141,7 @@ app.get('/api/categorias', async (req, res) => {
 app.post('/api/categorias', async (req, res) => {
   try {
     const { nome, descricao, cor, icone, tipo } = req.body;
-    
+
     if (!nome) {
       return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
     }
@@ -18214,7 +18214,7 @@ app.get('/api/fornecedores', async (req, res) => {
 app.post('/api/fornecedores', async (req, res) => {
   try {
     const { nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, status, observacoes } = req.body;
-    
+
     if (!nome) {
       return res.status(400).json({ error: 'Nome do fornecedor é obrigatório' });
     }
@@ -18287,7 +18287,7 @@ app.get('/api/clientes', async (req, res) => {
 app.post('/api/clientes', async (req, res) => {
   try {
     const { nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, status, observacoes } = req.body;
-    
+
     if (!nome) {
       return res.status(400).json({ error: 'Nome do cliente é obrigatório' });
     }
@@ -18355,37 +18355,37 @@ app.delete('/api/clientes/:id', async (req, res) => {
 app.get('/api/financial/fornecedores', async (req, res) => {
   try {
     console.log('🔍 GET /api/financial/fornecedores - Iniciando busca...');
-    
+
     // Garantir que estamos usando o banco correto
     // IMPORTANTE: Sempre usar rare_toy_companion, mesmo se .env tiver outro valor
     const dbName = 'rare_toy_companion';
     console.log(`📊 Banco configurado (forçado): ${dbName}`);
     console.log(`📊 MYSQL_DATABASE do env: ${process.env.MYSQL_DATABASE}`);
     console.log(`📊 Pool database config: ${pool.config?.database || 'não definido'}`);
-    
+
     let connection;
     try {
       // Obter conexão do pool
       connection = await pool.getConnection();
       console.log('✅ Conexão obtida do pool');
-      
+
       // Buscar fornecedores usando nome completo do banco para garantir
       // Não depender do banco padrão da conexão
       const query = `SELECT * FROM \`rare_toy_companion\`.\`fornecedores\` ORDER BY nome`;
       console.log(`📝 Executando query (forçando banco): ${query}`);
       const [rows] = await connection.execute(query);
       console.log(`✅ ${rows.length} fornecedores encontrados`);
-      
+
       connection.release();
       res.json({ success: true, fornecedores: rows || [] });
     } catch (queryError) {
       if (connection) connection.release();
-      
+
       console.error('❌ Erro ao executar query SELECT:', queryError);
       console.error('❌ Código do erro:', queryError.code);
       console.error('❌ SQL State:', queryError.sqlState);
       console.error('❌ Mensagem:', queryError.message);
-      
+
       // Se for erro de tabela não existe, tentar criar
       if (queryError.code === 'ER_NO_SUCH_TABLE' || queryError.code === '42S02') {
         console.log('📋 Tabela não existe, criando...');
@@ -18424,8 +18424,8 @@ app.get('/api/financial/fornecedores', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Erro ao buscar fornecedores:', error);
-    res.status(500).json({ 
-      error: 'Erro ao buscar fornecedores', 
+    res.status(500).json({
+      error: 'Erro ao buscar fornecedores',
       details: error.message,
       code: error.code,
       sqlState: error.sqlState
@@ -18436,7 +18436,7 @@ app.get('/api/financial/fornecedores', async (req, res) => {
 app.post('/api/financial/fornecedores', async (req, res) => {
   try {
     const { nome, cnpj, email, telefone, endereco, status } = req.body || {};
-    
+
     // Validação mais rigorosa
     if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
       return res.status(400).json({ error: 'Nome do fornecedor é obrigatório e deve ser uma string não vazia' });
@@ -18454,7 +18454,7 @@ app.post('/api/financial/fornecedores', async (req, res) => {
         WHERE TABLE_SCHEMA = DATABASE() 
         AND TABLE_NAME = 'fornecedores'
       `);
-      
+
       if (tables.length === 0) {
         console.log('📋 Criando tabela fornecedores...');
         await pool.execute(`
@@ -18488,24 +18488,24 @@ app.post('/api/financial/fornecedores', async (req, res) => {
     // A tabela real tem: nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, observacoes, status
     // Status pode ser: 'ativo', 'inativo', 'pendente'
     const statusValue = status && ['ativo', 'inativo', 'pendente'].includes(status) ? status : 'ativo';
-    
+
     console.log('📝 Dados recebidos:', { nome, cnpj, email, telefone, endereco, status: statusValue });
-    
+
     try {
-    const [result] = await pool.execute(`
+      const [result] = await pool.execute(`
       INSERT INTO fornecedores (nome, cnpj, email, telefone, endereco, status) 
       VALUES (?, ?, ?, ?, ?, ?)
       `, [
-        nomeLimpo, 
-        cnpj ? String(cnpj).trim() || null : null, 
-        email ? String(email).trim() || null : null, 
-        telefone ? String(telefone).trim() || null : null, 
-        endereco ? String(endereco).trim() || null : null, 
+        nomeLimpo,
+        cnpj ? String(cnpj).trim() || null : null,
+        email ? String(email).trim() || null : null,
+        telefone ? String(telefone).trim() || null : null,
+        endereco ? String(endereco).trim() || null : null,
         statusValue
       ]);
 
-    console.log('✅ Fornecedor criado com ID:', result.insertId);
-    res.json({ success: true, message: 'Fornecedor criado com sucesso', id: result.insertId });
+      console.log('✅ Fornecedor criado com ID:', result.insertId);
+      res.json({ success: true, message: 'Fornecedor criado com sucesso', id: result.insertId });
     } catch (insertError) {
       console.error('❌ Erro SQL ao inserir fornecedor:', insertError);
       console.error('❌ Código do erro:', insertError.code);
@@ -18516,8 +18516,8 @@ app.post('/api/financial/fornecedores', async (req, res) => {
   } catch (error) {
     console.error('❌ Erro ao criar fornecedor:', error);
     console.error('❌ Stack:', error.stack);
-    res.status(500).json({ 
-      error: 'Erro ao criar fornecedor', 
+    res.status(500).json({
+      error: 'Erro ao criar fornecedor',
       details: error.message,
       code: error.code,
       sqlState: error.sqlState
@@ -18646,9 +18646,9 @@ app.get('/api/financial/categorias', authenticateAdmin, async (req, res) => {
   try {
     await ensureCategoriasFinanceirasTable();
     console.log('✅ Buscando categorias financeiras...');
-    
+
     const [rows] = await pool.execute('SELECT * FROM categorias_financeiras ORDER BY nome');
-    
+
     console.log(`✅ ${rows.length} categorias financeiras encontradas`);
     res.json({ success: true, categorias: rows, total: rows.length });
   } catch (error) {
@@ -18662,18 +18662,18 @@ app.post('/api/financial/categorias', authenticateAdmin, async (req, res) => {
   try {
     await ensureCategoriasFinanceirasTable();
     const { nome, descricao, cor, icone, tipo } = req.body;
-    
+
     if (!nome || !nome.trim()) {
       return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
     }
-    
+
     console.log('✅ Criando nova categoria financeira:', nome);
-    
+
     const [result] = await pool.execute(`
       INSERT INTO categorias_financeiras (nome, descricao, cor, icone, tipo)
       VALUES (?, ?, ?, ?, ?)
     `, [nome.trim(), descricao || null, cor || '#3B82F6', icone || '📁', tipo || 'ambos']);
-    
+
     console.log(`✅ Categoria financeira criada com ID: ${result.insertId}`);
     res.json({ success: true, id: result.insertId, message: 'Categoria financeira criada com sucesso' });
   } catch (error) {
@@ -18753,7 +18753,7 @@ app.delete('/api/financial/categorias/:id', authenticateAdmin, async (req, res) 
 app.get('/api/financial/clientes', async (req, res) => {
   try {
     console.log('👥 Buscando clientes da loja (tabela customers)...');
-    
+
     // Criar pool temporário para acessar tabela customers
     // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
     const tempPool = mysql.createPool({
@@ -18766,7 +18766,7 @@ app.get('/api/financial/clientes', async (req, res) => {
       connectionLimit: 10,
       queueLimit: 0
     });
-    
+
     // Buscar da tabela customers (clientes reais da loja)
     const [rows] = await tempPool.execute(`
       SELECT id, nome, email, telefone, cpf, data_nascimento,
@@ -18776,10 +18776,10 @@ app.get('/api/financial/clientes', async (req, res) => {
       FROM customers 
       ORDER BY nome
     `);
-    
+
     // Fechar pool temporário
     await tempPool.end();
-    
+
     const clientes = rows.map(cliente => ({
       id: cliente.id,
       nome: cliente.nome,
@@ -18803,7 +18803,7 @@ app.get('/api/financial/clientes', async (req, res) => {
       total_gasto: parseFloat(cliente.total_gasto) || 0,
       ultimo_pedido: cliente.ultimo_pedido
     }));
-    
+
     console.log(`✅ ${clientes.length} clientes da loja encontrados`);
     res.json({ success: true, clientes, total: clientes.length });
   } catch (error) {
@@ -18825,19 +18825,19 @@ app.post('/api/financial/clientes', async (req, res) => {
     connectionLimit: 10,
     queueLimit: 0
   });
-  
+
   try {
     const { nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, observacoes } = req.body;
-    
+
     console.log('✅ Criando novo cliente:', nome);
-    
+
     const [result] = await tempPool.execute(`
       INSERT INTO clientes (nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, status, observacoes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ativo', ?)
     `, [nome, cpf || null, email || null, telefone || null, endereco || null, cidade || null, estado || null, cep || null, data_nascimento || null, tipo || 'pessoa_fisica', observacoes || null]);
-    
+
     await tempPool.end();
-    
+
     console.log(`✅ Cliente criado com ID: ${result.insertId}`);
     res.json({ success: true, id: result.insertId, message: 'Cliente criado com sucesso' });
   } catch (error) {
@@ -18860,21 +18860,21 @@ app.put('/api/financial/clientes/:id', async (req, res) => {
     connectionLimit: 10,
     queueLimit: 0
   });
-  
+
   try {
     const { id } = req.params;
     const { nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, status, observacoes } = req.body;
-    
+
     console.log(`✅ Atualizando cliente ID: ${id}`);
-    
+
     await tempPool.execute(`
       UPDATE clientes 
       SET nome = ?, cpf = ?, email = ?, telefone = ?, endereco = ?, cidade = ?, estado = ?, cep = ?, data_nascimento = ?, tipo = ?, status = ?, observacoes = ?
       WHERE id = ?
     `, [nome, cpf || null, email || null, telefone || null, endereco || null, cidade || null, estado || null, cep || null, data_nascimento || null, tipo || 'pessoa_fisica', status || 'ativo', observacoes || null, id]);
-    
+
     await tempPool.end();
-    
+
     console.log(`✅ Cliente ${id} atualizado`);
     res.json({ success: true, message: 'Cliente atualizado com sucesso' });
   } catch (error) {
@@ -18897,15 +18897,15 @@ app.delete('/api/financial/clientes/:id', async (req, res) => {
     connectionLimit: 10,
     queueLimit: 0
   });
-  
+
   try {
     const { id } = req.params;
-    
+
     console.log(`✅ Excluindo cliente ID: ${id}`);
-    
+
     await tempPool.execute('DELETE FROM clientes WHERE id = ?', [id]);
     await tempPool.end();
-    
+
     console.log(`✅ Cliente ${id} excluído`);
     res.json({ success: true, message: 'Cliente excluído com sucesso' });
   } catch (error) {
@@ -19076,7 +19076,7 @@ app.get('/api/test-db-connection', async (req, res) => {
 app.get('/api/test-clientes-direct', async (req, res) => {
   try {
     console.log('Testando tabela clientes diretamente...');
-    
+
     // Criar um novo pool de conexões para este teste
     // SECURITY: Nunca hardcodar senhas! Use apenas variáveis de ambiente
     const testPool = mysql.createPool({
@@ -19089,13 +19089,13 @@ app.get('/api/test-clientes-direct', async (req, res) => {
       connectionLimit: 10,
       queueLimit: 0
     });
-    
+
     const [rows] = await testPool.execute('SELECT COUNT(*) as total FROM clientes');
     console.log('Total de clientes:', rows[0].total);
-    
+
     // Fechar o pool de teste
     await testPool.end();
-    
+
     res.json({ success: true, total: rows[0].total });
   } catch (error) {
     console.error('Erro ao testar tabela clientes diretamente:', error);
@@ -19133,15 +19133,15 @@ app.get('/api/test-categorias', async (req, res) => {
 app.get('/api/test-customers', async (req, res) => {
   try {
     console.log('🔍 Testando tabela customers...');
-    
+
     const [columns] = await pool.execute('SHOW COLUMNS FROM customers');
     console.log('📋 Colunas da tabela customers:', columns);
-    
+
     const [rows] = await pool.execute('SELECT id, nome, email, total_pedidos, total_gasto FROM customers LIMIT 3');
     console.log('📊 Dados da tabela customers:', rows);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       columns: columns,
       data: rows,
       message: 'Estrutura da tabela customers verificada'
@@ -19161,7 +19161,7 @@ app.get('/api/customers/:userId/settings', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📍 GET /api/customers/${userId}/settings`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
@@ -19171,12 +19171,12 @@ app.get('/api/customers/:userId/settings', async (req, res) => {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
     }
-    
+
     // Buscar configurações
     const [settings] = await pool.execute(`
       SELECT * FROM customer_settings WHERE customer_id = ?
     `, [userId]);
-    
+
     if (settings.length > 0) {
       const setting = settings[0];
       res.json({
@@ -19227,7 +19227,7 @@ app.put('/api/customers/:userId/settings', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📍 PUT /api/customers/${userId}/settings`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
@@ -19237,15 +19237,15 @@ app.put('/api/customers/:userId/settings', async (req, res) => {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
     }
-    
+
     const { privacy, preferences } = req.body;
     console.log('📝 Salvando configurações:', { privacy, preferences });
-    
+
     // Verificar se já existe configuração
     const [existing] = await pool.execute(`
       SELECT id FROM customer_settings WHERE customer_id = ?
     `, [userId]);
-    
+
     if (existing.length > 0) {
       // Atualizar configurações existentes
       await pool.execute(`
@@ -19311,7 +19311,7 @@ app.put('/api/customers/:userId/settings', async (req, res) => {
         preferences?.twoFactorAuth || false
       ]);
     }
-    
+
     console.log('✅ Configurações salvas com sucesso');
     res.json({ success: true, message: 'Configurações salvas com sucesso' });
   } catch (error) {
@@ -19325,7 +19325,7 @@ app.get('/api/customers/:userId/notification-preferences', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📍 GET /api/customers/${userId}/notification-preferences`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
@@ -19335,12 +19335,12 @@ app.get('/api/customers/:userId/notification-preferences', async (req, res) => {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
     }
-    
+
     // Buscar preferências da tabela customer_settings
     const [settings] = await pool.execute(`
       SELECT allow_marketing, allow_analytics FROM customer_settings WHERE customer_id = ?
     `, [userId]);
-    
+
     if (settings.length > 0) {
       res.json({
         emailNotifications: settings[0].allow_marketing || true,
@@ -19364,7 +19364,7 @@ app.put('/api/customers/:userId/notification-preferences', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📍 PUT /api/customers/${userId}/notification-preferences`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id FROM users WHERE email = ?', [userId]);
@@ -19374,15 +19374,15 @@ app.put('/api/customers/:userId/notification-preferences', async (req, res) => {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
     }
-    
+
     const { emailNotifications, pushNotifications } = req.body;
     console.log('📝 Salvando preferências de notificação:', { emailNotifications, pushNotifications });
-    
+
     // Verificar se já existe configuração
     const [existing] = await pool.execute(`
       SELECT id FROM customer_settings WHERE customer_id = ?
     `, [userId]);
-    
+
     if (existing.length > 0) {
       // Atualizar configurações existentes
       await pool.execute(`
@@ -19404,7 +19404,7 @@ app.put('/api/customers/:userId/notification-preferences', async (req, res) => {
         ) VALUES (?, ?, ?, NOW(), NOW())
       `, [userId, emailNotifications ? 1 : 0, pushNotifications ? 1 : 0]);
     }
-    
+
     console.log('✅ Preferências de notificação salvas com sucesso');
     res.json({ success: true, message: 'Preferências salvas com sucesso' });
   } catch (error) {
@@ -19418,7 +19418,7 @@ app.get('/api/customers/:userId/sessions', async (req, res) => {
   try {
     let { userId } = req.params;
     console.log(`📍 GET /api/customers/${userId}/sessions`);
-    
+
     // Se userId parece ser email, buscar o ID do usuário
     if (userId.includes('@')) {
       const [user] = await pool.execute('SELECT id, email FROM users WHERE email = ?', [userId]);
@@ -19437,8 +19437,8 @@ app.get('/api/customers/:userId/sessions', async (req, res) => {
           ORDER BY created_at DESC
           LIMIT 10
         `, [userId, user[0].email]);
-        
-        return res.json({ 
+
+        return res.json({
           sessions: sessions.map(s => ({
             id: s.id,
             device: 'Navegador',
@@ -19451,7 +19451,7 @@ app.get('/api/customers/:userId/sessions', async (req, res) => {
         return res.status(404).json({ error: 'Usuário não encontrado', sessions: [] });
       }
     }
-    
+
     // Buscar sessões por user_id
     const [sessions] = await pool.execute(`
       SELECT 
@@ -19465,8 +19465,8 @@ app.get('/api/customers/:userId/sessions', async (req, res) => {
       ORDER BY created_at DESC
       LIMIT 10
     `, [userId]);
-    
-    res.json({ 
+
+    res.json({
       sessions: sessions.map(s => ({
         id: s.id,
         device: 'Navegador',
@@ -19638,7 +19638,7 @@ app.get('/api/admin/suporte/faqs', authenticateAdmin, async (req, res) => {
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
       ['faqs']
     );
-    
+
     const faqs = rows.length > 0 ? JSON.parse(rows[0].setting_value) : [];
     res.json({ faqs });
   } catch (error) {
@@ -19651,14 +19651,14 @@ app.get('/api/admin/suporte/faqs', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/suporte/faqs', authenticateAdmin, async (req, res) => {
   try {
     const { faqs } = req.body;
-    
+
     await pool.execute(
       `INSERT INTO support_settings (setting_key, setting_value) 
        VALUES (?, ?) 
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       ['faqs', JSON.stringify(faqs), JSON.stringify(faqs)]
     );
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao salvar FAQs:', error);
@@ -19673,7 +19673,7 @@ app.get('/api/admin/suporte/contact', authenticateAdmin, async (req, res) => {
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
       ['contact_info']
     );
-    
+
     const contact = rows.length > 0 ? JSON.parse(rows[0].setting_value) : null;
     res.json({ contact });
   } catch (error) {
@@ -19686,14 +19686,14 @@ app.get('/api/admin/suporte/contact', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/suporte/contact', authenticateAdmin, async (req, res) => {
   try {
     const contactInfo = req.body;
-    
+
     await pool.execute(
       `INSERT INTO support_settings (setting_key, setting_value) 
        VALUES (?, ?) 
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       ['contact_info', JSON.stringify(contactInfo), JSON.stringify(contactInfo)]
     );
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao salvar contato:', error);
@@ -19708,7 +19708,7 @@ app.get('/api/admin/suporte/location', authenticateAdmin, async (req, res) => {
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
       ['store_location']
     );
-    
+
     const location = rows.length > 0 ? JSON.parse(rows[0].setting_value) : null;
     res.json({ location });
   } catch (error) {
@@ -19721,14 +19721,14 @@ app.get('/api/admin/suporte/location', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/suporte/location', authenticateAdmin, async (req, res) => {
   try {
     const location = req.body;
-    
+
     await pool.execute(
       `INSERT INTO support_settings (setting_key, setting_value) 
        VALUES (?, ?) 
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       ['store_location', JSON.stringify(location), JSON.stringify(location)]
     );
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Erro ao salvar localização:', error);
@@ -19743,17 +19743,17 @@ app.get('/api/suporte/config', async (req, res) => {
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
       ['faqs']
     );
-    
+
     const [contact] = await pool.execute(
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
       ['contact_info']
     );
-    
+
     const [location] = await pool.execute(
       'SELECT setting_value FROM support_settings WHERE setting_key = ?',
       ['store_location']
     );
-    
+
     res.json({
       faqs: faqs.length > 0 ? JSON.parse(faqs[0].setting_value) : [],
       contactInfo: contact.length > 0 ? JSON.parse(contact[0].setting_value) : {},
@@ -19790,11 +19790,11 @@ app.get('/api/legal-pages/:slug', async (req, res) => {
       'SELECT * FROM legal_pages WHERE slug = ? AND is_published = TRUE',
       [slug]
     );
-    
+
     if (pages.length === 0) {
       return res.status(404).json({ error: 'Página não encontrada' });
     }
-    
+
     res.json(pages[0]);
   } catch (error) {
     console.error('❌ Erro ao buscar página:', error);
@@ -19823,11 +19823,11 @@ app.get('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
       'SELECT * FROM legal_pages WHERE id = ?',
       [id]
     );
-    
+
     if (pages.length === 0) {
       return res.status(404).json({ error: 'Página não encontrada' });
     }
-    
+
     res.json(pages[0]);
   } catch (error) {
     console.error('❌ Erro ao buscar página (admin):', error);
@@ -19840,14 +19840,14 @@ app.put('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, content, meta_description, is_published } = req.body;
-    
+
     await pool.execute(
       `UPDATE legal_pages 
        SET title = ?, content = ?, meta_description = ?, is_published = ?
        WHERE id = ?`,
       [title, content, meta_description || null, is_published, id]
     );
-    
+
     console.log(`✅ Página ${id} atualizada`);
     res.json({ success: true });
   } catch (error) {
@@ -19860,13 +19860,13 @@ app.put('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/legal-pages', authenticateAdmin, async (req, res) => {
   try {
     const { slug, title, content, meta_description, is_published } = req.body;
-    
+
     const [result] = await pool.execute(
       `INSERT INTO legal_pages (slug, title, content, meta_description, is_published) 
        VALUES (?, ?, ?, ?, ?)`,
       [slug, title, content, meta_description || null, is_published]
     );
-    
+
     console.log(`✅ Página ${slug} criada`);
     res.json({ success: true, id: result.insertId });
   } catch (error) {
@@ -19879,9 +19879,9 @@ app.post('/api/admin/legal-pages', authenticateAdmin, async (req, res) => {
 app.delete('/api/admin/legal-pages/:id', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await pool.execute('DELETE FROM legal_pages WHERE id = ?', [id]);
-    
+
     console.log(`✅ Página ${id} excluída`);
     res.json({ success: true });
   } catch (error) {
@@ -19938,19 +19938,19 @@ app.post('/api/admin/database/backup', authenticateAdmin, async (req, res) => {
     const dbPassword = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '';
     const dbHost = process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1';
     const dbPort = process.env.MYSQL_PORT || process.env.DB_PORT || '3306';
-    
+
     const backupFilename = `backup_${dbName}_${timestamp}${description ? '_' + description.replace(/[^a-zA-Z0-9]/g, '_') : ''}.sql`;
     const backupPath = path.join(BACKUP_DIR, backupFilename);
 
     // Comando mysqldump - usando variável de ambiente para senha (mais seguro)
     // Montar o comando sem a senha no comando diretamente para evitar problemas
-    const dumpCommand = dbPassword 
+    const dumpCommand = dbPassword
       ? `MYSQL_PWD="${dbPassword}" mysqldump -h ${dbHost} -P ${dbPort} -u ${dbUser} --single-transaction --quick --lock-tables=false ${dbName} > "${backupPath}" 2>&1`
       : `mysqldump -h ${dbHost} -P ${dbPort} -u ${dbUser} --single-transaction --quick --lock-tables=false ${dbName} > "${backupPath}" 2>&1`;
 
     console.log(`💾 Iniciando backup: ${backupFilename}`);
     console.log(`📊 Banco: ${dbName}, Host: ${dbHost}, Porta: ${dbPort}, User: ${dbUser}`);
-    
+
     const { stdout, stderr } = await execAsync(dumpCommand, {
       maxBuffer: 1024 * 1024 * 50, // 50MB buffer para bancos maiores
       shell: '/bin/bash',
@@ -20004,8 +20004,8 @@ app.post('/api/admin/database/backup', authenticateAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erro ao criar backup:', error);
-    res.status(500).json({ 
-      error: 'Erro ao criar backup', 
+    res.status(500).json({
+      error: 'Erro ao criar backup',
       message: error.message,
       details: process.env.NODE_ENV !== 'production' ? error.stack : undefined
     });
@@ -20016,13 +20016,13 @@ app.post('/api/admin/database/backup', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/database/restore', authenticateAdmin, async (req, res) => {
   try {
     const { filename } = req.body;
-    
+
     if (!filename || !filename.endsWith('.sql')) {
       return res.status(400).json({ error: 'Nome de arquivo inválido' });
     }
 
     const backupPath = path.join(BACKUP_DIR, filename);
-    
+
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Arquivo de backup não encontrado' });
     }
@@ -20038,7 +20038,7 @@ app.post('/api/admin/database/restore', authenticateAdmin, async (req, res) => {
     const restoreCommand = `mysql -h ${dbHost} -P ${dbPort} -u ${dbUser} ${passwordArg} ${dbName} < "${backupPath}" 2>&1`;
 
     console.log(`🔄 Iniciando restauração: ${filename}`);
-    
+
     const { stdout, stderr } = await execAsync(restoreCommand, {
       maxBuffer: 1024 * 1024 * 10, // 10MB buffer
       shell: '/bin/bash'
@@ -20063,8 +20063,8 @@ app.post('/api/admin/database/restore', authenticateAdmin, async (req, res) => {
     res.json({ success: true, message: 'Backup restaurado com sucesso' });
   } catch (error) {
     console.error('❌ Erro ao restaurar backup:', error);
-    res.status(500).json({ 
-      error: 'Erro ao restaurar backup', 
+    res.status(500).json({
+      error: 'Erro ao restaurar backup',
       message: error.message,
       details: process.env.NODE_ENV !== 'production' ? error.stack : undefined
     });
@@ -20075,13 +20075,13 @@ app.post('/api/admin/database/restore', authenticateAdmin, async (req, res) => {
 app.delete('/api/admin/database/backup/:filename', authenticateAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
-    
+
     if (!filename || !filename.endsWith('.sql')) {
       return res.status(400).json({ error: 'Nome de arquivo inválido' });
     }
 
     const backupPath = path.join(BACKUP_DIR, filename);
-    
+
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Arquivo de backup não encontrado' });
     }
@@ -20100,20 +20100,20 @@ app.delete('/api/admin/database/backup/:filename', authenticateAdmin, async (req
 app.get('/api/admin/database/backup/download/:filename', authenticateAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
-    
+
     if (!filename || !filename.endsWith('.sql')) {
       return res.status(400).json({ error: 'Nome de arquivo inválido' });
     }
 
     const backupPath = path.join(BACKUP_DIR, filename);
-    
+
     if (!fs.existsSync(backupPath)) {
       return res.status(404).json({ error: 'Arquivo de backup não encontrado' });
     }
 
     res.setHeader('Content-Type', 'application/sql');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
+
     const fileStream = fs.createReadStream(backupPath);
     fileStream.pipe(res);
   } catch (error) {
@@ -20137,7 +20137,7 @@ function formatBytes(bytes) {
 const runDailyAutomations = async () => {
   const now = new Date();
   const hour = now.getHours();
-  
+
   // Executar apenas às 9h da manhã
   if (hour === 9) {
     console.log('⏰ [SCHEDULER] Hora de executar automações diárias!');
@@ -20182,16 +20182,16 @@ app.get('/analytics/dashboard', authenticateAdmin, async (req, res) => {
   const originalPath = req.path;
   req.url = '/api/admin/analytics/dashboard' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
   req.path = '/api/admin/analytics/dashboard';
-  
+
   // Encontrar e chamar a rota correta
-  const route = app._router.stack.find(layer => 
+  const route = app._router.stack.find(layer =>
     layer.route && layer.route.path === '/api/admin/analytics/dashboard' && layer.route.methods.get
   );
-  
+
   if (route) {
     return route.route.stack[0].handle(req, res);
   }
-  
+
   // Fallback: redirecionar
   return res.redirect(301, '/api/admin/analytics/dashboard' + (originalUrl.includes('?') ? originalUrl.substring(originalUrl.indexOf('?')) : ''));
 });
@@ -20199,7 +20199,7 @@ app.get('/analytics/dashboard', authenticateAdmin, async (req, res) => {
 app.get('/analytics/vendas', authenticateAdmin, async (req, res) => {
   req.url = '/api/admin/analytics/vendas' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
   req.path = '/api/admin/analytics/vendas';
-  const route = app._router.stack.find(layer => 
+  const route = app._router.stack.find(layer =>
     layer.route && layer.route.path === '/api/admin/analytics/vendas' && layer.route.methods.get
   );
   if (route) {
@@ -20211,7 +20211,7 @@ app.get('/analytics/vendas', authenticateAdmin, async (req, res) => {
 app.get('/analytics/produtos-populares', authenticateAdmin, async (req, res) => {
   req.url = '/api/admin/analytics/produtos-populares' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
   req.path = '/api/admin/analytics/produtos-populares';
-  const route = app._router.stack.find(layer => 
+  const route = app._router.stack.find(layer =>
     layer.route && layer.route.path === '/api/admin/analytics/produtos-populares' && layer.route.methods.get
   );
   if (route) {
@@ -20223,7 +20223,7 @@ app.get('/analytics/produtos-populares', authenticateAdmin, async (req, res) => 
 app.get('/analytics/pedidos-recentes', authenticateAdmin, async (req, res) => {
   req.url = '/api/admin/analytics/pedidos-recentes' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '');
   req.path = '/api/admin/analytics/pedidos-recentes';
-  const route = app._router.stack.find(layer => 
+  const route = app._router.stack.find(layer =>
     layer.route && layer.route.path === '/api/admin/analytics/pedidos-recentes' && layer.route.methods.get
   );
   if (route) {
@@ -20265,11 +20265,11 @@ app.post('/api/analytics/web-vitals', async (req, res) => {
 app.get('/api/badges', async (req, res) => {
   try {
     console.log('🏷️ Buscando badges...');
-    
+
     const [rows] = await pool.execute(
       'SELECT * FROM product_badges WHERE ativo = 1 ORDER BY ordem ASC'
     );
-    
+
     console.log(`✅ ${rows.length} badges encontrados`);
     res.json(rows);
   } catch (error) {
@@ -20283,7 +20283,7 @@ app.get('/api/produtos/:id/badges', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🏷️ Buscando badges do produto ${id}...`);
-    
+
     const [rows] = await pool.execute(
       `SELECT pb.* 
        FROM product_badges pb
@@ -20292,7 +20292,7 @@ app.get('/api/produtos/:id/badges', async (req, res) => {
        ORDER BY pb.ordem ASC`,
       [id]
     );
-    
+
     console.log(`✅ ${rows.length} badges encontrados para o produto ${id}`);
     res.json(rows);
   } catch (error) {
@@ -20306,18 +20306,18 @@ app.post('/api/produtos/:id/badges', async (req, res) => {
   try {
     const { id } = req.params;
     const { badge_id } = req.body;
-    
+
     if (!badge_id) {
       return res.status(400).json({ error: 'badge_id é obrigatório' });
     }
-    
+
     console.log(`🏷️ Adicionando badge ${badge_id} ao produto ${id}...`);
-    
+
     await pool.execute(
       'INSERT IGNORE INTO produto_badge (produto_id, badge_id) VALUES (?, ?)',
       [id, badge_id]
     );
-    
+
     console.log(`✅ Badge adicionado ao produto ${id}`);
     res.json({ success: true, message: 'Badge adicionado' });
   } catch (error) {
@@ -20330,14 +20330,14 @@ app.post('/api/produtos/:id/badges', async (req, res) => {
 app.delete('/api/produtos/:id/badges/:badge_id', async (req, res) => {
   try {
     const { id, badge_id } = req.params;
-    
+
     console.log(`🏷️ Removendo badge ${badge_id} do produto ${id}...`);
-    
+
     await pool.execute(
       'DELETE FROM produto_badge WHERE produto_id = ? AND badge_id = ?',
       [id, badge_id]
     );
-    
+
     console.log(`✅ Badge removido do produto ${id}`);
     res.json({ success: true, message: 'Badge removido' });
   } catch (error) {
@@ -20351,21 +20351,21 @@ app.put('/api/produtos/:id/condicao', async (req, res) => {
   try {
     const { id } = req.params;
     const { condicao } = req.body;
-    
+
     const condicoesValidas = ['novo', 'seminovo', 'colecionavel', 'usado'];
     if (!condicao || !condicoesValidas.includes(condicao)) {
-      return res.status(400).json({ 
-        error: 'Condição inválida. Use: novo, seminovo, colecionavel ou usado' 
+      return res.status(400).json({
+        error: 'Condição inválida. Use: novo, seminovo, colecionavel ou usado'
       });
     }
-    
+
     console.log(`🏷️ Atualizando condição do produto ${id} para: ${condicao}...`);
-    
+
     await pool.execute(
       'UPDATE produtos SET condicao = ? WHERE id = ?',
       [condicao, id]
     );
-    
+
     console.log(`✅ Condição do produto ${id} atualizada`);
     res.json({ success: true, message: 'Condição atualizada', condicao });
   } catch (error) {
@@ -20379,28 +20379,28 @@ app.put('/api/produtos/:id/condicao', async (req, res) => {
 // Usar app.use ao invés de app.get('*') para evitar erro de path regex
 app.use((req, res, next) => {
   // Ignorar rotas de API, uploads e arquivos estáticos
-  if (req.path.startsWith('/api') || 
-      req.path.startsWith('/lovable-uploads') || 
-      req.path.startsWith('/uploads') ||
-      req.path.startsWith('/icon') ||
-      req.path.startsWith('/pwa-icon') ||
-      req.path.startsWith('/sw.js') ||
-      req.path.startsWith('/manifest.json') ||
-      req.path.startsWith('/assets/') ||
-      req.path.endsWith('.js') ||
-      req.path.endsWith('.css') ||
-      req.path.endsWith('.png') ||
-      req.path.endsWith('.jpg') ||
-      req.path.endsWith('.jpeg') ||
-      req.path.endsWith('.gif') ||
-      req.path.endsWith('.webp') ||
-      req.path.endsWith('.svg') ||
-      req.path.endsWith('.ico')) {
+  if (req.path.startsWith('/api') ||
+    req.path.startsWith('/lovable-uploads') ||
+    req.path.startsWith('/uploads') ||
+    req.path.startsWith('/icon') ||
+    req.path.startsWith('/pwa-icon') ||
+    req.path.startsWith('/sw.js') ||
+    req.path.startsWith('/manifest.json') ||
+    req.path.startsWith('/assets/') ||
+    req.path.endsWith('.js') ||
+    req.path.endsWith('.css') ||
+    req.path.endsWith('.png') ||
+    req.path.endsWith('.jpg') ||
+    req.path.endsWith('.jpeg') ||
+    req.path.endsWith('.gif') ||
+    req.path.endsWith('.webp') ||
+    req.path.endsWith('.svg') ||
+    req.path.endsWith('.ico')) {
     // Se for uma rota que não deve ser servida como SPA, retornar 404
     console.log(`⚠️ [SPA Fallback] Rota não encontrada: ${req.path}`);
     return res.status(404).send('Not Found');
   }
-  
+
   // Para todas as outras rotas, servir index.html
   const indexPath = path.join(__dirname, '../dist', 'index.html');
   if (fs.existsSync(indexPath)) {

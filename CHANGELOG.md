@@ -4,6 +4,24 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ---
 
+## [1.9.1] - 2026-02-06
+
+### 🔧 Corrigido
+- **Erros 502 Bad Gateway em Endpoints de Produtos**
+  - Removidas referências a colunas inexistentes (`condicao`, `novo`, `seminovo`) em queries SQL
+  - Corrigidos 5 queries no arquivo `server/server.cjs` (linhas 1315, 1343, 1373, 1986)
+  - Endpoints corrigidos:
+    - `/api/produtos` - Lista todos os produtos (35 produtos)
+    - `/api/produtos/destaque` - Produtos em destaque (8 produtos)
+    - `/api/produtos/:id` - Busca produto por ID
+  - Site agora carrega produtos corretamente sem erros 502
+
+### 📚 Documentação
+- Criado `docs/CORRECAO_ERRO_502_COLUNAS_INEXISTENTES.md` (documentação completa da correção)
+- CHANGELOG atualizado
+
+---
+
 ## [1.9.0] - 2026-02-06
 
 ### ✨ Adicionado
