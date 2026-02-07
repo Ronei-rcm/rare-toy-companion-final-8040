@@ -43,8 +43,8 @@ module.exports = {
         DB_HOST: process.env.DB_HOST || "localhost",
         DB_USER: process.env.DB_USER || "root",
         DB_PASSWORD: process.env.DB_PASSWORD || "",
-        DB_NAME: process.env.DB_NAME || "rare_toy_store",
-        DB_PORT: process.env.DB_PORT || 3306,
+        DB_NAME: process.env.DB_NAME || "rare_toy_companion",
+        DB_PORT: process.env.DB_PORT || 3307,
         WHATSAPP_WEBHOOK_SECRET: process.env.WHATSAPP_WEBHOOK_SECRET || "seu-secret-aqui",
         WHATSAPP_TOKEN: process.env.WHATSAPP_TOKEN || "seu-token-aqui",
         WHATSAPP_PHONE_ID: process.env.WHATSAPP_PHONE_ID || "seu-phone-id-aqui"

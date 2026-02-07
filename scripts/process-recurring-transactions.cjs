@@ -71,7 +71,7 @@ async function processRecurringTransactions() {
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'rare_toy_companion',
-      port: process.env.DB_PORT || 3306
+      port: process.env.DB_PORT || 3307
     });
 
     console.log('✅ Conectado ao banco de dados');

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   X,
   Save,
   Upload,
@@ -90,7 +90,7 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
   mode = 'create'
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Estados do formulário
   const [formData, setFormData] = useState<Transaction>({
     date: new Date().toISOString().split('T')[0],
@@ -174,7 +174,7 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
       // Simular upload (implementar upload real para o servidor)
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // Validar tamanho (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(`Arquivo ${file.name} é muito grande (máx 5MB)`);
@@ -273,12 +273,12 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
 
       console.log('📤 Modal enviando dados:', transactionData);
       await onSave(transactionData);
-      
+
       toast.success(
         mode === 'create' ? 'Lançamento criado com sucesso!' : 'Lançamento atualizado com sucesso!',
         { icon: '✅' }
       );
-      
+
       onClose();
     } catch (error) {
       console.error('Erro ao salvar:', error);
@@ -318,7 +318,7 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
       };
 
       await onSave(updatedTransaction);
-      
+
       toast.success('Baixa realizada com sucesso!', { icon: '✅' });
       setShowPaymentConfirm(false);
       onClose();
@@ -360,9 +360,8 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
           <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-blue-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${
-                  formData.type === 'income' ? 'bg-green-500' : 'bg-red-500'
-                } text-white`}>
+                <div className={`p-2 rounded-lg ${formData.type === 'income' ? 'bg-green-500' : 'bg-red-500'
+                  } text-white`}>
                   {formData.type === 'income' ? (
                     <TrendingUp className="w-6 h-6" />
                   ) : (
@@ -419,11 +418,10 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
                       type="button"
                       disabled={isViewMode}
                       onClick={() => handleChange('type', 'income')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        formData.type === 'income'
+                      className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'income'
                           ? 'border-green-600 bg-green-50'
                           : 'border-gray-200 hover:border-green-300'
-                      } ${isViewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        } ${isViewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <TrendingUp className="w-6 h-6 mb-2 mx-auto text-green-600" />
                       <p className="font-medium">Entrada</p>
@@ -433,11 +431,10 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
                       type="button"
                       disabled={isViewMode}
                       onClick={() => handleChange('type', 'expense')}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        formData.type === 'expense'
+                      className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'expense'
                           ? 'border-red-600 bg-red-50'
                           : 'border-gray-200 hover:border-red-300'
-                      } ${isViewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        } ${isViewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <TrendingDown className="w-6 h-6 mb-2 mx-auto text-red-600" />
                       <p className="font-medium">Saída</p>
@@ -459,7 +456,7 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
                       step="0.01"
                       min="0"
                       value={formData.amount}
-                      onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleChange('amount', e.target.value.replace(',', '.'))}
                       disabled={isViewMode}
                       className={`text-lg font-bold ${errors.amount ? 'border-red-500' : ''}`}
                       placeholder="0,00"
@@ -593,11 +590,10 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
                         type="button"
                         disabled={isViewMode}
                         onClick={() => handleChange('status', status.value)}
-                        className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-                          formData.status === status.value
+                        className={`flex-1 p-3 rounded-lg border-2 transition-all ${formData.status === status.value
                             ? 'border-purple-600 bg-purple-50'
                             : 'border-gray-200 hover:border-purple-300'
-                        } ${isViewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          } ${isViewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <div className={`${status.color} w-3 h-3 rounded-full mb-1 mx-auto`} />
                         <p className="text-sm font-medium">{status.label}</p>
@@ -731,9 +727,8 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
               <TabsContent value="pagamento" className="space-y-6">
                 <div className="border rounded-lg p-6 bg-gradient-to-br from-purple-50 to-blue-50">
                   <div className="text-center mb-6">
-                    <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${
-                      formData.status === 'paid' ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}>
+                    <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center ${formData.status === 'paid' ? 'bg-green-500' : 'bg-yellow-500'
+                      }`}>
                       {formData.status === 'paid' ? (
                         <CheckCircle className="w-10 h-10 text-white" />
                       ) : (
@@ -744,7 +739,7 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
                       {formData.status === 'paid' ? 'Pago' : 'Pendente'}
                     </h3>
                     <p className="text-muted-foreground">
-                      {formData.status === 'paid' 
+                      {formData.status === 'paid'
                         ? 'Este lançamento já foi pago'
                         : 'Este lançamento ainda não foi pago'}
                     </p>
@@ -791,7 +786,7 @@ const ProfessionalTransactionModal: React.FC<ProfessionalTransactionModalProps> 
             <Button variant="outline" onClick={onClose} disabled={saving}>
               Cancelar
             </Button>
-            
+
             <div className="flex gap-3">
               {!isViewMode && (
                 <Button

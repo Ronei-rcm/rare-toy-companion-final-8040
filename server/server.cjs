@@ -106,6 +106,7 @@ function getPublicUrl(req, pathOrUrl) {
   return `${proto}://${host}${normalized}`;
 }
 
+
 // Normalize any absolute http(s) URL to this host/proto. If relative, keep relative semantics.
 function normalizeToThisOrigin(req, urlOrPath) {
   try {
@@ -224,7 +225,7 @@ const pool = mysql.createPool({
   user: process.env.MYSQL_USER,
   password: process.env.MYSQL_PASSWORD,
   database: process.env.MYSQL_DATABASE,
-  port: parseInt(process.env.MYSQL_PORT || '3306'),
+  port: parseInt(process.env.MYSQL_PORT || '3307'),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -6015,7 +6016,7 @@ app.get('/api/customers/:userId', async (req, res) => {
 
     const [users] = await pool.execute(`
       SELECT 
-        id, nome, email, telefone, cpf, data_nascimento, avatar_url, bio, created_at,
+        id, nome, email, telefone, avatar_url, created_at,
         (SELECT COUNT(*) FROM orders WHERE user_id = users.id) as total_orders,
         (SELECT COALESCE(SUM(total), 0) FROM orders WHERE user_id = users.id AND status != 'cancelled') as total_spent
       FROM users
@@ -6033,6 +6034,22 @@ app.get('/api/customers/:userId', async (req, res) => {
   } catch (error) {
     logger.logError(error, req);
     res.status(500).json({ error: 'Erro ao buscar cliente' });
+  }
+});
+
+// Buscar cliente por email
+app.get('/api/customers/by-email/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const [users] = await pool.execute('SELECT id, nome, email, telefone FROM users WHERE email = ?', [email]);
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'Cliente não encontrado' });
+    }
+
+    res.json(users[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar cliente por email' });
   }
 });
 
@@ -9371,20 +9388,24 @@ app.get('/api/financial/dashboard', authenticateAdmin, async (req, res) => {
       params.push(start_date, end_date);
     }
 
-    // 1. Totais Gerais (Entradas, Saídas, Saldo)
+    // 1. Totais Gerais (Entradas, Saídas, Saldo, Taxas)
     const [totals] = await pool.execute(`
       SELECT 
-        COALESCE(SUM(CASE WHEN tipo = 'Entrada' AND status = 'Pago' THEN valor ELSE 0 END), 0) as total_entradas,
+        COALESCE(SUM(CASE WHEN tipo = 'Entrada' AND status = 'Pago' THEN COALESCE(valor_bruto, valor) ELSE 0 END), 0) as total_entradas_bruto,
+        COALESCE(SUM(CASE WHEN tipo = 'Entrada' AND status = 'Pago' THEN valor ELSE 0 END), 0) as total_entradas_liquido,
         COALESCE(SUM(CASE WHEN tipo = 'Saída' AND status = 'Pago' THEN valor ELSE 0 END), 0) as total_saidas,
+        COALESCE(SUM(CASE WHEN tipo = 'Entrada' AND status = 'Pago' THEN (COALESCE(valor_bruto, valor) - valor) ELSE 0 END), 0) as total_taxas,
         COUNT(*) as total_transacoes,
         COUNT(CASE WHEN status = 'Pendente' THEN 1 END) as total_pendentes
       FROM financial_transactions
       WHERE 1=1 ${dateFilter}
     `, params);
 
-    const entradas = parseFloat(totals[0].total_entradas);
+    const entradasBruto = parseFloat(totals[0].total_entradas_bruto);
+    const entradasLiquido = parseFloat(totals[0].total_entradas_liquido);
     const saidas = parseFloat(totals[0].total_saidas);
-    const saldo = entradas - saidas;
+    const taxas = parseFloat(totals[0].total_taxas);
+    const saldo = entradasLiquido - saidas;
 
     // 2. Gráfico de Fluxo de Caixa (últimos 6 meses ou período selecionado)
     // Se não tiver período, pega últimos 6 meses
@@ -9429,7 +9450,9 @@ app.get('/api/financial/dashboard', authenticateAdmin, async (req, res) => {
 
     res.json({
       summary: {
-        total_entradas: entradas,
+        total_entradas: entradasBruto,
+        total_entradas_liquido: entradasLiquido,
+        total_taxas: taxas,
         total_saidas: saidas,
         saldo_liquido: saldo,
         total_transacoes: totals[0].total_transacoes,
@@ -9604,40 +9627,87 @@ app.post('/api/financial/bank-statements/import', authenticateAdmin, bankStateme
       return res.status(400).json({ error: 'Nenhuma transação para importar.' });
     }
 
+    console.log(`🚀 Iniciando importação de ${transactions.length} transações.`);
+    if (transactions.length > 0) {
+      console.log('Exemplo do primeiro item:', JSON.stringify(transactions[0], null, 2));
+    }
+
     let imported = 0;
+    let skippedDuplicates = 0;
 
     // Processar transações
     for (const tx of transactions) {
-      // Lógica simplificada de importação
-      const tipoEnum = (tx.tipo || '').toLowerCase().includes('entrada') ? 'Entrada' : 'Saída';
-      const valor = parseFloat(tx.valor);
+      // Lógica robusta de detecção de tipo (priorizando o que vem do frontend já tratado)
+      const rawTipo = (tx.tipo || '').toLowerCase();
+      let tipoEnum = 'Saída';
 
+      // No novo fluxo, o frontend já envia 'entrada' ou 'saida'. Priorizamos isso.
+      if (rawTipo === 'entrada' || rawTipo.includes('recebido') || rawTipo.includes('credito') || rawTipo.includes('crédito')) {
+        tipoEnum = 'Entrada';
+      } else if (rawTipo === 'saida' || rawTipo.includes('saída') || rawTipo.includes('debito') || rawTipo.includes('débito') || rawTipo.includes('enviado')) {
+        tipoEnum = 'Saída';
+      } else if (parseFloat(tx.valor) > 0) {
+        tipoEnum = 'Entrada';
+      }
+
+      const valor = parseFloat(tx.valor);
+      const dataTx = tx.data || new Date().toISOString().split('T')[0];
+      const horaTx = tx.hora || null;
+      const descTx = (tx.descricao || 'Transação Importada').trim();
       if (isNaN(valor)) continue;
 
       try {
+        // VERIFICAÇÃO DE DUPLICATA: Conferir se já existe transação idêntica
+        // Usamos TIME_FORMAT para ignorar diferenças de segundos e TRIM para espaços
+        const [existingRows] = await pool.execute(`
+          SELECT id FROM financial_transactions 
+          WHERE data = ? 
+          AND (TIME_FORMAT(hora, '%H:%i') = TIME_FORMAT(?, '%H:%i') OR (hora IS NULL AND ? IS NULL))
+          AND TRIM(descricao) = TRIM(?) 
+          AND ABS(valor - ?) < 0.01
+          AND tipo = ?
+          LIMIT 1
+        `, [dataTx, horaTx, horaTx, descTx, Math.abs(valor), tipoEnum]);
+
+        if (existingRows && existingRows.length > 0) {
+          skippedDuplicates++;
+          continue; // Pular esta transação pois já existe
+        }
+
+        // INSERT completo com todas as colunas disponíveis
         await pool.execute(`
                 INSERT INTO financial_transactions (
-                    data, descricao, categoria, tipo, valor, status, origem, metodo_pagamento, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'Pago', 'Importação', ?, NOW(), NOW())
+                    data, hora, descricao, categoria, tipo, valor, valor_bruto,
+                    conta_id, status, origem, metodo_pagamento, observacoes, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pago', ?, ?, ?, NOW(), NOW())
             `, [
-          tx.data || new Date().toISOString().split('T')[0],
-          tx.descricao || 'Transação Importada',
+          dataTx,
+          horaTx,
+          descTx,
           tx.categoria || 'Outros',
           tipoEnum,
           Math.abs(valor),
-          tx.metodo_pagamento || 'Outros'
+          tx.valor_bruto || null,
+          tx.conta_id || null,
+          tx.origem || 'Importação',
+          tx.metodo_pagamento || 'Outros',
+          tx.observacoes || ''
         ]);
         imported++;
       } catch (e) {
-        console.error('Erro ao importar item:', e);
+        console.error('❌ Erro ao importar item:', e.message, { tx });
       }
     }
 
-    res.json({
+    const responseData = {
       success: true,
       imported,
-      message: `${imported} transações importadas com sucesso.`
-    });
+      skippedDuplicates,
+      message: `${imported} transações importadas com sucesso, ${skippedDuplicates} duplicatas ignoradas.`
+    };
+
+    console.log(`✅ Importação finalizada: ${imported} novas, ${skippedDuplicates} duplicatas.`);
+    res.json(responseData);
   } catch (error) {
     logger.error('Import extrato erro:', error);
     res.status(500).json({ error: 'Erro ao importar extrato' });
@@ -9651,6 +9721,11 @@ app.post('/api/financial/bank-statements/import', authenticateAdmin, bankStateme
 
 // Helper para normalizar transação
 const transformTransaction = (r) => {
+  // Normalizar tipo (lowercase e remover acentos) para compatibilidade com frontend
+  let tipoNorm = (r.tipo || '').toLowerCase();
+  if (tipoNorm.includes('entrada')) tipoNorm = 'entrada';
+  else if (tipoNorm.includes('saida') || tipoNorm.includes('saída')) tipoNorm = 'saida';
+
   return {
     id: r.id,
     data: r.data,
@@ -9658,9 +9733,10 @@ const transformTransaction = (r) => {
     descricao: r.descricao ?? '',
     categoria: r.categoria ?? '',
     origem: r.origem ?? '',
-    tipo: r.tipo,
+    tipo: tipoNorm,
     valor: r.valor != null ? Number(r.valor) : 0,
     valor_bruto: r.valor_bruto != null ? Number(r.valor_bruto) : null,
+    conta_id: r.conta_id ?? null,
     status: r.status ?? 'Pago',
     metodo_pagamento: r.metodo_pagamento ?? r.forma_pagamento ?? '',
     observacoes: r.observacoes ?? '',
@@ -9668,6 +9744,7 @@ const transformTransaction = (r) => {
     updated_at: r.updated_at
   };
 };
+
 
 // Buscar todas as transações financeiras
 app.get('/api/financial/transactions', authenticateAdmin, async (req, res) => {
@@ -9677,7 +9754,7 @@ app.get('/api/financial/transactions', authenticateAdmin, async (req, res) => {
       // Tentar buscar com todas as colunas
       const [r] = await pool.execute(`
         SELECT id, data, hora, descricao, categoria, origem, tipo, valor, valor_bruto,
-          status, metodo_pagamento, observacoes, created_at, updated_at
+          conta_id, status, metodo_pagamento, observacoes, created_at, updated_at
         FROM financial_transactions
         ORDER BY data DESC, hora DESC, created_at DESC
       `);
@@ -9688,7 +9765,7 @@ app.get('/api/financial/transactions', authenticateAdmin, async (req, res) => {
       if (msg.includes('unknown column')) {
         try {
           const [r2] = await pool.execute(`
-            SELECT id, data, descricao, categoria, origem, tipo, valor, status,
+            SELECT id, data, descricao, categoria, origem, tipo, valor, conta_id, status,
               metodo_pagamento, observacoes, created_at, updated_at
             FROM financial_transactions
             ORDER BY data DESC, created_at DESC
@@ -9697,7 +9774,7 @@ app.get('/api/financial/transactions', authenticateAdmin, async (req, res) => {
         } catch (e2) {
           // Última tentativa: aceitar forma_pagamento em vez de metodo_pagamento if needed
           const [r3] = await pool.execute(`
-            SELECT id, data, descricao, categoria, origem, tipo, valor, status,
+            SELECT id, data, descricao, categoria, origem, tipo, valor, conta_id, status,
               forma_pagamento as metodo_pagamento, observacoes, created_at, updated_at
             FROM financial_transactions
             ORDER BY data DESC, created_at DESC
@@ -9734,7 +9811,15 @@ app.post('/api/financial/transactions', authenticateAdmin, async (req, res) => {
     const safeData = data || new Date().toISOString().split('T')[0];
     const safeOrigem = origem || 'Manual';
     const safeObservacoes = observacoes || '';
-    const tipoEnum = tipo.toLowerCase() === 'entrada' ? 'Entrada' : 'Saída';
+
+    // Lógica robusta de detecção de tipo para criação manual/API
+    const rawTipo = (tipo || '').toLowerCase();
+    let tipoEnum = 'Saída';
+    if (rawTipo.includes('entrada') || rawTipo.includes('credito') || rawTipo.includes('crédito') || rawTipo.includes('recebido')) {
+      tipoEnum = 'Entrada';
+    } else if (rawTipo.includes('saida') || rawTipo.includes('saída') || rawTipo.includes('debito') || rawTipo.includes('débito') || rawTipo.includes('enviado')) {
+      tipoEnum = 'Saída';
+    }
 
     // Tentar insert com schema completo
     let result;
@@ -9742,11 +9827,11 @@ app.post('/api/financial/transactions', authenticateAdmin, async (req, res) => {
       [result] = await pool.execute(`
         INSERT INTO financial_transactions (
           descricao, categoria, tipo, valor, status,
-          metodo_pagamento, data, origem, observacoes, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+          metodo_pagamento, data, origem, observacoes, conta_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
       `, [
         descricao, categoria, tipoEnum, valor, safeStatus,
-        safeMetodoPagamento, safeData, safeOrigem, safeObservacoes
+        safeMetodoPagamento, safeData, safeOrigem, safeObservacoes, req.body.conta_id || null
       ]);
     } catch (schemaErr) {
       // Fallback se colunas mudarem
@@ -9812,11 +9897,12 @@ app.put('/api/financial/transactions/:id', authenticateAdmin, async (req, res) =
     await pool.execute(`
       UPDATE financial_transactions 
       SET descricao = ?, categoria = ?, tipo = ?, valor = ?, status = ?, 
-          metodo_pagamento = ?, data = ?, origem = ?, observacoes = ?, updated_at = NOW()
+          metodo_pagamento = ?, data = ?, origem = ?, observacoes = ?, 
+          conta_id = ?, updated_at = NOW()
       WHERE id = ?
     `, [
       descricao, categoria, tipo, valor, status,
-      metodo_pagamento, data, origem, observacoes, id
+      metodo_pagamento, data, origem, observacoes, req.body.conta_id || null, id
     ]);
 
     res.json({ success: true, message: 'Transação atualizada com sucesso' });
@@ -9854,47 +9940,387 @@ app.delete('/api/financial/transactions/:id', authenticateAdmin, async (req, res
   }
 });
 
-// Buscar todas as contas bancárias (MOCK)
+// --- CRUD de Categorias Financeiras ---
+
+// Buscar todas as categorias financeiras
+app.get('/api/financial/categorias', authenticateAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM financial_categories ORDER BY nome ASC');
+    res.json({ categorias: rows });
+  } catch (error) {
+    console.error('Erro ao buscar categorias financeiras:', error);
+    res.status(500).json({ error: 'Erro ao buscar categorias financeiras' });
+  }
+});
+
+// Criar nova categoria
+app.post('/api/financial/categorias', authenticateAdmin, async (req, res) => {
+  try {
+    const { nome, descricao, cor, icone, tipo } = req.body;
+    if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
+
+    const [result] = await pool.execute(
+      'INSERT INTO financial_categories (nome, descricao, cor, icone, tipo) VALUES (?, ?, ?, ?, ?)',
+      [nome, descricao || '', cor || '#3B82F6', icone || '📁', tipo || 'ambos']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Categoria criada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao criar categoria:', error);
+    res.status(500).json({ error: 'Erro ao criar categoria' });
+  }
+});
+
+// Atualizar categoria
+app.put('/api/financial/categorias/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, descricao, cor, icone, tipo } = req.body;
+
+    await pool.execute(
+      'UPDATE financial_categories SET nome = ?, descricao = ?, cor = ?, icone = ?, tipo = ? WHERE id = ?',
+      [nome, descricao, cor, icone, tipo, id]
+    );
+    res.json({ message: 'Categoria atualizada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar categoria:', error);
+    res.status(500).json({ error: 'Erro ao atualizar categoria' });
+  }
+});
+
+// Deletar categoria
+app.delete('/api/financial/categorias/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM financial_categories WHERE id = ?', [id]);
+    res.json({ message: 'Categoria excluída com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir categoria:', error);
+    res.status(500).json({ error: 'Erro ao excluir categoria' });
+  }
+});
+
+// --- CRUD de Contas Bancárias ---
+
+// Buscar todas as contas
 app.get('/api/financial/contas', authenticateAdmin, async (req, res) => {
   try {
-    // Retornar dados simulados temporariamente para testar o frontend
-    const contasSimuladas = [
-      {
-        id: 1,
-        nome: 'Conta Principal',
-        banco: 'Nubank',
-        agencia: '0001',
-        conta: '12345-6',
-        tipo: 'corrente',
-        saldo: 15000.50,
-        limite: 5000.00,
-        status: 'ativo',
-        ultima_movimentacao: '2024-10-18',
-        observacoes: 'Conta principal da empresa',
-        created_at: '2024-01-15',
-        updated_at: '2024-10-18'
-      },
-      {
-        id: 2,
-        nome: 'Reserva de Emergência',
-        banco: 'Inter',
-        agencia: '0001',
-        conta: '98765-4',
-        tipo: 'poupanca',
-        saldo: 32000.00,
-        limite: 0.00,
-        status: 'ativo',
-        ultima_movimentacao: '2024-09-30',
-        observacoes: 'Fundo de reserva',
-        created_at: '2024-02-10',
-        updated_at: '2024-09-30'
-      }
-    ];
-
-    res.json({ contas: contasSimuladas });
+    const [rows] = await pool.execute('SELECT * FROM financial_accounts ORDER BY nome ASC');
+    res.json({ contas: rows });
   } catch (error) {
-    // logger.error('Erro ao buscar contas:', error); // Assuming logger is defined
+    console.error('Erro ao buscar contas:', error);
     res.status(500).json({ error: 'Erro ao buscar contas bancárias' });
+  }
+});
+
+// Criar nova conta
+app.post('/api/financial/contas', authenticateAdmin, async (req, res) => {
+  try {
+    const { nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes } = req.body;
+    const [result] = await pool.execute(
+      'INSERT INTO financial_accounts (nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome, banco, agencia, conta, tipo || 'corrente', saldo || 0, limite || 0, status || 'ativo', observacoes || '']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Conta criada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao criar conta:', error);
+    res.status(500).json({ error: 'Erro ao criar conta', details: error.message });
+  }
+});
+
+// Atualizar conta
+app.put('/api/financial/contas/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes } = req.body;
+    await pool.execute(
+      'UPDATE financial_accounts SET nome = ?, banco = ?, agencia = ?, conta = ?, tipo = ?, saldo = ?, limite = ?, status = ?, observacoes = ? WHERE id = ?',
+      [nome, banco, agencia, conta, tipo, saldo, limite, status, observacoes, id]
+    );
+    res.json({ message: 'Conta atualizada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar conta:', error);
+    res.status(500).json({ error: 'Erro ao atualizar conta' });
+  }
+});
+
+// Deletar conta
+app.delete('/api/financial/contas/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM financial_accounts WHERE id = ?', [id]);
+    res.json({ message: 'Conta excluída com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir conta:', error);
+    res.status(500).json({ error: 'Erro ao excluir conta' });
+  }
+});
+
+// --- CRUD de Cartões ---
+
+// Buscar todos os cartões
+app.get('/api/financial/cartoes', authenticateAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM financial_cards ORDER BY nome ASC');
+    res.json({ cartoes: rows });
+  } catch (error) {
+    console.error('Erro ao buscar cartões:', error);
+    res.status(500).json({ error: 'Erro ao buscar cartões' });
+  }
+});
+
+// Criar novo cartão
+app.post('/api/financial/cartoes', authenticateAdmin, async (req, res) => {
+  try {
+    const { nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes } = req.body;
+    const [result] = await pool.execute(
+      'INSERT INTO financial_cards (nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome, numero, bandeira, limite || 0, fatura_atual || 0, vencimento || null, status || 'ativo', tipo || 'credito', observacoes || '']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Cartão criado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao criar cartão:', error);
+    res.status(500).json({ error: 'Erro ao criar cartão', details: error.message });
+  }
+});
+
+// Atualizar cartão
+app.put('/api/financial/cartoes/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, numero, bandeira, limite, fatura_atual, vencimento, status, tipo, observacoes } = req.body;
+    await pool.execute(
+      'UPDATE financial_cards SET nome = ?, numero = ?, bandeira = ?, limite = ?, fatura_atual = ?, vencimento = ?, status = ?, tipo = ?, observacoes = ? WHERE id = ?',
+      [nome, numero, bandeira, limite, fatura_atual, vencimento || null, status, tipo, observacoes, id]
+    );
+    res.json({ message: 'Cartão atualizada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar cartão:', error);
+    res.status(500).json({ error: 'Erro ao atualizar cartão' });
+  }
+});
+
+// Deletar cartão
+app.delete('/api/financial/cartoes/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM financial_cards WHERE id = ?', [id]);
+    res.json({ message: 'Cartão excluído com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir cartão:', error);
+    res.status(500).json({ error: 'Erro ao excluir cartão' });
+  }
+});
+
+// --- CRUD de Fornecedores (Gestão Financeira) ---
+
+// Buscar todos os fornecedores
+app.get('/api/financial/fornecedores', authenticateAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM fornecedores ORDER BY nome ASC');
+    res.json({ fornecedores: rows });
+  } catch (error) {
+    console.error('Erro ao buscar fornecedores:', error);
+    res.status(500).json({ error: 'Erro ao buscar fornecedores' });
+  }
+});
+
+// Criar novo fornecedor
+app.post('/api/financial/fornecedores', authenticateAdmin, async (req, res) => {
+  try {
+    const { nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, status, observacoes } = req.body;
+    const [result] = await pool.execute(
+      'INSERT INTO fornecedores (nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, status, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo || 'outros', status || 'ativo', observacoes || '']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Fornecedor criado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao criar fornecedor:', error);
+    res.status(500).json({ error: 'Erro ao criar fornecedor' });
+  }
+});
+
+// Atualizar fornecedor
+app.put('/api/financial/fornecedores/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, status, observacoes } = req.body;
+    await pool.execute(
+      'UPDATE fornecedores SET nome = ?, cnpj = ?, email = ?, telefone = ?, endereco = ?, cidade = ?, estado = ?, cep = ?, contato = ?, tipo = ?, status = ?, observacoes = ? WHERE id = ?',
+      [nome, cnpj, email, telefone, endereco, cidade, estado, cep, contato, tipo, status, observacoes, id]
+    );
+    res.json({ message: 'Fornecedor atualizado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar fornecedor:', error);
+    res.status(500).json({ error: 'Erro ao atualizar fornecedor' });
+  }
+});
+
+// Deletar fornecedor
+app.delete('/api/financial/fornecedores/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM fornecedores WHERE id = ?', [id]);
+    res.json({ message: 'Fornecedor excluído com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir fornecedor:', error);
+    res.status(500).json({ error: 'Erro ao excluir fornecedor' });
+  }
+});
+
+// --- CRUD de Clientes Financeiros ---
+
+// Buscar todos os clientes financeiros
+app.get('/api/financial/clientes', authenticateAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM financial_customers ORDER BY nome ASC');
+    res.json({ clientes: rows });
+  } catch (error) {
+    console.error('Erro ao buscar clientes:', error);
+    res.status(500).json({ error: 'Erro ao buscar clientes' });
+  }
+});
+
+// Criar novo cliente financeiro
+app.post('/api/financial/clientes', authenticateAdmin, async (req, res) => {
+  try {
+    const { nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, status, observacoes } = req.body;
+    const [result] = await pool.execute(
+      'INSERT INTO financial_customers (nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, status, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento || null, tipo || 'pessoa_fisica', status || 'ativo', observacoes || '']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Cliente financeiro criado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao criar cliente financeiro:', error);
+    res.status(500).json({ error: 'Erro ao criar cliente financeiro' });
+  }
+});
+
+// Atualizar cliente financeiro
+app.put('/api/financial/clientes/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento, tipo, status, observacoes } = req.body;
+    await pool.execute(
+      'UPDATE financial_customers SET nome = ?, cpf = ?, email = ?, telefone = ?, endereco = ?, cidade = ?, estado = ?, cep = ?, data_nascimento = ?, tipo = ?, status = ?, observacoes = ? WHERE id = ?',
+      [nome, cpf, email, telefone, endereco, cidade, estado, cep, data_nascimento || null, tipo, status, observacoes, id]
+    );
+    res.json({ message: 'Cliente financeiro atualizado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar cliente financeiro:', error);
+    res.status(500).json({ error: 'Erro ao atualizar cliente financeiro' });
+  }
+});
+
+// Deletar cliente financeiro
+app.delete('/api/financial/clientes/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM financial_customers WHERE id = ?', [id]);
+    res.json({ message: 'Cliente financeiro excluído com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir cliente financeiro:', error);
+    res.status(500).json({ error: 'Erro ao excluir cliente financeiro' });
+  }
+});
+
+// --- CRUD de Orçamentos (Budgets) ---
+
+// Buscar todos os orçamentos
+app.get('/api/financial/budgets', authenticateAdmin, async (req, res) => {
+  try {
+    const { active_only } = req.query;
+    let query = 'SELECT * FROM financial_budgets';
+    const params = [];
+
+    if (active_only === 'true') {
+      query += ' WHERE is_active = TRUE';
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const [rows] = await pool.execute(query, params);
+
+    // Calcular valor_real para cada orçamento
+    const budgetsWithReal = await Promise.all(rows.map(async (budget) => {
+      const [transRows] = await pool.execute(
+        "SELECT SUM(valor) as total FROM financial_transactions WHERE categoria = ? AND tipo LIKE 'Sa%da' AND data BETWEEN ? AND ?",
+        [budget.categoria, budget.data_inicio, budget.data_fim]
+      );
+
+      const valor_real = transRows[0].total || 0;
+      const percentual_atingido = (valor_real / budget.valor_orcado) * 100;
+
+      return {
+        ...budget,
+        valor_real,
+        percentual_atingido
+      };
+    }));
+
+    res.json({ budgets: budgetsWithReal });
+  } catch (error) {
+    console.error('Erro ao buscar orçamentos:', error);
+    res.status(500).json({ error: 'Erro ao buscar orçamentos' });
+  }
+});
+
+// Criar novo orçamento
+app.post('/api/financial/budgets', authenticateAdmin, async (req, res) => {
+  try {
+    const { nome, descricao, tipo, categoria, valor_orcado, data_inicio, data_fim, alerta_percentual } = req.body;
+    const [result] = await pool.execute(
+      'INSERT INTO financial_budgets (nome, descricao, tipo, categoria, valor_orcado, data_inicio, data_fim, alerta_percentual) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome, descricao, tipo || 'mensal', categoria, valor_orcado, data_inicio, data_fim, alerta_percentual || 80]
+    );
+    res.status(201).json({ id: result.insertId, message: 'Orçamento criado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao criar orçamento:', error);
+    res.status(500).json({ error: 'Erro ao criar orçamento' });
+  }
+});
+
+// Atualizar orçamento
+app.put('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const fields = req.body;
+
+    // Suporte para atualização parcial (ex: is_active apenas)
+    const setClause = Object.keys(fields).map(key => `${key} = ?`).join(', ');
+    const params = [...Object.values(fields), id];
+
+    if (setClause) {
+      await pool.execute(`UPDATE financial_budgets SET ${setClause} WHERE id = ?`, params);
+    }
+
+    res.json({ message: 'Orçamento atualizado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar orçamento:', error);
+    res.status(500).json({ error: 'Erro ao atualizar orçamento' });
+  }
+});
+
+// Deletar orçamento
+app.delete('/api/financial/budgets/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.execute('DELETE FROM financial_budgets WHERE id = ?', [id]);
+    res.json({ message: 'Orçamento excluído com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir orçamento:', error);
+    res.status(500).json({ error: 'Erro ao excluir orçamento' });
+  }
+});
+
+// Processar alertas de orçamento
+app.post('/api/financial/budgets/process-alerts', authenticateAdmin, async (req, res) => {
+  try {
+    // Aqui poderíamos integrar com um sistema de notificações real
+    // Por enquanto, apenas retornamos sucesso indicando que o processamento ocorreu
+    res.json({ message: 'Alertas processados com sucesso', alerts_created: 0 });
+  } catch (error) {
+    console.error('Erro ao processar alertas:', error);
+    res.status(500).json({ error: 'Erro ao processar alertas' });
   }
 });
 

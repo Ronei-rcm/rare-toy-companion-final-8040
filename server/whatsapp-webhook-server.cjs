@@ -16,7 +16,7 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'rare_toy_companion',
-  port: process.env.DB_PORT || 3306
+  port: process.env.DB_PORT || 3307
 };
 
 // WhatsApp Webhook Secret (configure no painel)
@@ -31,12 +31,12 @@ const pool = mysql.createPool(dbConfig);
 function validateWebhookSignature(req) {
   const signature = req.headers['x-hub-signature-256'];
   if (!signature) return false;
-  
+
   const expectedSignature = crypto
     .createHmac('sha256', WEBHOOK_SECRET)
     .update(req.rawBody)
     .digest('hex');
-    
+
   const receivedSignature = signature.replace('sha256=', '');
   return crypto.timingSafeEqual(
     Buffer.from(expectedSignature, 'hex'),
@@ -49,7 +49,7 @@ app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  
+
   if (mode === 'subscribe' && token === WEBHOOK_SECRET) {
     console.log('✅ Webhook verificado com sucesso');
     res.status(200).send(challenge);
@@ -263,7 +263,7 @@ Para fazer seu primeiro pedido, digite *!pedido* e siga as instruções!
     }
 
     let statusMessage = `📋 *Seus Pedidos Recentes*\n\n`;
-    
+
     for (const order of orders) {
       const status = getOrderStatusText(order.status);
       statusMessage += `🔸 *Pedido #${order.id}*\n`;
@@ -322,7 +322,7 @@ function isGreeting(message) {
     'oi', 'olá', 'ola', 'bom dia', 'boa tarde', 'boa noite',
     'hello', 'hi', 'hey', 'e aí', 'eai', 'salve'
   ];
-  
+
   const lowerMessage = message.toLowerCase();
   return greetings.some(greeting => lowerMessage.includes(greeting));
 }
@@ -331,7 +331,7 @@ function isGreeting(message) {
 async function sendWhatsAppMessage(to, message) {
   try {
     const url = `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_ID}/messages`;
-    
+
     const data = {
       messaging_product: 'whatsapp',
       to: to,
@@ -349,7 +349,7 @@ async function sendWhatsAppMessage(to, message) {
     });
 
     console.log(`✅ Mensagem enviada para ${to}:`, response.data);
-    
+
     // Salvar mensagem enviada no banco
     await saveMessage({
       whatsapp_id: response.data.messages[0].id,
@@ -395,7 +395,7 @@ async function saveMessage(messageData) {
 async function handleMessageStatus(status) {
   try {
     console.log(`📊 Status da mensagem ${status.id}: ${status.status}`);
-    
+
     // Atualizar status no banco se necessário
     await pool.execute(
       'UPDATE whatsapp_messages SET status = ? WHERE whatsapp_id = ?',
@@ -416,7 +416,7 @@ function getOrderStatusText(status) {
     'delivered': '🏠 Entregue',
     'cancelled': '❌ Cancelado'
   };
-  
+
   return statusMap[status] || '❓ Status Desconhecido';
 }
 
@@ -424,7 +424,7 @@ function getOrderStatusText(status) {
 app.post('/send-message', async (req, res) => {
   try {
     const { to, message } = req.body;
-    
+
     if (!to || !message) {
       return res.status(400).json({ error: 'to e message são obrigatórios' });
     }
@@ -487,7 +487,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 WhatsApp Webhook Server rodando na porta ${PORT}`);
   console.log(`📱 Webhook URL: http://localhost:${PORT}/webhook`);
   console.log(`📊 Stats URL: http://localhost:${PORT}/stats`);
-  
+
   await createTables();
 });
 

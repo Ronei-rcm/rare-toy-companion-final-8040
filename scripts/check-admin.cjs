@@ -13,7 +13,7 @@ const crypto = require('crypto');
   const user = process.env.MYSQL_USER || process.env.DB_USER || 'root';
   const password = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '';
   const database = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion';
-  const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3306);
+  const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3307);
   const pool = await mysql.createPool({ host, user, password, database, port });
   try {
     const [rows] = await pool.execute('SELECT id, email, nome, status, role, senha_hash FROM admin_users WHERE email = ? LIMIT 1', [email]);

@@ -20,7 +20,7 @@ async function testCreateUserAndOrder() {
       user: process.env.MYSQL_USER || 'root',
       password: process.env.MYSQL_PASSWORD || '',
       database: process.env.MYSQL_DATABASE || 'rare_toy_companion',
-      port: parseInt(process.env.MYSQL_PORT || '3306')
+      port: parseInt(process.env.MYSQL_PORT || '3307')
     });
     
     console.log('✅ Conectado ao banco de dados\n');

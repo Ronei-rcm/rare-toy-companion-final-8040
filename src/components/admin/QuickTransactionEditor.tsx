@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { 
-  DollarSign, 
-  Calendar, 
-  Tag, 
-  User, 
-  Building, 
+import {
+  DollarSign,
+  Calendar,
+  Tag,
+  User,
+  Building,
   CreditCard,
   Save,
   X,
@@ -55,7 +55,7 @@ export const QuickTransactionEditor: React.FC<QuickTransactionEditorProps> = ({
   // Categorias disponíveis
   const categorias = [
     'Venda',
-    'Evento', 
+    'Evento',
     'Fornecedor',
     'Marketing',
     'Operacional',
@@ -113,8 +113,9 @@ export const QuickTransactionEditor: React.FC<QuickTransactionEditorProps> = ({
   }, [transaction, mode, isOpen]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
+    const processedValue = field === 'valor' ? value.replace(',', '.') : value;
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
+
     // Limpar erro do campo quando usuário começar a digitar
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -191,7 +192,7 @@ export const QuickTransactionEditor: React.FC<QuickTransactionEditorProps> = ({
             {mode === 'create' ? 'Nova Transação' : 'Editar Transação'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'create' 
+            {mode === 'create'
               ? 'Preencha os dados da nova transação financeira'
               : 'Edite os dados da transação selecionada'
             }
@@ -404,7 +405,7 @@ export const QuickTransactionEditor: React.FC<QuickTransactionEditorProps> = ({
                 <div>
                   <p className="text-sm text-gray-600">Valor:</p>
                   <p className="font-bold text-lg">
-                    {formData.valor ? 
+                    {formData.valor ?
                       new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(formData.valor)) :
                       'R$ 0,00'
                     }
@@ -413,8 +414,8 @@ export const QuickTransactionEditor: React.FC<QuickTransactionEditorProps> = ({
                 <div>
                   <p className="text-sm text-gray-600">Tipo:</p>
                   <div className="flex items-center gap-2">
-                    {formData.tipo === 'Entrada' ? 
-                      <span className="text-green-600 font-medium">↗ Entrada</span> : 
+                    {formData.tipo === 'Entrada' ?
+                      <span className="text-green-600 font-medium">↗ Entrada</span> :
                       <span className="text-red-600 font-medium">↘ Saída</span>
                     }
                   </div>

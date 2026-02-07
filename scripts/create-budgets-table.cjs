@@ -16,7 +16,7 @@ async function createBudgetsTable() {
       user: process.env.MYSQL_USER || 'root',
       password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
       database: 'rare_toy_companion',
-      port: parseInt(process.env.MYSQL_PORT || '3306')
+      port: parseInt(process.env.MYSQL_PORT || '3307')
     });
 
     console.log('✅ Conectado ao banco de dados');

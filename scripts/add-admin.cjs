@@ -15,7 +15,7 @@ const crypto = require('crypto');
   const user = process.env.MYSQL_USER || process.env.DB_USER || 'root';
   const password = process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '';
   const database = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rare_toy_companion';
-  const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3306);
+  const port = Number(process.env.MYSQL_PORT || process.env.DB_PORT || 3307);
   const pool = await mysql.createPool({ host, user, password, database, port });
   try {
     await pool.execute("CREATE TABLE IF NOT EXISTS admin_users (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(191), email VARCHAR(191) UNIQUE, telefone VARCHAR(50), senha_hash VARCHAR(191), role VARCHAR(50) DEFAULT 'admin', status VARCHAR(50) DEFAULT 'ativo', permissoes TEXT, avatar VARCHAR(255), must_change_password TINYINT(1) DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");

@@ -1,0 +1,15 @@
+Field	Type	Null	Key	Default	Extra
+id	varchar(36)	NO	PRI	NULL	
+email	varchar(255)	NO	UNI	NULL	
+password_hash	varchar(255)	NO		NULL	
+avatar_url	varchar(500)	YES		NULL	
+nome	varchar(255)	NO		NULL	
+telefone	varchar(20)	YES		NULL	
+endereco	text	YES		NULL	
+cidade	varchar(100)	YES		NULL	
+estado	varchar(50)	YES		NULL	
+cep	varchar(10)	YES		NULL	
+created_at	timestamp	YES		CURRENT_TIMESTAMP	DEFAULT_GENERATED
+updated_at	timestamp	YES		CURRENT_TIMESTAMP	DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+reset_token	varchar(255)	YES	MUL	NULL	
+reset_expires	datetime	YES		NULL	

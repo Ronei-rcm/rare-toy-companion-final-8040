@@ -62,7 +62,11 @@ interface NavigationItem {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Tenta carregar a preferência do usuário do localStorage
+    const saved = localStorage.getItem('admin_sidebar_open');
+    return saved !== null ? JSON.parse(saved) : false; // Padrão agora é false (fechado)
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [adminUser, setAdminUser] = useState<{ nome?: string; email?: string; avatar?: string; role?: string } | null>(null);
@@ -76,6 +80,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+
+  // Persistir estado da sidebar quando mudar
+  useEffect(() => {
+    localStorage.setItem('admin_sidebar_open', JSON.stringify(sidebarOpen));
+  }, [sidebarOpen]);
 
   // Atalhos globais simples (ex.: ⌘D vai para Dashboard)
   useEffect(() => {
@@ -132,7 +141,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: 'Automações', href: '/admin/automacoes', icon: Zap, category: 'vendas' },
     { name: 'Clientes', href: '/admin/clientes', icon: Users, category: 'vendas', shortcut: '⌘C' },
     { name: 'Marketplace', href: '/admin/marketplace', icon: Store, category: 'vendas' },
-    
+
     // CONTEÚDO - Produtos e Conteúdo
     { name: 'Produtos', href: '/admin/produtos', icon: Package, category: 'conteudo', shortcut: '⌘P' },
     { name: 'Categorias', href: '/admin/categorias', icon: FolderTree, category: 'conteudo' },
@@ -143,7 +152,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: 'Home Config', href: '/admin/home-config', icon: Settings, category: 'conteudo' },
     { name: 'Galeria de Vídeos', href: '/admin/video-gallery', icon: VideoIcon, category: 'conteudo' },
     { name: 'Página Sobre', href: '/admin/sobre', icon: Info, category: 'conteudo' },
-    
+
     // ANALYTICS - Relatórios e Análises
     { name: 'Financeiro', href: '/admin/financeiro', icon: DollarSign, category: 'analytics', shortcut: '⌘F' },
     { name: 'Relatórios', href: '/admin/relatorios', icon: FileText, category: 'analytics', shortcut: '⌘R' },
@@ -151,7 +160,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     { name: 'Fornecedores', href: '/admin/fornecedores', icon: Truck, category: 'analytics' },
     { name: 'Funcionários', href: '/admin/funcionarios', icon: UserCheck, category: 'analytics' },
     { name: 'Usuários Admin', href: '/admin/usuarios', icon: Shield, category: 'analytics' },
-    
+
     // CONFIGURAÇÕES - Sistema e Integrações
     { name: 'Configurações', href: '/admin/configuracoes', icon: Settings, category: 'config' },
     { name: 'Backup DB', href: '/admin/database-backup', icon: Database, category: 'config' },
@@ -186,9 +195,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   // Filtrar itens por busca
   const filteredNavigation = useMemo(() => {
     if (!searchQuery.trim()) return navigation;
-    
+
     const query = searchQuery.toLowerCase();
-    return navigation.filter(item => 
+    return navigation.filter(item =>
       item.name.toLowerCase().includes(query) ||
       item.href.toLowerCase().includes(query)
     );
@@ -199,8 +208,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   return (
     <div className="flex min-h-screen bg-muted/30">
       {/* Botão do menu mobile */}
-      <Button 
-        variant="ghost" 
+      <Button
+        variant="ghost"
         size="icon"
         onClick={() => setMobileMenuOpen(true)}
         className="fixed top-4 left-4 z-50 bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 md:hidden"
@@ -209,7 +218,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       </Button>
 
       {/* Sidebar Desktop */}
-      <aside 
+      <aside
         className={cn(
           "fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-gradient-to-b from-sidebar to-sidebar/95 border-r border-sidebar-border shadow-2xl transition-all duration-300 md:left-0",
           sidebarOpen ? "w-64" : "w-20",
@@ -225,8 +234,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">Gestão Completa</p>
           </div>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="hover:bg-sidebar-accent"
@@ -250,11 +259,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </div>
           </div>
         )}
-        
+
         {/* Navegação - Container rolável */}
-        <div 
+        <div
           className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll"
-          style={{ 
+          style={{
             minHeight: 0,
             maxHeight: '100%',
             WebkitOverflowScrolling: 'touch',
@@ -270,7 +279,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   Object.entries(groupedNavigation.grouped).map(([category, items]) => {
                     const isExpanded = expandedSections[category];
                     const CategoryIcon = groupedNavigation.categories[category as keyof typeof groupedNavigation.categories]?.icon;
-                    
+
                     return (
                       <div key={category} className="space-y-1">
                         <button
@@ -287,7 +296,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                             <ChevronRight className="h-4 w-4 transition-transform" />
                           )}
                         </button>
-                        
+
                         {isExpanded && (
                           <div className="space-y-1 pl-1">
                             {items.map((item) => {
@@ -381,7 +390,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </nav>
           )}
         </div>
-        
+
         {/* Footer - Usuário */}
         <div className="flex-shrink-0 p-4 border-t border-sidebar-border bg-sidebar-accent/30">
           <div className={cn(
@@ -399,13 +408,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               </div>
             )}
           </div>
-          
+
           <div className="mt-3 space-y-2">
             {sidebarOpen && (
               <ClearCacheButton />
             )}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleLogout}
               className={cn(
                 "w-full text-sm border-sidebar-border hover:bg-destructive hover:text-destructive-foreground",
@@ -429,15 +438,15 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   <Zap className="h-5 w-5 text-primary" />
                   Admin Panel
                 </h2>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              
+
               <div className="flex-shrink-0 p-3 border-b">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -450,7 +459,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   />
                 </div>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll" style={{ minHeight: 0 }}>
                 <nav className="px-2 py-4 space-y-1">
                   {Object.entries(groupedNavigation.grouped).map(([category, items]) => (
@@ -487,7 +496,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                   ))}
                 </nav>
               </div>
-              
+
               <div className="flex-shrink-0 p-4 border-t bg-muted/50">
                 <div className="flex items-center gap-3 mb-3">
                   <Avatar className="h-10 w-10 ring-2 ring-primary/20">
@@ -499,8 +508,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     <p className="text-xs text-muted-foreground">{adminUser?.email || 'admin@exemplo.com'}</p>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleLogout}
                   className="w-full"
                 >

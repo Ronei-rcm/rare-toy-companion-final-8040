@@ -5,11 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Tag, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Tag,
   Folder,
   Search,
   Filter,
@@ -66,13 +66,37 @@ export default function CategoryManager() {
     { nome: 'Roxo', valor: '#8B5CF6' },
     { nome: 'Rosa', valor: '#EC4899' },
     { nome: 'Cinza', valor: '#6B7280' },
-    { nome: 'Laranja', valor: '#F97316' }
+    { nome: 'Laranja', valor: '#F97316' },
+    { nome: 'Ciano', valor: '#06B6D4' },
+    { nome: 'Índigo', valor: '#6366F1' },
+    { nome: 'Esmeralda', valor: '#10B981' },
+    { nome: 'Âmbar', valor: '#D97706' },
+    { nome: 'Fúcsia', valor: '#D946EF' },
+    { nome: 'Lima', valor: '#84CC16' },
+    { nome: 'Slate', valor: '#475569' },
+    { nome: 'Rose', valor: '#E11D48' }
   ];
 
   const icones = [
+    // Original e Essenciais
     '📁', '💰', '🛒', '🍔', '🚗', '🏠', '⚡', '📱',
     '💊', '👕', '🎮', '📚', '✈️', '🎬', '🏋️', '🎵',
-    '🌿', '🔧', '🎨', '📊', '💡', '🔒', '📞', '📧'
+    '🌿', '🔧', '🎨', '📊', '💡', '🔒', '📞', '📧',
+    // Financeiro & Negócios
+    '💸', '💳', '🏦', '💹', '📈', '📉', '🪙', '💎',
+    '💼', '📅', '📝', '📎', '📌', '⚖️', '🗝️', '🤝',
+    // Lazer & Alimentação
+    '🍕', '🥤', '☕', '🍦', '🍩', '🍺', '🍷', '🍹',
+    '🚲', '⚽', '🏀', '🎾', '🎳', '🎯', '⛰️', '🏖️',
+    // Casa & Serviços
+    '🚿', '🚽', '🛏️', '🛋️', '🧺', '🧼', '🧹', '🛠️',
+    '🔌', '🔥', '💧', '📶', '🚀', '🛠️', '⚙️', '🔨',
+    // Pessoal & Saúde
+    '❤️', '🏥', '🍎', '🥦', '🏃', '💤', '🧖', '✂️',
+    '💄', '👓', '👜', '🌂', '🐶', '🐱', '🎁', '🎂',
+    // Tecnologia & Educação
+    '💻', '🖥️', '⌨️', '🖱️', '🔋', '📡', '🎓', '📣',
+    '📡', '💾', '⚙️', '🔍', '🧠', '✍️', '🗣️', '🌍'
   ];
 
   const carregarCategorias = async () => {
@@ -129,7 +153,7 @@ export default function CategoryManager() {
       };
 
       let response;
-      
+
       if (editingCategoria) {
         // Atualizar categoria existente
         console.log('📝 Atualizando categoria ID:', editingCategoria.id);
@@ -161,7 +185,7 @@ export default function CategoryManager() {
 
       // Recarregar categorias
       await carregarCategorias();
-      
+
       toast.success(editingCategoria ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!');
       setShowModal(false);
       resetForm();
@@ -177,7 +201,7 @@ export default function CategoryManager() {
 
     try {
       console.log('🗑️ Excluindo categoria ID:', id);
-      
+
       const response = await fetch(`/api/financial/categorias/${id}`, {
         method: 'DELETE',
         headers: {
@@ -191,7 +215,7 @@ export default function CategoryManager() {
 
       const result = await response.json();
       console.log('✅ Categoria excluída:', result);
-      
+
       // Atualizar o estado local
       setCategorias(categorias.filter(cat => cat.id !== id));
       toast.success('Categoria excluída com sucesso!');
@@ -231,7 +255,7 @@ export default function CategoryManager() {
 
   const categoriasFiltradas = categorias.filter(categoria => {
     const matchBusca = categoria.nome.toLowerCase().includes(busca.toLowerCase()) ||
-                      categoria.descricao.toLowerCase().includes(busca.toLowerCase());
+      categoria.descricao.toLowerCase().includes(busca.toLowerCase());
     const matchTipo = filtroTipo === 'todas' || categoria.tipo === filtroTipo;
     return matchBusca && matchTipo;
   });
@@ -257,7 +281,7 @@ export default function CategoryManager() {
           <h2 className="text-2xl font-bold text-gray-900">🏷️ Gestão de Categorias</h2>
           <p className="text-gray-600">Organize suas transações por categorias e subcategorias</p>
         </div>
-        
+
         <Button onClick={abrirModalNova} className="bg-green-600 hover:bg-green-700">
           <Plus className="h-4 w-4 mr-2" />
           Nova Categoria
@@ -277,7 +301,7 @@ export default function CategoryManager() {
             />
           </div>
         </div>
-        
+
         <Select value={filtroTipo} onValueChange={setFiltroTipo}>
           <SelectTrigger className="w-40">
             <SelectValue />
@@ -298,7 +322,7 @@ export default function CategoryManager() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div 
+                  <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg"
                     style={{ backgroundColor: categoria.cor }}
                   >
@@ -309,7 +333,7 @@ export default function CategoryManager() {
                     <CardDescription className="text-sm">{categoria.descricao}</CardDescription>
                   </div>
                 </div>
-                
+
                 <div className="flex space-x-1">
                   <Button
                     size="sm"
@@ -330,18 +354,18 @@ export default function CategoryManager() {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent>
               <div className="space-y-3">
                 {/* Tipo */}
                 <div className="flex items-center space-x-2">
                   <Badge className={
                     categoria.tipo === 'entrada' ? 'bg-green-100 text-green-800' :
-                    categoria.tipo === 'saida' ? 'bg-red-100 text-red-800' :
-                    'bg-blue-100 text-blue-800'
+                      categoria.tipo === 'saida' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
                   }>
                     {categoria.tipo === 'entrada' ? '💰 Entrada' :
-                     categoria.tipo === 'saida' ? '💸 Saída' : '🔄 Ambos'}
+                      categoria.tipo === 'saida' ? '💸 Saída' : '🔄 Ambos'}
                   </Badge>
                 </div>
 
@@ -367,7 +391,7 @@ export default function CategoryManager() {
                       {categoria.subcategorias.slice(0, 3).map((sub) => (
                         <div key={sub.id} className="flex items-center justify-between text-xs">
                           <div className="flex items-center space-x-2">
-                            <div 
+                            <div
                               className="w-2 h-2 rounded-full"
                               style={{ backgroundColor: sub.cor }}
                             ></div>
@@ -404,7 +428,7 @@ export default function CategoryManager() {
                 {editingCategoria ? 'Atualize os dados da categoria' : 'Crie uma nova categoria para organizar suas transações'}
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="nome">Nome da Categoria *</Label>
@@ -447,9 +471,8 @@ export default function CategoryManager() {
                     <button
                       key={cor.valor}
                       onClick={() => setFormData({ ...formData, cor: cor.valor })}
-                      className={`w-8 h-8 rounded-full border-2 ${
-                        formData.cor === cor.valor ? 'border-gray-900' : 'border-gray-300'
-                      }`}
+                      className={`w-8 h-8 rounded-full border-2 ${formData.cor === cor.valor ? 'border-gray-900' : 'border-gray-300'
+                        }`}
                       style={{ backgroundColor: cor.valor }}
                       title={cor.nome}
                     />
@@ -464,9 +487,8 @@ export default function CategoryManager() {
                     <button
                       key={icone}
                       onClick={() => setFormData({ ...formData, icone })}
-                      className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg ${
-                        formData.icone === icone ? 'border-gray-900 bg-gray-100' : 'border-gray-300'
-                      }`}
+                      className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg ${formData.icone === icone ? 'border-gray-900 bg-gray-100' : 'border-gray-300'
+                        }`}
                     >
                       {icone}
                     </button>
@@ -474,7 +496,7 @@ export default function CategoryManager() {
                 </div>
               </div>
             </CardContent>
-            
+
             <div className="flex justify-end gap-2 p-6 pt-0">
               <Button variant="outline" onClick={() => setShowModal(false)}>
                 <X className="h-4 w-4 mr-2" />

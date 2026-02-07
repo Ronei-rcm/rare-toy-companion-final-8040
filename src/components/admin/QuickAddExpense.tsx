@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useFinancialTransactions } from '@/hooks/useFinancialTransactions';
-import { 
-  DollarSign, 
-  Calendar, 
-  User, 
-  Building, 
-  CreditCard, 
+import {
+  DollarSign,
+  Calendar,
+  User,
+  Building,
+  CreditCard,
   Tag,
   Save,
   X,
@@ -76,7 +76,7 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
   const { createTransaction } = useFinancialTransactions();
   const [etapa, setEtapa] = useState<'categoria' | 'dados' | 'resumo'>('categoria');
   const [saving, setSaving] = useState(false);
-  
+
   // Dados da despesa
   const [categoria, setCategoria] = useState('');
   const [valor, setValor] = useState('');
@@ -87,7 +87,7 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
   const [dataVencimento, setDataVencimento] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [parcelas, setParcelas] = useState('1');
-  
+
   // Estado de validação
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -100,23 +100,23 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
   // Validar etapa de dados
   const validarDados = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!valor || parseFloat(valor) <= 0) {
       newErrors.valor = 'Valor deve ser maior que zero';
     }
-    
+
     if (!descricao.trim()) {
       newErrors.descricao = 'Descrição é obrigatória';
     }
-    
+
     if (!metodoPagamento) {
       newErrors.metodoPagamento = 'Selecione um método de pagamento';
     }
-    
+
     if (!dataVencimento) {
       newErrors.dataVencimento = 'Data é obrigatória';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -127,7 +127,7 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
       toast.error('Selecione uma categoria');
       return;
     }
-    
+
     if (etapa === 'dados') {
       if (!validarDados()) {
         toast.error('Preencha todos os campos obrigatórios');
@@ -141,21 +141,21 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
   // Salvar despesa
   const salvarDespesa = async () => {
     setSaving(true);
-    
+
     try {
       const numParcelas = parseInt(parcelas) || 1;
       const valorParcela = parseFloat(valor) / numParcelas;
-      
+
       // Criar lançamentos para cada parcela
       for (let i = 0; i < numParcelas; i++) {
         const dataParcel = new Date(dataVencimento);
         dataParcel.setMonth(dataParcel.getMonth() + i);
-        
+
         const despesa = {
           type: 'expense',
           category: categoria,
           amount: valorParcela,
-          description: numParcelas > 1 
+          description: numParcelas > 1
             ? `${descricao} (${i + 1}/${numParcelas})`
             : descricao,
           date: dataParcel.toISOString().split('T')[0],
@@ -168,7 +168,7 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
         };
 
         console.log('💰 Salvando despesa:', despesa);
-        
+
         // Usar o hook para criar a transação
         const transactionData = {
           data: despesa.date,
@@ -187,24 +187,24 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
           throw new Error('Erro ao salvar despesa');
         }
       }
-      
+
       toast.success(
-        numParcelas > 1 
-          ? `${numParcelas} despesas cadastradas com sucesso!` 
+        numParcelas > 1
+          ? `${numParcelas} despesas cadastradas com sucesso!`
           : 'Despesa cadastrada com sucesso!',
         {
           icon: '✅'
         }
       );
-      
+
       if (onSuccess) {
         onSuccess();
       }
-      
+
       // Limpar formulário
       limparFormulario();
       setEtapa('categoria');
-      
+
     } catch (error) {
       console.error('❌ Erro ao salvar despesa:', error);
       toast.error('Erro ao salvar despesa. Tente novamente.');
@@ -268,7 +268,7 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
             </Button>
           )}
         </div>
-        
+
         {/* Barra de progresso */}
         <div className="mt-4 space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
@@ -385,7 +385,7 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
                     step="0.01"
                     min="0"
                     value={valor}
-                    onChange={(e) => setValor(e.target.value)}
+                    onChange={(e) => setValor(e.target.value.replace(',', '.'))}
                     placeholder="0,00"
                     className={`text-lg font-bold ${errors.valor ? 'border-red-500' : ''}`}
                   />
@@ -613,8 +613,8 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center gap-3 mb-2">
-                      {categoriaInfo && React.createElement(categoriaInfo.icon, { 
-                        className: "w-5 h-5 text-muted-foreground" 
+                      {categoriaInfo && React.createElement(categoriaInfo.icon, {
+                        className: "w-5 h-5 text-muted-foreground"
                       })}
                       <p className="text-sm text-muted-foreground">Categoria</p>
                     </div>
@@ -651,8 +651,8 @@ const QuickAddExpense: React.FC<QuickAddExpenseProps> = ({ onSuccess, onClose })
 
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center gap-3 mb-2">
-                      {metodoInfo && React.createElement(metodoInfo.icon, { 
-                        className: "w-5 h-5 text-muted-foreground" 
+                      {metodoInfo && React.createElement(metodoInfo.icon, {
+                        className: "w-5 h-5 text-muted-foreground"
                       })}
                       <p className="text-sm text-muted-foreground">Pagamento</p>
                     </div>

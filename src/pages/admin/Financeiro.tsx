@@ -64,6 +64,8 @@ const CashFlowProjection = lazy(() => import('@/components/admin/CashFlowProject
 const ExecutiveReports = lazy(() => import('@/components/admin/ExecutiveReports'));
 const BudgetManager = lazy(() => import('@/components/admin/BudgetManager'));
 const BankReconciliationManager = lazy(() => import('@/components/admin/BankReconciliationManager'));
+import FinancialHealthDashboard from '@/components/admin/FinancialHealthDashboard';
+import AccountBalanceWidget from '@/components/admin/AccountBalanceWidget';
 
 interface Transacao {
   id: number;
@@ -86,12 +88,12 @@ export default function FinanceiroCompleto() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState('transacoes');
-  
+
   // Estados para o modal evoluído
   const [showEvolvedModal, setShowEvolvedModal] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'duplicate'>('create');
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
-  
+
   // Estados para o modal de pagamento
   const [showPayModal, setShowPayModal] = useState(false);
   const [transactionToPay, setTransactionToPay] = useState<any>(null);
@@ -134,6 +136,8 @@ export default function FinanceiroCompleto() {
   });
   const [batchSaving, setBatchSaving] = useState(false);
   const [saldoBancoConciliacao, setSaldoBancoConciliacao] = useState<string>('');
+  const [contas, setContas] = useState<any[]>([]);
+  const [filterContaId, setFilterContaId] = useState<number | null>(null);
 
   const parseDateSafe = useCallback((value: string | null | undefined) => {
     if (!value) return null;
@@ -174,11 +178,11 @@ export default function FinanceiroCompleto() {
       setLoading(true);
       const response = await fetch('/api/financial/transactions');
       if (!response.ok) throw new Error('Erro ao carregar');
-      
+
       const data = await response.json();
       const transacoesCarregadas = data.transactions || [];
       setTransacoes(transacoesCarregadas);
-      
+
       const categoriasUnicas = Array.from(new Set(transacoesCarregadas.map((t: Transacao) => t.categoria).filter(Boolean)));
       setCategorias(categoriasUnicas.sort());
     } catch (error) {
@@ -186,6 +190,18 @@ export default function FinanceiroCompleto() {
       toast.error('Erro ao carregar transações');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Carregar contas bancárias
+  const carregarContas = async () => {
+    try {
+      const response = await fetch('/api/financial/contas');
+      if (!response.ok) throw new Error('Erro ao carregar contas');
+      const data = await response.json();
+      setContas(data.contas || []);
+    } catch (error) {
+      console.error('❌ Erro ao carregar contas:', error);
     }
   };
 
@@ -283,7 +299,7 @@ export default function FinanceiroCompleto() {
     // Busca por termo
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter(t =>
         t.descricao.toLowerCase().includes(term) ||
         t.categoria.toLowerCase().includes(term) ||
         t.origem?.toLowerCase().includes(term) ||
@@ -306,6 +322,11 @@ export default function FinanceiroCompleto() {
       filtered = filtered.filter(t => t.categoria === filterCategoria);
     }
 
+    // Filtro por conta bancária
+    if (filterContaId !== null) {
+      filtered = filtered.filter(t => t.conta_id === filterContaId);
+    }
+
     // Filtro por taxa (transações com Taxa (R$) nas observações = extrato importado com taxa)
     const temTaxa = (t: Transacao) => /Taxa\s*\(R\$\):\s*[\d.,]+/i.test(t.observacoes || '');
     if (filterComTaxa === 'com_taxa') filtered = filtered.filter(temTaxa);
@@ -315,11 +336,11 @@ export default function FinanceiroCompleto() {
     if (!hasCustomDate && periodo !== 'all') {
       const now = new Date();
       const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       filtered = filtered.filter(t => {
         const dataTransacao = parseDateSafe(t.data);
         if (!dataTransacao) return false;
-        
+
         switch (periodo) {
           case 'hoje':
             return dataTransacao >= hoje;
@@ -366,7 +387,7 @@ export default function FinanceiroCompleto() {
     // Ordenação
     filtered.sort((a, b) => {
       let aValue: any, bValue: any;
-      
+
       switch (sortField) {
         case 'data':
           aValue = parseDateSafe(a.data)?.getTime() ?? 0;
@@ -515,7 +536,7 @@ export default function FinanceiroCompleto() {
         headers.join(','),
         ...dados.map(row => headers.map(h => `"${row[h as keyof typeof row]}"`).join(','))
       ].join('\n');
-      
+
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -736,6 +757,7 @@ export default function FinanceiroCompleto() {
 
   useEffect(() => {
     carregarTransacoes();
+    carregarContas();
   }, []);
 
   // Atalhos de teclado
@@ -753,13 +775,13 @@ export default function FinanceiroCompleto() {
         searchInput?.focus();
         searchInput?.select();
       }
-      
+
       // Ctrl/Cmd + N para nova transação
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         abrirModalEvoluido('create');
       }
-      
+
       // Escape para fechar modais
       if (e.key === 'Escape' && showEvolvedModal) {
         fecharModalEvoluido();
@@ -852,49 +874,64 @@ export default function FinanceiroCompleto() {
           {loading ? (
             <SkeletonLoader type="metric" count={4} />
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            <MetricCard
-              title="Total Entradas"
-              value={resumo.totalEntradas}
-              format="currency"
-              color="green"
-              icon={<TrendingUp className="h-5 w-5" />}
-              subtitle="Receitas totais"
-            />
-            <MetricCard
-              title="Total Saídas"
-              value={resumo.totalSaidas}
-              format="currency"
-              color="red"
-              icon={<TrendingDown className="h-5 w-5" />}
-              subtitle="Despesas totais"
-            />
-            <MetricCard
-              title="Saldo Líquido"
-              value={resumo.saldoLiquido}
-              format="currency"
-              color={resumo.saldoLiquido >= 0 ? 'green' : 'red'}
-              icon={<DollarSign className="h-5 w-5" />}
-              subtitle="Resultado líquido"
-            />
-            <MetricCard
-              title="Total Transações"
-              value={resumo.totalTransacoes}
-              format="number"
-              color="blue"
-              icon={<FileText className="h-5 w-5" />}
-              subtitle={`${resumo.pendentes} pendentes, ${resumo.atrasados} atrasadas`}
-            />
-            <MetricCard
-              title="Total em taxas"
-              value={resumo.totalTaxas}
-              format="currency"
-              color="orange"
-              icon={<Percent className="h-5 w-5" />}
-              subtitle="Taxas pagas (extratos importados)"
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <MetricCard
+                title="Total Entradas"
+                value={resumo.totalEntradas}
+                format="currency"
+                color="green"
+                icon={<TrendingUp className="h-5 w-5" />}
+                subtitle="Receitas totais"
+              />
+              <MetricCard
+                title="Total Saídas"
+                value={resumo.totalSaidas}
+                format="currency"
+                color="red"
+                icon={<TrendingDown className="h-5 w-5" />}
+                subtitle="Despesas totais"
+              />
+              <MetricCard
+                title="Saldo Líquido"
+                value={resumo.saldoLiquido}
+                format="currency"
+                color={resumo.saldoLiquido >= 0 ? 'green' : 'red'}
+                icon={<DollarSign className="h-5 w-5" />}
+                subtitle="Resultado líquido"
+              />
+              <MetricCard
+                title="Total Transações"
+                value={resumo.totalTransacoes}
+                format="number"
+                color="blue"
+                icon={<FileText className="h-5 w-5" />}
+                subtitle={`${resumo.pendentes} pendentes, ${resumo.atrasados} atrasadas`}
+              />
+              <MetricCard
+                title="Total em taxas"
+                value={resumo.totalTaxas}
+                format="currency"
+                color="orange"
+                icon={<Percent className="h-5 w-5" />}
+                subtitle="Taxas pagas (extratos importados)"
+              />
+            </div>
+          )}
+
+          {/* Dashboard de Saúde Financeira */}
+          <div className="mb-6">
+            <FinancialHealthDashboard transactions={transacoes} />
+          </div>
+
+          {/* Saldo Consolidado por Conta */}
+          <div className="mb-6">
+            <AccountBalanceWidget
+              transactions={transacoes}
+              accounts={contas}
+              onFilterByAccount={setFilterContaId}
+              selectedAccountId={filterContaId}
             />
           </div>
-          )}
 
           {/* Conciliação com o banco (ex.: InfinitePay) */}
           <Card className="shadow-sm border-dashed border-2 border-blue-200 bg-blue-50/50">
@@ -1234,187 +1271,187 @@ export default function FinanceiroCompleto() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-800">Transações ({resumo.totalTransacoes})</h2>
             <Card className="shadow-sm">
-            <CardHeader className="pb-4">
-              <div className="flex justify-between items-center">
-              <CardTitle className="text-base font-semibold">📋 Lista de Transações</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="itemsPerPage" className="text-sm">Itens por página:</Label>
-                  <Select value={itemsPerPage.toString()} onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }}>
-                    <SelectTrigger id="itemsPerPage" className="w-20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <CardHeader className="pb-4">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-base font-semibold">📋 Lista de Transações</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="itemsPerPage" className="text-sm">Itens por página:</Label>
+                    <Select value={itemsPerPage.toString()} onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }}>
+                      <SelectTrigger id="itemsPerPage" className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
-                <div className="text-sm text-gray-700">
-                  {selectedCount > 0 ? `${selectedCount} transações selecionadas` : 'Selecione transações para ações em lote'}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={selectedCount === 0}
-                    onClick={() => setShowBatchModal(true)}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar em lote
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={selectedCount === 0}
-                    onClick={excluirEmLote}
-                    title="Excluir transações selecionadas"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Excluir em lote ({selectedCount})
-                  </Button>
-                  {selectedCount > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
+                  <div className="text-sm text-gray-700">
+                    {selectedCount > 0 ? `${selectedCount} transações selecionadas` : 'Selecione transações para ações em lote'}
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => setSelectedIds([])}
-                      className="text-muted-foreground hover:text-foreground"
+                      disabled={selectedCount === 0}
+                      onClick={() => setShowBatchModal(true)}
                     >
-                      Limpar seleção
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar em lote
                     </Button>
-                  )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={selectedCount === 0}
+                      onClick={excluirEmLote}
+                      title="Excluir transações selecionadas"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir em lote ({selectedCount})
+                    </Button>
+                    {selectedCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedIds([])}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Limpar seleção
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <SkeletonLoader type="table" count={1} />
-              ) : transacoesPaginadas.length === 0 && transacoes.length === 0 ? (
-                <EmptyState
-                  icon={Inbox}
-                  title="Nenhuma transação encontrada"
-                  description="Comece criando sua primeira transação financeira"
-                  actionLabel="+ Nova Transação"
-                  onAction={() => abrirModalEvoluido('create')}
-                />
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-gray-50 hover:bg-gray-50">
-                        <TableHead className="w-12">
-                          <Checkbox
-                            aria-label="Selecionar todas da página"
-                            checked={isPageFullySelected}
-                            onCheckedChange={toggleSelectAllPage}
-                          />
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleSort('data')} 
-                            className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
-                            aria-label={`Ordenar por data ${sortField === 'data' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
-                          >
-                            Data
-                            <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
-                          </Button>
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleSort('descricao')} 
-                            className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
-                            aria-label={`Ordenar por descrição ${sortField === 'descricao' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
-                          >
-                            Descrição
-                            <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
-                          </Button>
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleSort('categoria')} 
-                            className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
-                            aria-label={`Ordenar por categoria ${sortField === 'categoria' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
-                          >
-                            Categoria
-                            <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
-                          </Button>
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <span className="sr-only">Tipo</span>
-                          Tipo
-                        </TableHead>
-                        <TableHead className="font-semibold text-right">
-                          <span className="sr-only">Valor Bruto</span>
-                          Valor Bruto (R$)
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleSort('valor')} 
-                            className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
-                            aria-label={`Ordenar por valor ${sortField === 'valor' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
-                          >
-                            Valor Líquido (R$)
-                            <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
-                          </Button>
-                        </TableHead>
-                        <TableHead className="font-semibold text-orange-700">
-                          <span className="sr-only">Taxa</span>
-                          Taxa
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <span className="sr-only">Método</span>
-                          Método
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <span className="sr-only">Origem</span>
-                          Origem
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <span className="sr-only">Status</span>
-                          Status
-                        </TableHead>
-                        <TableHead className="font-semibold">
-                          <span className="sr-only">Ações</span>
-                          Ações
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transacoesPaginadas.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={11} className="p-0">
-                            <EmptyState
-                              icon={Inbox}
-                              title="Nenhuma transação corresponde aos filtros"
-                              description="Tente ajustar os filtros ou limpar para ver todas as transações"
-                              actionLabel="Limpar Filtros"
-                              onAction={() => {
-                                setSearchTerm('');
-                                setFilterTipo('all');
-                                setFilterStatus('all');
-                                setFilterCategoria('all');
-                                setPeriodo('all');
-                                setCurrentPage(1);
-                              }}
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <SkeletonLoader type="table" count={1} />
+                ) : transacoesPaginadas.length === 0 && transacoes.length === 0 ? (
+                  <EmptyState
+                    icon={Inbox}
+                    title="Nenhuma transação encontrada"
+                    description="Comece criando sua primeira transação financeira"
+                    actionLabel="+ Nova Transação"
+                    onAction={() => abrirModalEvoluido('create')}
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50 hover:bg-gray-50">
+                          <TableHead className="w-12">
+                            <Checkbox
+                              aria-label="Selecionar todas da página"
+                              checked={isPageFullySelected}
+                              onCheckedChange={toggleSelectAllPage}
                             />
-                          </TableCell>
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort('data')}
+                              className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
+                              aria-label={`Ordenar por data ${sortField === 'data' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
+                            >
+                              Data
+                              <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort('descricao')}
+                              className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
+                              aria-label={`Ordenar por descrição ${sortField === 'descricao' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
+                            >
+                              Descrição
+                              <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort('categoria')}
+                              className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
+                              aria-label={`Ordenar por categoria ${sortField === 'categoria' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
+                            >
+                              Categoria
+                              <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <span className="sr-only">Tipo</span>
+                            Tipo
+                          </TableHead>
+                          <TableHead className="font-semibold text-right">
+                            <span className="sr-only">Valor Bruto</span>
+                            Valor Bruto (R$)
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort('valor')}
+                              className="hover:bg-transparent font-semibold focus:ring-2 focus:ring-blue-500"
+                              aria-label={`Ordenar por valor ${sortField === 'valor' && sortOrder === 'asc' ? '(descendente)' : '(ascendente)'}`}
+                            >
+                              Valor Líquido (R$)
+                              <ArrowUpDown className="h-4 w-4 ml-2" aria-hidden="true" />
+                            </Button>
+                          </TableHead>
+                          <TableHead className="font-semibold text-orange-700">
+                            <span className="sr-only">Taxa</span>
+                            Taxa
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <span className="sr-only">Método</span>
+                            Método
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <span className="sr-only">Origem</span>
+                            Origem
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <span className="sr-only">Status</span>
+                            Status
+                          </TableHead>
+                          <TableHead className="font-semibold">
+                            <span className="sr-only">Ações</span>
+                            Ações
+                          </TableHead>
                         </TableRow>
-                      ) : (
-                        transacoesPaginadas.map((transacao, index) => (
-                          <TableRow 
-                            key={transacao.id}
-                            className={`
+                      </TableHeader>
+                      <TableBody>
+                        {transacoesPaginadas.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={11} className="p-0">
+                              <EmptyState
+                                icon={Inbox}
+                                title="Nenhuma transação corresponde aos filtros"
+                                description="Tente ajustar os filtros ou limpar para ver todas as transações"
+                                actionLabel="Limpar Filtros"
+                                onAction={() => {
+                                  setSearchTerm('');
+                                  setFilterTipo('all');
+                                  setFilterStatus('all');
+                                  setFilterCategoria('all');
+                                  setPeriodo('all');
+                                  setCurrentPage(1);
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          transacoesPaginadas.map((transacao, index) => (
+                            <TableRow
+                              key={transacao.id}
+                              className={`
                               ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}
                               hover:bg-blue-50/50
                               transition-all duration-200
@@ -1422,195 +1459,193 @@ export default function FinanceiroCompleto() {
                               group
                               hover:shadow-sm
                             `}
-                          >
-                            <TableCell>
-                              <Checkbox
-                                aria-label={`Selecionar transação ${transacao.id}`}
-                                checked={selectedIds.includes(transacao.id)}
-                                onCheckedChange={() => toggleSelect(transacao.id)}
-                              />
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              <div>
-                                {new Date(transacao.data).toLocaleDateString('pt-BR')}
-                                {transacao.hora && (
-                                  <span className="text-xs text-gray-500 ml-2">
-                                    {transacao.hora}
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="max-w-xs truncate" title={transacao.descricao}>
-                                {transacao.descricao}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="transition-all hover:scale-105 cursor-default">
-                                {transacao.categoria}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={`transition-all hover:scale-105 cursor-default ${
-                                transacao.tipo === 'entrada' 
-                                  ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' 
-                                  : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
-                              }`}>
-                                {transacao.tipo === 'entrada' ? '💰 Entrada' : '💸 Saída'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-gray-600">
-                              {transacao.valor_bruto != null ? (
-                                <>R$ {Number(transacao.valor_bruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className={`font-semibold text-right ${transacao.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
-                              {transacao.tipo === 'entrada' ? '+' : '-'}R$ {Number(transacao.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </TableCell>
-                            <TableCell className="text-orange-600 text-sm">
-                              {(() => {
-                                const obs = transacao.observacoes || '';
-                                const m = obs.match(/Taxa\s*\(R\$\):\s*([\d.,]+)/i);
-                                if (!m) return <span className="text-gray-400">-</span>;
-                                const n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
-                                return isNaN(n) ? <span className="text-gray-400">-</span> : (
-                                  <span title="Taxa paga (extrato importado)">R$ {n.toFixed(2).replace('.', ',')}</span>
-                                );
-                              })()}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {transacao.metodo_pagamento || 'N/A'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="max-w-xs truncate" title={transacao.origem || 'N/A'}>
-                                {transacao.origem || 'N/A'}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {transacao.status === 'Pago' && <CheckCircle className="h-4 w-4 text-green-600" />}
-                                {transacao.status === 'Pendente' && <Clock className="h-4 w-4 text-yellow-600" />}
-                                {transacao.status === 'Atrasado' && <AlertCircle className="h-4 w-4 text-red-600" />}
-                                <Badge className={`transition-all hover:scale-105 cursor-default ${
-                                  transacao.status === 'Pago' 
-                                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' 
-                                    : transacao.status === 'Pendente'
-                                    ? 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
-                                    : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
-                                }`}>
-                                  {transacao.status}
+                            >
+                              <TableCell>
+                                <Checkbox
+                                  aria-label={`Selecionar transação ${transacao.id}`}
+                                  checked={selectedIds.includes(transacao.id)}
+                                  onCheckedChange={() => toggleSelect(transacao.id)}
+                                />
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                <div>
+                                  {new Date(transacao.data).toLocaleDateString('pt-BR')}
+                                  {transacao.hora && (
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      {transacao.hora}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-xs truncate" title={transacao.descricao}>
+                                  {transacao.descricao}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="transition-all hover:scale-105 cursor-default">
+                                  {transacao.categoria}
                                 </Badge>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                {(transacao.status === 'Pendente' || transacao.status === 'Atrasado') && (
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={`transition-all hover:scale-105 cursor-default ${transacao.tipo === 'entrada'
+                                  ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
+                                  : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+                                  }`}>
+                                  {transacao.tipo === 'entrada' ? '💰 Entrada' : '💸 Saída'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right text-gray-600">
+                                {transacao.valor_bruto != null ? (
+                                  <>R$ {Number(transacao.valor_bruto).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className={`font-semibold text-right ${transacao.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
+                                {transacao.tipo === 'entrada' ? '+' : '-'}R$ {Number(transacao.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </TableCell>
+                              <TableCell className="text-orange-600 text-sm">
+                                {(() => {
+                                  const obs = transacao.observacoes || '';
+                                  const m = obs.match(/Taxa\s*\(R\$\):\s*([\d.,]+)/i);
+                                  if (!m) return <span className="text-gray-400">-</span>;
+                                  const n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+                                  return isNaN(n) ? <span className="text-gray-400">-</span> : (
+                                    <span title="Taxa paga (extrato importado)">R$ {n.toFixed(2).replace('.', ',')}</span>
+                                  );
+                                })()}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {transacao.metodo_pagamento || 'N/A'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="max-w-xs truncate" title={transacao.origem || 'N/A'}>
+                                  {transacao.origem || 'N/A'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {transacao.status === 'Pago' && <CheckCircle className="h-4 w-4 text-green-600" />}
+                                  {transacao.status === 'Pendente' && <Clock className="h-4 w-4 text-yellow-600" />}
+                                  {transacao.status === 'Atrasado' && <AlertCircle className="h-4 w-4 text-red-600" />}
+                                  <Badge className={`transition-all hover:scale-105 cursor-default ${transacao.status === 'Pago'
+                                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
+                                    : transacao.status === 'Pendente'
+                                      ? 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
+                                      : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+                                    }`}>
+                                    {transacao.status}
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  {(transacao.status === 'Pendente' || transacao.status === 'Atrasado') && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => abrirModalPagamento(transacao)}
+                                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                      title="Pagar conta"
+                                    >
+                                      <Wallet className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => abrirModalPagamento(transacao)}
-                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    title="Pagar conta"
+                                    onClick={() => editarTransacao(transacao)}
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    title="Editar transação"
                                   >
-                                    <Wallet className="h-4 w-4" />
+                                    <Edit className="h-4 w-4" />
                                   </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => editarTransacao(transacao)}
-                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                  title="Editar transação"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => duplicarTransacao(transacao)}
-                                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                  title="Duplicar transação"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => excluirTransacao(transacao.id)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  title="Excluir transação"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                  
-                  {/* Paginação */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <div className="text-sm text-gray-600">
-                        Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, transacoesFiltradas.length)} de {transacoesFiltradas.length} transações
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Anterior
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentPage - 2 + i;
-                            }
-                            return (
-                              <Button
-                                key={pageNum}
-                                variant={currentPage === pageNum ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setCurrentPage(pageNum)}
-                                className="w-10"
-                              >
-                                {pageNum}
-                              </Button>
-                            );
-                          })}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => duplicarTransacao(transacao)}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                    title="Duplicar transação"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => excluirTransacao(transacao.id)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Excluir transação"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {/* Paginação */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                        <div className="text-sm text-gray-600">
+                          Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, transacoesFiltradas.length)} de {transacoesFiltradas.length} transações
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          Próxima
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Anterior
+                          </Button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentPage - 2 + i;
+                              }
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={currentPage === pageNum ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  className="w-10"
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                          >
+                            Próxima
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
@@ -1815,7 +1850,7 @@ export default function FinanceiroCompleto() {
                     type="number"
                     step="0.01"
                     value={formData.valor}
-                    onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, valor: e.target.value.replace(',', '.') })}
                     placeholder="0.00"
                   />
                 </div>
