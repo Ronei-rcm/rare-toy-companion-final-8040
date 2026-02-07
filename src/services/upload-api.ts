@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { API_BASE_URL, handleApiResponse } from './api-config';
 
 export const uploadApi = {
   async uploadImage(file: File): Promise<{ imageUrl: string; fullUrl: string; filename: string; success: boolean }> {
@@ -10,15 +10,10 @@ export const uploadApi = {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Erro ao fazer upload: HTTP ${response.status}`);
-    }
+    const data = await handleApiResponse<{ imageUrl: string; fullUrl: string; filename: string; success: boolean }>(response, 'Erro ao fazer upload');
 
-    const data = await response.json();
-    
     if (!data.success) {
-      throw new Error(data.error || 'Erro no upload');
+      throw new Error('Erro no upload');
     }
 
     return data;

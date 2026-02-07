@@ -93,8 +93,8 @@ function csrfTokenMiddleware(req, res, next) {
   // Armazenar secret no cookie (httpOnly)
   res.cookie('csrf-secret', secret, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true, // Obrigatório para SameSite=None
+    sameSite: 'none', // Necessário para Capacitor
     maxAge: TOKEN_EXPIRY,
   });
 
@@ -141,8 +141,8 @@ function getCsrfTokenEndpoint(req, res) {
 
   res.cookie('csrf-secret', secret, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true, // Obrigatório para SameSite=None
+    sameSite: 'none', // Necessário para Capacitor
     maxAge: TOKEN_EXPIRY,
   });
 
@@ -188,8 +188,8 @@ function setDoubleSubmitCookie(req, res, next) {
     token = generateCsrfToken();
     res.cookie('csrf-token', token, {
       httpOnly: false, // Precisa ser acessível pelo JS
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true, // Obrigatório para SameSite=None
+      sameSite: 'none', // Necessário para Capacitor
       maxAge: TOKEN_EXPIRY,
     });
   }

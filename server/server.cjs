@@ -47,12 +47,8 @@ app.use(cors({
     'http://127.0.0.1:8040',
     'capacitor://localhost',
     'http://localhost',
-    'http://172.16.0.15:8040',
-    'http://172.17.0.1:8040',
-    'http://172.18.0.1:8040',
-    'http://172.19.0.1:8040',
-    'http://177.67.33.248:8040',
-    'https://muhlstore.re9suainternet.com.br'
+    'https://muhlstore.re9suainternet.com.br',
+    'https://muhlstore.re9suainternet.com.br/loja'
   ],
   credentials: true
 }));
@@ -117,7 +113,9 @@ function normalizeToThisOrigin(req, urlOrPath) {
     }
     const u = new URL(urlOrPath);
     // Preserve path/search; rebuild on current origin
-    const rebuilt = `${(req.headers['x-forwarded-proto'] || req.protocol || 'http')}://${(req.headers['x-forwarded-host'] || req.get('host'))}${u.pathname}${u.search || ''}`;
+    // Forçar HTTPS se o host for o domínio de produção
+    const protocol = (req.get('host') || '').includes('re9suainternet.com.br') ? 'https' : (req.headers['x-forwarded-proto'] || req.protocol || 'http');
+    const rebuilt = `${protocol}://${(req.headers['x-forwarded-host'] || req.get('host'))}${u.pathname}${u.search || ''}`;
     return rebuilt;
   } catch {
     return getPublicUrl(req, urlOrPath);
@@ -1850,8 +1848,8 @@ app.post('/api/auth/register', async (req, res) => {
     // Configurar cookie de sessão
     res.cookie('session_id', sid, {
       httpOnly: false,
-      sameSite: 'lax',
-      secure: (req.headers['x-forwarded-proto'] || req.protocol) === 'https',
+      sameSite: 'none',
+      secure: true,
       maxAge: 1000 * 60 * 60 * 24 * 30 // 30 dias
     });
 
@@ -2950,8 +2948,8 @@ app.post('/api/auth/login', async (req, res) => {
     // Configurar cookie de sessão
     res.cookie('session_id', sid, {
       httpOnly: false,
-      sameSite: 'lax',
-      secure: (req.headers['x-forwarded-proto'] || req.protocol) === 'https',
+      sameSite: 'none',
+      secure: true,
       maxAge: 1000 * 60 * 60 * 24 * 30 // 30 dias
     });
 
@@ -2991,11 +2989,11 @@ app.post('/api/auth/logout', async (req, res) => {
     const baseDomain = host && host.includes('.') ? `.${host.replace(/^www\./, '')}` : undefined;
 
     const cookieNames = [
-      { name: 'session_id', sameSite: 'lax' },
-      { name: 'auth_token', sameSite: 'lax' },
-      { name: 'mock_email', sameSite: 'lax' },
-      { name: 'cart_id', sameSite: 'lax' },
-      { name: 'csrf-token', sameSite: 'strict' },
+      { name: 'session_id', sameSite: 'none' },
+      { name: 'auth_token', sameSite: 'none' },
+      { name: 'mock_email', sameSite: 'none' },
+      { name: 'cart_id', sameSite: 'none' },
+      { name: 'csrf-token', sameSite: 'none' },
     ];
 
     const variants = [
@@ -8497,8 +8495,8 @@ app.post('/api/admin/login', async (req, res) => {
     // Salvar token no cookie
     res.cookie('admin_token', token, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      secure: true,
       maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dias
     });
 

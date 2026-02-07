@@ -141,7 +141,7 @@ export function useSecurityEnhancement() {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
-      
+
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value) {
@@ -220,12 +220,12 @@ export function useSecurityEnhancement() {
       if (response.ok) {
         const newEvent = await response.json();
         setSecurityEvents(prev => [newEvent, ...prev]);
-        
+
         // Verificar se precisa gerar alerta
         if (eventData.severity === 'high' || eventData.severity === 'critical') {
           await generateSecurityAlert(eventData);
         }
-        
+
         return newEvent;
       }
     } catch (error) {
@@ -244,8 +244,8 @@ export function useSecurityEnhancement() {
         'data_access': 'unusual_activity'
       };
 
-      const alertType = alertTypes[eventData.type as keyof typeof alertTypes] || 'unusual_activity';
-      
+      const alertType = (alertTypes[eventData.type as keyof typeof alertTypes] || 'unusual_activity') as SecurityAlert['type'];
+
       const alert: Omit<SecurityAlert, 'id'> = {
         type: alertType,
         severity: eventData.severity,
@@ -293,8 +293,8 @@ export function useSecurityEnhancement() {
       });
 
       if (response.ok) {
-        setSecurityAlerts(prev => prev.map(alert => 
-          alert.id === alertId 
+        setSecurityAlerts(prev => prev.map(alert =>
+          alert.id === alertId
             ? { ...alert, status: 'resolved' as const, resolution, resolvedBy }
             : alert
         ));
@@ -317,7 +317,7 @@ export function useSecurityEnhancement() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Registrar evento
         await logSecurityEvent({
           type: '2fa_enabled',
@@ -346,7 +346,7 @@ export function useSecurityEnhancement() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Registrar evento
         await logSecurityEvent({
           type: 'login',
@@ -360,7 +360,7 @@ export function useSecurityEnhancement() {
       }
     } catch (error) {
       console.error('Erro ao verificar 2FA:', error);
-      
+
       // Registrar evento de falha
       await logSecurityEvent({
         type: 'failed_login',
@@ -382,7 +382,7 @@ export function useSecurityEnhancement() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Registrar evento
         await logSecurityEvent({
           type: '2fa_enabled',
@@ -412,7 +412,7 @@ export function useSecurityEnhancement() {
       if (response.ok) {
         const updatedSettings = await response.json();
         setSecuritySettings(updatedSettings);
-        
+
         // Registrar evento
         await logSecurityEvent({
           type: 'permission_change',
@@ -442,7 +442,7 @@ export function useSecurityEnhancement() {
       if (response.ok) {
         const report = await response.json();
         setComplianceReports(prev => [report, ...prev]);
-        
+
         // Registrar evento
         await logSecurityEvent({
           type: 'data_access',
@@ -523,7 +523,7 @@ export function useSecurityEnhancement() {
   }) => {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value) {
@@ -533,7 +533,7 @@ export function useSecurityEnhancement() {
       }
 
       const response = await fetch(`/api/security/export?${params.toString()}`);
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -544,7 +544,7 @@ export function useSecurityEnhancement() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        
+
         return true;
       }
     } catch (error) {
@@ -558,7 +558,7 @@ export function useSecurityEnhancement() {
     if (isMonitoring) return;
 
     setIsMonitoring(true);
-    
+
     // Monitorar eventos em tempo real
     monitoringIntervalRef.current = setInterval(async () => {
       await Promise.all([
@@ -571,11 +571,13 @@ export function useSecurityEnhancement() {
     // WebSocket para eventos em tempo real (se disponível)
     if ('WebSocket' in window) {
       try {
-        const ws = new WebSocket('ws://localhost:3001/security-events');
-        
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`;
+        const ws = new WebSocket(`${host}/security-events`);
+
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === 'security_event') {
             setSecurityEvents(prev => [data.event, ...prev]);
           } else if (data.type === 'security_alert') {
@@ -602,7 +604,7 @@ export function useSecurityEnhancement() {
   // Parar monitoramento
   const stopMonitoring = useCallback(() => {
     setIsMonitoring(false);
-    
+
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
       monitoringIntervalRef.current = null;
@@ -635,7 +637,7 @@ export function useSecurityEnhancement() {
       highAlerts: highAlerts.length,
       totalAlerts: safeSecurityAlerts.length,
       resolvedAlerts: safeSecurityAlerts.filter(a => a.status === 'resolved').length,
-      complianceScore: safeComplianceReports.length > 0 
+      complianceScore: safeComplianceReports.length > 0
         ? Math.round(safeComplianceReports.reduce((sum, r) => sum + r.score, 0) / safeComplianceReports.length)
         : 0,
       lastUpdated: now
@@ -667,7 +669,7 @@ export function useSecurityEnhancement() {
     securityMetrics,
     isLoading,
     isMonitoring,
-    
+
     // Ações
     loadSecurityEvents,
     loadSecurityAlerts,
@@ -687,7 +689,7 @@ export function useSecurityEnhancement() {
     exportAuditLogs,
     startMonitoring,
     stopMonitoring,
-    
+
     // Utilitários
     getSecurityStatistics
   };

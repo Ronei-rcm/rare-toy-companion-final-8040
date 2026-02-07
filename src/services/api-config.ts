@@ -1,0 +1,64 @@
+
+/**
+ * Configuração centralizada da API
+ * Define a URL base e utilitários para requisições
+ */
+
+// URL base da API
+// Prioriza a variável de ambiente VITE_API_URL, mas fornece um fallback seguro para produção
+const ENV_API_URL = import.meta.env.VITE_API_URL as string | undefined;
+
+export const API_BASE_URL = ENV_API_URL && ENV_API_URL.trim().length > 0
+    ? ENV_API_URL.replace(/\/$/, '')
+    : 'https://muhlstore.re9suainternet.com.br/api';
+
+/**
+ * Erro customizado para respostas da API
+ */
+export class ApiError extends Error {
+    status: number;
+    data?: any;
+
+    constructor(message: string, status: number, data?: any) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.data = data;
+    }
+}
+
+/**
+ * Helper para processar respostas da API
+ * Lança ApiError se a resposta não for ok
+ */
+export async function handleApiResponse<T>(response: Response, defaultErrorMessage: string = 'Erro na requisição'): Promise<T> {
+    if (!response.ok) {
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch {
+            errorData = { statusText: response.statusText };
+        }
+
+        // Tenta extrair a mensagem de erro mais relevante
+        const message = errorData?.error || errorData?.message || defaultErrorMessage;
+
+        throw new ApiError(
+            message,
+            response.status,
+            errorData
+        );
+    }
+
+    // Tratamento para respostas sem conteúdo (204 No Content)
+    if (response.status === 204) {
+        return {} as T;
+    }
+
+    try {
+        return await response.json();
+    } catch (e) {
+        console.error('Erro ao fazer parse do JSON:', e);
+        throw new ApiError('Resposta inválida do servidor (formato inválido)', response.status);
+    }
+}

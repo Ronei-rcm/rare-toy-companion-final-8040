@@ -1,22 +1,16 @@
 import { Collection, CreateCollectionData, UpdateCollectionData } from '@/types/collection';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import { API_BASE_URL, handleApiResponse } from './api-config';
 
 export const collectionsApi = {
   async getCollections(): Promise<Collection[]> {
-    const response = await fetch(`${API_BASE_URL}/collections`);
-    if (!response.ok) {
-      throw new Error('Erro ao carregar coleções');
-    }
-    return response.json();
+    const response = await fetch(`${API_BASE_URL}/collections`, { credentials: 'include' });
+    return handleApiResponse<Collection[]>(response, 'Erro ao carregar coleções');
   },
 
   async getCollection(id: string): Promise<Collection> {
-    const response = await fetch(`${API_BASE_URL}/collections/${id}`);
-    if (!response.ok) {
-      throw new Error('Erro ao carregar coleção');
-    }
-    return response.json();
+    const response = await fetch(`${API_BASE_URL}/collections/${id}`, { credentials: 'include' });
+    return handleApiResponse<Collection>(response, 'Erro ao carregar coleção');
   },
 
   async createCollection(data: CreateCollectionData): Promise<Collection> {
@@ -26,11 +20,9 @@ export const collectionsApi = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+      credentials: 'include'
     });
-    if (!response.ok) {
-      throw new Error('Erro ao criar coleção');
-    }
-    return response.json();
+    return handleApiResponse<Collection>(response, 'Erro ao criar coleção');
   },
 
   async updateCollection(id: string, data: UpdateCollectionData): Promise<Collection> {
@@ -40,20 +32,17 @@ export const collectionsApi = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+      credentials: 'include'
     });
-    if (!response.ok) {
-      throw new Error('Erro ao atualizar coleção');
-    }
-    return response.json();
+    return handleApiResponse<Collection>(response, 'Erro ao atualizar coleção');
   },
 
   async deleteCollection(id: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/collections/${id}`, {
       method: 'DELETE',
+      credentials: 'include'
     });
-    if (!response.ok) {
-      throw new Error('Erro ao deletar coleção');
-    }
+    await handleApiResponse<void>(response, 'Erro ao deletar coleção');
   },
 
   async reorderCollections(ids: string[]): Promise<void> {
@@ -63,9 +52,8 @@ export const collectionsApi = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ids }),
+      credentials: 'include'
     });
-    if (!response.ok) {
-      throw new Error('Erro ao reordenar coleções');
-    }
+    await handleApiResponse<void>(response, 'Erro ao reordenar coleções');
   }
 };

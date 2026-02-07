@@ -1,8 +1,8 @@
-import { 
-  SobreContent, 
-  CompanyValue, 
-  TeamMember, 
-  CompanyStat, 
+import {
+  SobreContent,
+  CompanyValue,
+  TeamMember,
+  CompanyStat,
   ContactInfo,
   CreateSobreContentData,
   UpdateSobreContentData,
@@ -17,21 +17,13 @@ import {
 } from '@/types/sobre';
 
 // Resolve base da API via env com fallback seguro
-function getApiBase(): string {
-  const envUrl = (import.meta as any).env?.VITE_API_URL as string | undefined;
-  if (envUrl && envUrl.trim().length > 0) return envUrl.replace(/\/$/, '');
-  // Sempre usar a variável de ambiente ou fallback para localhost
-  return 'http://127.0.0.1:3001/api';
-}
-
-const API = getApiBase();
+import { API_BASE_URL as API, handleApiResponse } from '@/services/api-config';
 
 // ===== CONTEÚDO DA PÁGINA SOBRE =====
 
 export async function getSobreContent(): Promise<SobreContent[]> {
   const res = await fetch(`${API}/sobre/content`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Falha ao buscar conteúdo da página Sobre');
-  return res.json();
+  return handleApiResponse<SobreContent[]>(res, 'Falha ao buscar conteúdo da página Sobre');
 }
 
 export async function updateSobreContent(section: string, data: CreateSobreContentData): Promise<{ success: boolean; message: string }> {
@@ -41,16 +33,14 @@ export async function updateSobreContent(section: string, data: CreateSobreConte
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao atualizar conteúdo da página Sobre');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao atualizar conteúdo da página Sobre');
 }
 
 // ===== VALORES DA EMPRESA =====
 
 export async function getCompanyValues(): Promise<CompanyValue[]> {
   const res = await fetch(`${API}/sobre/values`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Falha ao buscar valores da empresa');
-  return res.json();
+  return handleApiResponse<CompanyValue[]>(res, 'Falha ao buscar valores da empresa');
 }
 
 export async function createCompanyValue(data: CreateCompanyValueData): Promise<{ success: boolean; id: string; message: string }> {
@@ -60,8 +50,7 @@ export async function createCompanyValue(data: CreateCompanyValueData): Promise<
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao criar valor da empresa');
-  return res.json();
+  return handleApiResponse<{ success: boolean; id: string; message: string }>(res, 'Falha ao criar valor da empresa');
 }
 
 export async function updateCompanyValue(id: string, data: UpdateCompanyValueData): Promise<{ success: boolean; message: string }> {
@@ -71,8 +60,7 @@ export async function updateCompanyValue(id: string, data: UpdateCompanyValueDat
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao atualizar valor da empresa');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao atualizar valor da empresa');
 }
 
 export async function deleteCompanyValue(id: string): Promise<{ success: boolean; message: string }> {
@@ -80,16 +68,14 @@ export async function deleteCompanyValue(id: string): Promise<{ success: boolean
     method: 'DELETE',
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Falha ao deletar valor da empresa');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao deletar valor da empresa');
 }
 
 // ===== MEMBROS DA EQUIPE =====
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
   const res = await fetch(`${API}/sobre/team`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Falha ao buscar membros da equipe');
-  return res.json();
+  return handleApiResponse<TeamMember[]>(res, 'Falha ao buscar membros da equipe');
 }
 
 export async function createTeamMember(data: CreateTeamMemberData): Promise<{ success: boolean; id: string; message: string }> {
@@ -99,8 +85,7 @@ export async function createTeamMember(data: CreateTeamMemberData): Promise<{ su
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao criar membro da equipe');
-  return res.json();
+  return handleApiResponse<{ success: boolean; id: string; message: string }>(res, 'Falha ao criar membro da equipe');
 }
 
 export async function updateTeamMember(id: string, data: UpdateTeamMemberData): Promise<{ success: boolean; message: string }> {
@@ -110,8 +95,7 @@ export async function updateTeamMember(id: string, data: UpdateTeamMemberData): 
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao atualizar membro da equipe');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao atualizar membro da equipe');
 }
 
 export async function deleteTeamMember(id: string): Promise<{ success: boolean; message: string }> {
@@ -119,16 +103,14 @@ export async function deleteTeamMember(id: string): Promise<{ success: boolean; 
     method: 'DELETE',
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Falha ao deletar membro da equipe');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao deletar membro da equipe');
 }
 
 // ===== ESTATÍSTICAS DA EMPRESA =====
 
 export async function getCompanyStats(): Promise<CompanyStat[]> {
   const res = await fetch(`${API}/sobre/stats`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Falha ao buscar estatísticas da empresa');
-  return res.json();
+  return handleApiResponse<CompanyStat[]>(res, 'Falha ao buscar estatísticas da empresa');
 }
 
 export async function createCompanyStat(data: CreateCompanyStatData): Promise<{ success: boolean; id: string; message: string }> {
@@ -138,8 +120,7 @@ export async function createCompanyStat(data: CreateCompanyStatData): Promise<{ 
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao criar estatística da empresa');
-  return res.json();
+  return handleApiResponse<{ success: boolean; id: string; message: string }>(res, 'Falha ao criar estatística da empresa');
 }
 
 export async function updateCompanyStat(id: string, data: UpdateCompanyStatData): Promise<{ success: boolean; message: string }> {
@@ -149,8 +130,7 @@ export async function updateCompanyStat(id: string, data: UpdateCompanyStatData)
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao atualizar estatística da empresa');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao atualizar estatística da empresa');
 }
 
 export async function deleteCompanyStat(id: string): Promise<{ success: boolean; message: string }> {
@@ -158,16 +138,14 @@ export async function deleteCompanyStat(id: string): Promise<{ success: boolean;
     method: 'DELETE',
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Falha ao deletar estatística da empresa');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao deletar estatística da empresa');
 }
 
 // ===== INFORMAÇÕES DE CONTATO =====
 
 export async function getContactInfo(): Promise<ContactInfo[]> {
   const res = await fetch(`${API}/sobre/contact`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Falha ao buscar informações de contato');
-  return res.json();
+  return handleApiResponse<ContactInfo[]>(res, 'Falha ao buscar informações de contato');
 }
 
 export async function createContactInfo(data: CreateContactInfoData): Promise<{ success: boolean; id: string; message: string }> {
@@ -177,8 +155,7 @@ export async function createContactInfo(data: CreateContactInfoData): Promise<{ 
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao criar informação de contato');
-  return res.json();
+  return handleApiResponse<{ success: boolean; id: string; message: string }>(res, 'Falha ao criar informação de contato');
 }
 
 export async function updateContactInfo(id: string, data: UpdateContactInfoData): Promise<{ success: boolean; message: string }> {
@@ -188,8 +165,7 @@ export async function updateContactInfo(id: string, data: UpdateContactInfoData)
     credentials: 'include',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Falha ao atualizar informação de contato');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao atualizar informação de contato');
 }
 
 export async function deleteContactInfo(id: string): Promise<{ success: boolean; message: string }> {
@@ -197,8 +173,7 @@ export async function deleteContactInfo(id: string): Promise<{ success: boolean;
     method: 'DELETE',
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Falha ao deletar informação de contato');
-  return res.json();
+  return handleApiResponse<{ success: boolean; message: string }>(res, 'Falha ao deletar informação de contato');
 }
 
 // ===== UPLOAD DE IMAGENS =====
@@ -212,8 +187,7 @@ export async function uploadSobreImage(file: File): Promise<{ success: boolean; 
     credentials: 'include',
     body: formData,
   });
-  if (!res.ok) throw new Error('Falha ao fazer upload da imagem');
-  return res.json();
+  return handleApiResponse<{ success: boolean; imageUrl: string; fullUrl: string; filename: string }>(res, 'Falha ao fazer upload da imagem');
 }
 
 export async function uploadTeamMemberImage(id: string, file: File): Promise<{ success: boolean; imageUrl: string; fullUrl: string; filename: string }> {
@@ -225,6 +199,5 @@ export async function uploadTeamMemberImage(id: string, file: File): Promise<{ s
     credentials: 'include',
     body: formData,
   });
-  if (!res.ok) throw new Error('Falha ao fazer upload da imagem do membro da equipe');
-  return res.json();
+  return handleApiResponse<{ success: boolean; imageUrl: string; fullUrl: string; filename: string }>(res, 'Falha ao fazer upload da imagem do membro da equipe');
 }

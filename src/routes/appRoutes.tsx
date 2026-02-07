@@ -1,5 +1,5 @@
 import React from "react";
-import { RouteObject } from "react-router-dom";
+import { RouteObject, Navigate } from "react-router-dom";
 
 // Páginas públicas
 const Index = React.lazy(() => import("@/pages/Index"));
@@ -70,6 +70,7 @@ import AdminRoute from "@/components/auth/AdminRoute";
 
 // Rotas públicas (sem autenticação)
 export const publicRoutes: RouteObject[] = [
+  { path: "/index.html", element: <Navigate to="/" replace /> }, // Fix para Capacitor
   { path: "/", element: <Index /> },
   { path: "/loja", element: <Loja /> },
   { path: "/produto/:id", element: <ProdutoDetalhe /> },

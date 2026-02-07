@@ -10,14 +10,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 // 2. Banco de dados de teste
 // 3. Supertest para fazer requests HTTP
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = process.env.VITE_API_URL || 'https://muhlstore.re9suainternet.com.br/api';
 
 describe('API Integration Tests', () => {
   describe('Produtos', () => {
     it.skip('deve retornar lista de produtos (requer servidor rodando)', async () => {
       const response = await fetch(`${API_BASE_URL}/produtos`);
       const data = await response.json();
-      
+
       expect(response.ok).toBe(true);
       expect(Array.isArray(data.produtos || data)).toBe(true);
     });
@@ -25,7 +25,7 @@ describe('API Integration Tests', () => {
     it.skip('deve aplicar filtros corretamente (requer servidor rodando)', async () => {
       const response = await fetch(`${API_BASE_URL}/produtos?categoria=acao`);
       const data = await response.json();
-      
+
       expect(response.ok).toBe(true);
     });
   });
@@ -36,7 +36,7 @@ describe('API Integration Tests', () => {
         credentials: 'include',
       });
       const data = await response.json();
-      
+
       expect(response.ok).toBe(true);
       expect(data.items).toBeDefined();
     });
@@ -46,7 +46,7 @@ describe('API Integration Tests', () => {
     it.skip('deve retornar status healthy (requer servidor rodando)', async () => {
       const response = await fetch(`${API_BASE_URL}/health`);
       const data = await response.json();
-      
+
       expect(response.ok).toBe(true);
       expect(data.status).toBe('healthy');
     });

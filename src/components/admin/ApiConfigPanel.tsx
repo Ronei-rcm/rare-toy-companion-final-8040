@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Settings, 
-  Save, 
-  TestTube, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Settings,
+  Save,
+  TestTube,
+  CheckCircle,
+  XCircle,
   ExternalLink,
   RefreshCw,
   Key,
@@ -44,13 +44,13 @@ const ApiConfigPanel = () => {
     id: 1,
     google_client_id: '',
     google_client_secret: '',
-    google_redirect_uri: 'http://localhost:3001/api/google/oauth/callback',
-    frontend_url: 'http://localhost:3000',
+    google_redirect_uri: `${window.location.origin}/api/google/oauth/callback`,
+    frontend_url: window.location.origin,
     is_active: false,
     created_at: null,
     updated_at: null
   });
-  
+
   const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,9 +93,9 @@ const ApiConfigPanel = () => {
         },
         body: JSON.stringify(config)
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         toast.success('Configurações salvas com sucesso!');
         loadStatus();
@@ -117,15 +117,15 @@ const ApiConfigPanel = () => {
   const testConfig = async () => {
     setTesting(true);
     setTestResult(null);
-    
+
     try {
       const response = await fetch('/api/admin/config/test', {
         method: 'POST'
       });
-      
+
       const data = await response.json();
       setTestResult(data);
-      
+
       if (data.success) {
         toast.success('Configurações válidas!');
       } else {
@@ -149,9 +149,9 @@ const ApiConfigPanel = () => {
         },
         body: JSON.stringify({ active })
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         toast.success(data.message);
         setConfig(prev => ({ ...prev, is_active: active }));
@@ -218,7 +218,7 @@ const ApiConfigPanel = () => {
               <span className="text-sm">Frontend URL</span>
             </div>
           </div>
-          
+
           {status?.lastUpdated && (
             <div className="mt-4 text-sm text-muted-foreground">
               Última atualização: {new Date(status.lastUpdated).toLocaleString('pt-BR')}
@@ -247,7 +247,7 @@ const ApiConfigPanel = () => {
                 placeholder="Seu Client ID do Google Cloud Console"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="client_secret">Client Secret do Google</Label>
               <Input
@@ -268,10 +268,10 @@ const ApiConfigPanel = () => {
                 type="text"
                 value={config.google_redirect_uri}
                 onChange={(e) => setConfig(prev => ({ ...prev, google_redirect_uri: e.target.value }))}
-                placeholder="http://localhost:3001/api/google/oauth/callback"
+                placeholder={`${window.location.origin}/api/google/oauth/callback`}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="frontend_url">Frontend URL</Label>
               <Input
@@ -279,7 +279,7 @@ const ApiConfigPanel = () => {
                 type="text"
                 value={config.frontend_url}
                 onChange={(e) => setConfig(prev => ({ ...prev, frontend_url: e.target.value }))}
-                placeholder="http://localhost:3000"
+                placeholder={`${window.location.origin}`}
               />
             </div>
           </div>
@@ -306,9 +306,9 @@ const ApiConfigPanel = () => {
               )}
               {saving ? 'Salvando...' : 'Salvar Configurações'}
             </Button>
-            
-            <Button 
-              onClick={testConfig} 
+
+            <Button
+              onClick={testConfig}
               disabled={testing || !config.google_client_id || !config.google_client_secret}
               variant="outline"
               className="flex items-center gap-2"
@@ -344,7 +344,7 @@ const ApiConfigPanel = () => {
                 {testResult.message}
               </AlertDescription>
             </Alert>
-            
+
             {testResult.testUrl && (
               <div className="mt-4">
                 <Button
@@ -377,14 +377,14 @@ const ApiConfigPanel = () => {
                 Acesse <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Cloud Console</a> e crie um novo projeto.
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-medium mb-2">2. Ativar Google Calendar API</h4>
               <p className="text-muted-foreground">
                 Vá para "APIs & Services" → "Library" → Procure por "Google Calendar API" → Clique em "Enable".
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-medium mb-2">3. Configurar OAuth 2.0</h4>
               <p className="text-muted-foreground">
@@ -392,7 +392,7 @@ const ApiConfigPanel = () => {
                 Configure o Redirect URI como: <code className="bg-gray-100 px-1 rounded">{config.google_redirect_uri}</code>
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-medium mb-2">4. Copiar Credenciais</h4>
               <p className="text-muted-foreground">

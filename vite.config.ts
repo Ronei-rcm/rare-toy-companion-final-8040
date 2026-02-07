@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: './', // Define caminhos relativos para compatibilidade com Capacitor
   server: {
     host: "0.0.0.0",
     port: 8040,
