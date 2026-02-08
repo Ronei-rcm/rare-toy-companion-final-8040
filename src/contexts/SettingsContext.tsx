@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { configApi } from '@/services/config-api';
 
 type Settings = {
   pix_discount_percent: number;
@@ -41,24 +42,11 @@ const SettingsContext = createContext<{ settings: Settings; reload: () => void }
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/settings`, { credentials: 'include' });
-      
-      // Tratar erros 502 (Bad Gateway) - usar configurações padrão
-      if (res.status === 502) {
-        console.warn('⚠️ Servidor não está respondendo (502). Usando configurações padrão.');
-        return; // Manter configurações padrão já definidas
-      }
-      
-      if (!res.ok) {
-        console.warn('⚠️ Erro ao carregar configurações:', res.status);
-        return; // Manter configurações padrão
-      }
-      
-      const data = await res.json();
+      const data = await configApi.getSettings();
+
       const raw = (data && data.settings) || {};
       const parsed: Settings = {
         pix_discount_percent: Number(raw.pix_discount_percent ?? defaultSettings.pix_discount_percent),
@@ -76,7 +64,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         cart_enable_performance_experience: String(raw.cart_enable_performance_experience ?? defaultSettings.cart_enable_performance_experience) === 'true',
       };
       setSettings(parsed);
-    } catch {
+    } catch (error) {
+      console.warn('⚠️ Erro ao carregar configurações (usando padrão):', error);
       setSettings(defaultSettings);
     }
   };

@@ -83,9 +83,10 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { adminOrdersApi } from '@/services/admin-orders-api';
+import { adminCustomersApi } from '@/services/admin-customers-api';
 
 const PedidosEvolved = () => {
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
   const { toast } = useToast();
 
   // Estados
@@ -145,26 +146,14 @@ const PedidosEvolved = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/orders-evolved-simple`, {
-        credentials: 'include',
-      });
+      const data = await adminOrdersApi.getOrdersEvolved();
 
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(Array.isArray(data) ? data : []);
-      } else {
-        console.error('Erro na resposta:', response.status, response.statusText);
-        toast({
-          title: 'Erro ao carregar pedidos',
-          description: `Status: ${response.status}`,
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (error: any) {
       console.error('Erro ao carregar pedidos:', error);
       toast({
         title: 'Erro ao carregar pedidos',
-        description: 'Não foi possível carregar os pedidos',
+        description: error.message || 'Não foi possível carregar os pedidos',
         variant: 'destructive',
       });
     } finally {
@@ -174,14 +163,8 @@ const PedidosEvolved = () => {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders-stats-evolved-simple`, {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
+      const data = await adminOrdersApi.getStats();
+      setStats(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     }
@@ -216,10 +199,10 @@ const PedidosEvolved = () => {
     if (dateFilter !== 'all') {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       filtered = filtered.filter(order => {
         const orderDate = new Date(order.created_at);
-        
+
         switch (dateFilter) {
           case 'today':
             return orderDate >= today;
@@ -267,24 +250,15 @@ const PedidosEvolved = () => {
 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await adminOrdersApi.updateStatus(orderId, newStatus);
 
-      if (response.ok) {
-        toast({
-          title: 'Status atualizado!',
-          description: `Pedido ${orderId} atualizado para ${newStatus}`,
-        });
-        loadOrders();
-        loadStats();
-        setStatusModal(null);
-      } else {
-        throw new Error('Erro ao atualizar status');
-      }
+      toast({
+        title: 'Status atualizado!',
+        description: `Pedido ${orderId} atualizado para ${newStatus}`,
+      });
+      loadOrders();
+      loadStats();
+      setStatusModal(null);
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast({
@@ -297,23 +271,14 @@ const PedidosEvolved = () => {
 
   const handleAssociateCustomer = async (orderId: string, customerId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/associate-customer`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ customer_id: customerId }),
-      });
+      await adminOrdersApi.associateCustomer(orderId, customerId);
 
-      if (response.ok) {
-        toast({
-          title: 'Cliente associado!',
-          description: 'Pedido associado ao cliente com sucesso',
-        });
-        loadOrders();
-        setAssociateModal(null);
-      } else {
-        throw new Error('Erro ao associar cliente');
-      }
+      toast({
+        title: 'Cliente associado!',
+        description: 'Pedido associado ao cliente com sucesso',
+      });
+      loadOrders();
+      setAssociateModal(null);
     } catch (error) {
       console.error('Erro ao associar cliente:', error);
       toast({
@@ -332,14 +297,8 @@ const PedidosEvolved = () => {
 
     try {
       setSearchingUsers(true);
-      const response = await fetch(`${API_BASE_URL}/admin/customers/search?q=${encodeURIComponent(term)}`, {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserResults(data);
-      }
+      const data = await adminCustomersApi.searchCustomers(term);
+      setUserResults(data);
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
     } finally {
@@ -396,28 +355,19 @@ const PedidosEvolved = () => {
     if (!bulkAction || selectedOrders.length === 0) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/bulk-action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          orderIds: selectedOrders,
-          action: bulkAction,
-        }),
+      await adminOrdersApi.bulkAction({
+        orderIds: selectedOrders,
+        action: bulkAction,
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Ação em massa realizada!',
-          description: `${selectedOrders.length} pedidos atualizados`,
-        });
-        loadOrders();
-        loadStats();
-        setSelectedOrders([]);
-        setBulkActionModal(false);
-      } else {
-        throw new Error('Erro na ação em massa');
-      }
+      toast({
+        title: 'Ação em massa realizada!',
+        description: `${selectedOrders.length} pedidos atualizados`,
+      });
+      loadOrders();
+      loadStats();
+      setSelectedOrders([]);
+      setBulkActionModal(false);
     } catch (error) {
       console.error('Erro na ação em massa:', error);
       toast({
@@ -471,7 +421,7 @@ const PedidosEvolved = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -545,7 +495,7 @@ const PedidosEvolved = () => {
                 className="w-full"
               />
             </div>
-            
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Status" />
@@ -749,7 +699,7 @@ const PedidosEvolved = () => {
               ID: {detailsModal?.id}
             </DialogDescription>
           </DialogHeader>
-          
+
           {detailsModal && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -824,7 +774,7 @@ const PedidosEvolved = () => {
               Pedido: {statusModal?.id}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-2 gap-2">
             {['criado', 'pendente', 'processando', 'enviado', 'entregue', 'cancelado'].map((status) => (
               <Button
@@ -849,7 +799,7 @@ const PedidosEvolved = () => {
               Pedido: {associateModal?.id}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Buscar Cliente</Label>
@@ -869,7 +819,7 @@ const PedidosEvolved = () => {
                   <RefreshCw className="w-4 h-4 animate-spin" />
                 </div>
               )}
-              
+
               {userResults.map((customer) => (
                 <div
                   key={customer.id}
@@ -900,7 +850,7 @@ const PedidosEvolved = () => {
               Selecione uma ação para aplicar em {selectedOrders.length} pedidos:
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="grid grid-cols-2 gap-2">
             {['pendente', 'processando', 'enviado', 'entregue'].map((status) => (
               <Button
@@ -915,7 +865,7 @@ const PedidosEvolved = () => {
               </Button>
             ))}
           </div>
-          
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
           </AlertDialogFooter>

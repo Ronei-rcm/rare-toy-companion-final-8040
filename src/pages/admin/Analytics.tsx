@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  ShoppingCart, 
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  ShoppingCart,
   DollarSign,
   Package,
   Eye,
@@ -19,15 +19,16 @@ import {
   Target,
   Star
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { analyticsApi } from '@/services/analytics-api';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -93,15 +94,8 @@ const Analytics: React.FC = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/analytics/dashboard?period=${period}`, {
-        credentials: 'include',
-        headers: {
-          'X-Admin-Token': localStorage.getItem('admin_token') || ''
-        }
-      });
-      
-      const data = await response.json();
-      
+      const data = await analyticsApi.getDashboard(period);
+
       if (data.success) {
         setMetrics(data.data.overview);
         setTopProducts(data.data.topProducts);
@@ -266,23 +260,23 @@ const Analytics: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={salesData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
+                    <XAxis
+                      dataKey="date"
                       tickFormatter={(value) => format(parseISO(value), 'dd/MM')}
                     />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value, name) => [
                         name === 'revenue' ? formatCurrency(Number(value)) : value,
                         name === 'revenue' ? 'Receita' : 'Pedidos'
                       ]}
                       labelFormatter={(value) => format(parseISO(value), 'dd/MM/yyyy')}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="#8884d8" 
-                      fill="#8884d8" 
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#8884d8"
+                      fill="#8884d8"
                       fillOpacity={0.3}
                     />
                   </AreaChart>
@@ -302,8 +296,8 @@ const Analytics: React.FC = () => {
                   {topProducts.slice(0, 5).map((product, index) => (
                     <div key={product.id} className="flex items-center space-x-4">
                       <div className="flex-shrink-0">
-                        <img 
-                          src={product.imageUrl} 
+                        <img
+                          src={product.imageUrl}
                           alt={product.name}
                           className="w-12 h-12 rounded-lg object-cover"
                         />
@@ -366,12 +360,12 @@ const Analytics: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={salesData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
+                    <XAxis
+                      dataKey="date"
                       tickFormatter={(value) => format(parseISO(value), 'dd/MM')}
                     />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value, name) => [
                         name === 'revenue' ? formatCurrency(Number(value)) : value,
                         name === 'revenue' ? 'Receita' : 'Pedidos'
@@ -415,8 +409,8 @@ const Analytics: React.FC = () => {
                       <tr key={product.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <img 
-                              src={product.imageUrl} 
+                            <img
+                              src={product.imageUrl}
                               alt={product.name}
                               className="w-10 h-10 rounded-lg object-cover mr-3"
                             />

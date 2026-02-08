@@ -1,6 +1,7 @@
 /**
  * Cliente CSRF - Utilitários para trabalhar com tokens CSRF no frontend
  */
+import { csrfApi } from '@/services/csrf-api';
 
 const CSRF_TOKEN_KEY = 'csrf-token';
 const CSRF_TOKEN_EXPIRY_KEY = 'csrf-token-expiry';
@@ -10,20 +11,11 @@ const CSRF_TOKEN_EXPIRY_KEY = 'csrf-token-expiry';
  */
 export async function fetchCsrfToken(): Promise<string> {
   try {
-    const response = await fetch('/api/csrf-token', {
-      method: 'GET',
-      credentials: 'include',
-    });
+    const data = await csrfApi.getToken();
 
-    if (!response.ok) {
-      throw new Error('Falha ao obter token CSRF');
-    }
-
-    const data = await response.json();
-    
     // Armazenar token e tempo de expiração
     localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
-    localStorage.setItem(CSRF_TOKEN_EXPIRY_KEY, String(Date.now() + data.expiresIn));
+    localStorage.setItem(CSRF_TOKEN_EXPIRY_KEY, String(Date.now() + (data.expiresIn || 3600000)));
 
     return data.csrfToken;
   } catch (error) {
@@ -52,7 +44,7 @@ export async function getCsrfToken(): Promise<string> {
  */
 export async function addCsrfHeader(headers: HeadersInit = {}): Promise<HeadersInit> {
   const token = await getCsrfToken();
-  
+
   return {
     ...headers,
     'X-CSRF-Token': token,

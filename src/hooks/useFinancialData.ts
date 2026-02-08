@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { financialApi } from '@/services/financial-api';
+import { eventsApi } from '@/services/events-api';
 
 // Tipos para integração com outros módulos
 interface OrderData {
@@ -26,9 +28,9 @@ interface SupplierData {
 interface EventData {
   id: string;
   titulo: string;
-  preco: number;
+  preco?: number;
   data_evento: string;
-  numero_vagas: number;
+  numero_vagas?: number;
   vagas_limitadas: boolean;
   renda_total?: number;
   participants?: number;
@@ -67,10 +69,7 @@ export const useFinancialData = () => {
   // Buscar dados reais dos módulos existentes
   const fetchOrdersData = async (): Promise<OrderData[]> => {
     try {
-      const response = await fetch('/api/orders');
-      if (!response.ok) throw new Error('Erro ao buscar pedidos');
-      
-      const data = await response.json();
+      const data = await financialApi.getOrders();
       return data.orders || [];
     } catch (error) {
       console.error('Erro ao buscar pedidos:', error);
@@ -114,12 +113,9 @@ export const useFinancialData = () => {
 
   const fetchSuppliersData = async (): Promise<SupplierData[]> => {
     try {
-      const response = await fetch('/api/suppliers');
-      if (!response.ok) throw new Error('Erro ao buscar fornecedores');
-      
-      const data = await response.json();
+      const data = await financialApi.getSuppliers();
       console.log('✅ Fornecedores carregados:', data);
-      
+
       // Usar dados reais dos fornecedores da tabela fornecedores
       const enrichedSuppliers = (data.suppliers || []).map((supplier: any) => {
         return {
@@ -135,7 +131,7 @@ export const useFinancialData = () => {
           status: supplier.status || 'ativo'
         };
       });
-      
+
       return enrichedSuppliers;
     } catch (error) {
       console.error('Erro ao buscar fornecedores:', error);
@@ -180,11 +176,8 @@ export const useFinancialData = () => {
 
   const fetchEventsData = async (): Promise<EventData[]> => {
     try {
-      const response = await fetch('/api/events');
-      if (!response.ok) throw new Error('Erro ao buscar eventos');
-      
-      const data = await response.json();
-      return data.events || [];
+      const data = await eventsApi.getEvents();
+      return data || [];
     } catch (error) {
       console.error('Erro ao buscar eventos:', error);
       // Fallback com dados simulados mais realistas
@@ -196,7 +189,7 @@ export const useFinancialData = () => {
           data_evento: new Date(Date.now() - 259200000).toISOString(), // 3 dias atrás
           numero_vagas: 20,
           vagas_limitadas: true,
-          revenue: 890.00,
+          renda_total: 890.00,
           participants: 15
         },
         {
@@ -206,7 +199,7 @@ export const useFinancialData = () => {
           data_evento: new Date(Date.now() - 172800000).toISOString(), // 2 dias atrás
           numero_vagas: 30,
           vagas_limitadas: true,
-          revenue: 1200.00,
+          renda_total: 1200.00,
           participants: 25
         },
         {
@@ -216,7 +209,7 @@ export const useFinancialData = () => {
           data_evento: new Date(Date.now() - 345600000).toISOString(), // 4 dias atrás
           numero_vagas: 15,
           vagas_limitadas: true,
-          revenue: 650.00,
+          renda_total: 650.00,
           participants: 12
         },
         {
@@ -226,7 +219,7 @@ export const useFinancialData = () => {
           data_evento: new Date(Date.now() - 432000000).toISOString(), // 5 dias atrás
           numero_vagas: 50,
           vagas_limitadas: false,
-          revenue: 850.00,
+          renda_total: 850.00,
           participants: 34
         }
       ];
@@ -248,14 +241,14 @@ export const useFinancialData = () => {
     // Receita: pedidos pagos + receita de eventos
     const ordersRevenue = orders
       .filter(order => order.payment_status === 'paid')
-      .reduce((sum, order) => sum + (parseFloat(order.total) || 0), 0);
-    
-    const eventsRevenue = events.reduce((sum, event) => sum + (parseFloat(event.renda_total) || 0), 0);
+      .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+
+    const eventsRevenue = events.reduce((sum, event) => sum + (Number(event.renda_total) || 0), 0);
     const totalRevenue = ordersRevenue + eventsRevenue;
 
     // Despesas: total de gastos com fornecedores
     const totalExpenses = suppliers.reduce((sum, supplier) => {
-      const expense = parseFloat(supplier.total_expenses) || 0;
+      const expense = Number(supplier.total_expenses) || 0;
       console.log(`💰 Fornecedor ${supplier.name}: R$ ${expense}`);
       return sum + expense;
     }, 0);
@@ -287,12 +280,9 @@ export const useFinancialData = () => {
   // Função para buscar transações reais da API
   const fetchFinancialTransactions = async (): Promise<FinancialTransaction[]> => {
     try {
-      const response = await fetch('/api/financial/transactions');
-      if (!response.ok) throw new Error('Erro ao buscar transações financeiras');
-      
-      const data = await response.json();
+      const data = await financialApi.getTransactions();
       console.log('✅ Transações financeiras carregadas:', data);
-      
+
       // Converter dados da API para o formato esperado
       return (data.transactions || []).map((transaction: any) => {
         console.log('🔄 Processando transação:', transaction);
@@ -333,8 +323,8 @@ export const useFinancialData = () => {
         origem: order.customer_name || 'Cliente',
         tipo: 'Entrada',
         valor: order.total,
-        status: order.payment_status === 'paid' ? 'Pago' : 
-                order.payment_status === 'pending' ? 'Pendente' : 'Atrasado',
+        status: order.payment_status === 'paid' ? 'Pago' :
+          order.payment_status === 'pending' ? 'Pendente' : 'Atrasado',
         source_module: 'orders',
         source_id: order.id
       });
@@ -383,18 +373,18 @@ export const useFinancialData = () => {
       setLoading(true);
       try {
         console.log('🔄 Carregando dados financeiros...');
-        
+
         // Buscar dados dos módulos existentes com tratamento individual de erro
         const ordersPromise = fetchOrdersData().catch(error => {
           console.warn('⚠️ Erro ao buscar pedidos:', error);
           return [];
         });
-        
+
         const suppliersPromise = fetchSuppliersData().catch(error => {
           console.warn('⚠️ Erro ao buscar fornecedores:', error);
           return [];
         });
-        
+
         const eventsPromise = fetchEventsData().catch(error => {
           console.warn('⚠️ Erro ao buscar eventos:', error);
           return [];
@@ -461,18 +451,18 @@ export const useFinancialData = () => {
       setLoading(true);
       try {
         console.log('🔄 Recarregando dados financeiros...');
-        
+
         // Buscar dados dos módulos existentes com tratamento individual de erro
         const ordersPromise = fetchOrdersData().catch(error => {
           console.warn('⚠️ Erro ao buscar pedidos:', error);
           return [];
         });
-        
+
         const suppliersPromise = fetchSuppliersData().catch(error => {
           console.warn('⚠️ Erro ao buscar fornecedores:', error);
           return [];
         });
-        
+
         const eventsPromise = fetchEventsData().catch(error => {
           console.warn('⚠️ Erro ao buscar eventos:', error);
           return [];

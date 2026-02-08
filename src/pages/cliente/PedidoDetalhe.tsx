@@ -8,12 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Package, Truck, CheckCircle, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrentUser } from '@/contexts/CurrentUserContext';
+import { ordersApi } from '@/services/orders-api';
 
 const PedidoDetalhe = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isLoading: isUserLoading } = useCurrentUser() as any;
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
   const [isLoading, setIsLoading] = useState(true);
   const [pedido, setPedido] = useState<any | null>(null);
   const [timeline, setTimeline] = useState<Array<{ status: string; at: string | Date }>>([]);
@@ -31,19 +31,12 @@ const PedidoDetalhe = () => {
       if (!id) return;
       try {
         setIsLoading(true);
-        const [resOrder, resTimeline] = await Promise.all([
-          fetch(`${API_BASE_URL}/orders/${id}`, { credentials: 'include' }),
-          fetch(`${API_BASE_URL}/orders/${id}/timeline`, { credentials: 'include' }),
+        const [data, tl] = await Promise.all([
+          ordersApi.getOrderById(id),
+          ordersApi.getTimeline(id),
         ]);
-        if (!resOrder.ok) throw new Error('Falha ao carregar pedido');
-        const data = await resOrder.json();
         setPedido(data);
-        if (resTimeline.ok) {
-          const tl = await resTimeline.json();
-          setTimeline(Array.isArray(tl) ? tl : []);
-        } else {
-          setTimeline([]);
-        }
+        setTimeline(Array.isArray(tl) ? tl : []);
       } catch (e) {
         setPedido(null);
         setTimeline([]);
@@ -57,8 +50,7 @@ const PedidoDetalhe = () => {
     if (!id) return;
     try {
       setActionLoading((s) => ({ ...s, reorder: true }));
-      const res = await fetch(`${API_BASE_URL}/orders/${id}/reorder`, { method: 'POST', credentials: 'include' });
-      if (!res.ok) throw new Error('Falha ao repetir pedido');
+      await ordersApi.reorder(id);
       toast({ title: 'Pedido adicionado ao carrinho', description: 'Itens foram repostos no carrinho.' });
     } catch (e: any) {
       toast({ title: 'Erro ao repetir pedido', description: e?.message || 'Tente novamente', variant: 'destructive' });
@@ -71,8 +63,7 @@ const PedidoDetalhe = () => {
     if (!id) return;
     try {
       setActionLoading((s) => ({ ...s, resend: true }));
-      const res = await fetch(`${API_BASE_URL}/orders/${id}/resend`, { method: 'POST', credentials: 'include' });
-      if (!res.ok) throw new Error('Falha ao reenviar comprovante');
+      await ordersApi.resendConfirmation(id);
       toast({ title: 'Comprovante reenviado', description: 'Verifique seu e-mail.' });
     } catch (e: any) {
       toast({ title: 'Erro ao reenviar', description: e?.message || 'Tente novamente', variant: 'destructive' });

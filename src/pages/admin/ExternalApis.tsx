@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Plug, 
-  CreditCard, 
-  Truck, 
-  Share2, 
-  Webhook, 
+import {
+  Plug,
+  CreditCard,
+  Truck,
+  Share2,
+  Webhook,
   Activity,
   CheckCircle,
   XCircle,
@@ -60,6 +60,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { externalApi } from '@/services/external-api';
 
 interface ExternalApi {
   id: string;
@@ -192,13 +193,7 @@ const ExternalApis: React.FC = () => {
 
   const loadExternalApis = async () => {
     try {
-      const response = await fetch('/api/external/apis', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await externalApi.getApis();
       if (data.success) {
         setExternalApis(data.data);
       }
@@ -209,13 +204,7 @@ const ExternalApis: React.FC = () => {
 
   const loadApiRequests = async () => {
     try {
-      const response = await fetch('/api/external/requests?limit=50', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await externalApi.getRequests(50);
       if (data.success) {
         setApiRequests(data.data);
       }
@@ -226,13 +215,7 @@ const ExternalApis: React.FC = () => {
 
   const loadWebhooks = async () => {
     try {
-      const response = await fetch('/api/external/webhooks', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await externalApi.getWebhooks();
       if (data.success) {
         setWebhooks(data.data);
       }
@@ -243,13 +226,7 @@ const ExternalApis: React.FC = () => {
 
   const loadWebhookDeliveries = async () => {
     try {
-      const response = await fetch('/api/external/webhook-deliveries?limit=50', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await externalApi.getWebhookDeliveries(50);
       if (data.success) {
         setWebhookDeliveries(data.data);
       }
@@ -260,13 +237,7 @@ const ExternalApis: React.FC = () => {
 
   const loadApiStats = async () => {
     try {
-      const response = await fetch('/api/external/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await externalApi.getStats();
       if (data.success) {
         setApiStats(data.data);
       }
@@ -277,20 +248,12 @@ const ExternalApis: React.FC = () => {
 
   const createExternalApi = async () => {
     try {
-      const response = await fetch('/api/external/apis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          ...apiForm,
-          config: JSON.parse(apiForm.config),
-          created_by: 'admin'
-        })
+      const data = await externalApi.saveApi({
+        ...apiForm,
+        config: JSON.parse(apiForm.config),
+        created_by: 'admin'
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowCreateApi(false);
         setApiForm({
@@ -313,21 +276,13 @@ const ExternalApis: React.FC = () => {
 
   const createWebhook = async () => {
     try {
-      const response = await fetch('/api/external/webhooks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          ...webhookForm,
-          events: JSON.parse(webhookForm.events),
-          headers: JSON.parse(webhookForm.headers),
-          created_by: 'admin'
-        })
+      const data = await externalApi.saveWebhook({
+        ...webhookForm,
+        events: JSON.parse(webhookForm.events),
+        headers: JSON.parse(webhookForm.headers),
+        created_by: 'admin'
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowCreateWebhook(false);
         setWebhookForm({
@@ -348,14 +303,8 @@ const ExternalApis: React.FC = () => {
 
   const testApiConnection = async (apiId: string) => {
     try {
-      const response = await fetch(`/api/external/apis/${apiId}/test`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await externalApi.testApi(apiId);
+
       if (data.success) {
         alert('Conexão testada com sucesso!');
       } else {
@@ -374,21 +323,13 @@ const ExternalApis: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/external/apis/${selectedApi}/request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          endpoint: testRequest.endpoint,
-          method: testRequest.method,
-          data: JSON.parse(testRequest.data),
-          headers: JSON.parse(testRequest.headers)
-        })
+      const data = await externalApi.sendRequest(selectedApi, {
+        endpoint: testRequest.endpoint,
+        method: testRequest.method,
+        data: JSON.parse(testRequest.data),
+        headers: JSON.parse(testRequest.headers)
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         alert('Requisição realizada com sucesso!');
         loadApiRequests();
@@ -577,7 +518,7 @@ const ExternalApis: React.FC = () => {
                     </div>
                     <Badge variant="outline">{api.api_type}</Badge>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2 mb-4">
                     {getProviderIcon(api.provider)}
                     <span className="text-sm text-gray-600">{api.provider}</span>
@@ -585,24 +526,24 @@ const ExternalApis: React.FC = () => {
                       {api.is_active ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </div>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">{api.description}</p>
-                  
+
                   <div className="text-xs text-gray-500 mb-4">
                     {api.base_url}
                   </div>
-                  
+
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => testApiConnection(api.id)}
                     >
                       <Zap className="w-4 h-4 mr-1" />
                       Testar
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => setSelectedApi(api.id)}
                     >
@@ -638,13 +579,13 @@ const ExternalApis: React.FC = () => {
                       {webhook.is_active ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </div>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">{webhook.description}</p>
-                  
+
                   <div className="text-xs text-gray-500 mb-4">
                     {webhook.url}
                   </div>
-                  
+
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <span>Eventos: {JSON.parse(webhook.events).length}</span>
                     <span>Retry: {webhook.retry_count}</span>
@@ -733,21 +674,21 @@ const ExternalApis: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="test_endpoint">Endpoint</Label>
                   <Input
                     id="test_endpoint"
                     value={testRequest.endpoint}
-                    onChange={(e) => setTestRequest({...testRequest, endpoint: e.target.value})}
+                    onChange={(e) => setTestRequest({ ...testRequest, endpoint: e.target.value })}
                     placeholder="/v1/test"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="test_method">Método</Label>
-                    <Select value={testRequest.method} onValueChange={(value) => setTestRequest({...testRequest, method: value})}>
+                    <Select value={testRequest.method} onValueChange={(value) => setTestRequest({ ...testRequest, method: value })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -764,13 +705,13 @@ const ExternalApis: React.FC = () => {
                     <Textarea
                       id="test_data"
                       value={testRequest.data}
-                      onChange={(e) => setTestRequest({...testRequest, data: e.target.value})}
+                      onChange={(e) => setTestRequest({ ...testRequest, data: e.target.value })}
                       placeholder='{"key": "value"}'
                       rows={3}
                     />
                   </div>
                 </div>
-                
+
                 <Button onClick={makeTestRequest} className="w-full">
                   <Send className="w-4 h-4 mr-2" />
                   Enviar Requisição
@@ -806,13 +747,13 @@ const ExternalApis: React.FC = () => {
                   <Input
                     id="api_name"
                     value={apiForm.name}
-                    onChange={(e) => setApiForm({...apiForm, name: e.target.value})}
+                    onChange={(e) => setApiForm({ ...apiForm, name: e.target.value })}
                     placeholder="Nome da API"
                   />
                 </div>
                 <div>
                   <Label htmlFor="api_type">Tipo</Label>
-                  <Select value={apiForm.api_type} onValueChange={(value) => setApiForm({...apiForm, api_type: value})}>
+                  <Select value={apiForm.api_type} onValueChange={(value) => setApiForm({ ...apiForm, api_type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -830,25 +771,25 @@ const ExternalApis: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="api_description">Descrição</Label>
                 <Textarea
                   id="api_description"
                   value={apiForm.description}
-                  onChange={(e) => setApiForm({...apiForm, description: e.target.value})}
+                  onChange={(e) => setApiForm({ ...apiForm, description: e.target.value })}
                   placeholder="Descrição da API"
                   rows={3}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="api_provider">Provedor</Label>
                   <Input
                     id="api_provider"
                     value={apiForm.provider}
-                    onChange={(e) => setApiForm({...apiForm, provider: e.target.value})}
+                    onChange={(e) => setApiForm({ ...apiForm, provider: e.target.value })}
                     placeholder="Stripe, PayPal, etc."
                   />
                 </div>
@@ -857,12 +798,12 @@ const ExternalApis: React.FC = () => {
                   <Input
                     id="api_base_url"
                     value={apiForm.base_url}
-                    onChange={(e) => setApiForm({...apiForm, base_url: e.target.value})}
+                    onChange={(e) => setApiForm({ ...apiForm, base_url: e.target.value })}
                     placeholder="https://api.exemplo.com"
                   />
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="api_key">API Key</Label>
@@ -870,7 +811,7 @@ const ExternalApis: React.FC = () => {
                     id="api_key"
                     type="password"
                     value={apiForm.api_key}
-                    onChange={(e) => setApiForm({...apiForm, api_key: e.target.value})}
+                    onChange={(e) => setApiForm({ ...apiForm, api_key: e.target.value })}
                     placeholder="Chave da API"
                   />
                 </div>
@@ -880,23 +821,23 @@ const ExternalApis: React.FC = () => {
                     id="api_secret"
                     type="password"
                     value={apiForm.api_secret}
-                    onChange={(e) => setApiForm({...apiForm, api_secret: e.target.value})}
+                    onChange={(e) => setApiForm({ ...apiForm, api_secret: e.target.value })}
                     placeholder="Segredo da API"
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="api_config">Configuração (JSON)</Label>
                 <Textarea
                   id="api_config"
                   value={apiForm.config}
-                  onChange={(e) => setApiForm({...apiForm, config: e.target.value})}
+                  onChange={(e) => setApiForm({ ...apiForm, config: e.target.value })}
                   placeholder='{"timeout": 30000, "retries": 3}'
                   rows={4}
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createExternalApi} className="flex-1">
                   Criar API
@@ -924,7 +865,7 @@ const ExternalApis: React.FC = () => {
                   <Input
                     id="webhook_name"
                     value={webhookForm.name}
-                    onChange={(e) => setWebhookForm({...webhookForm, name: e.target.value})}
+                    onChange={(e) => setWebhookForm({ ...webhookForm, name: e.target.value })}
                     placeholder="Nome do webhook"
                   />
                 </div>
@@ -933,34 +874,34 @@ const ExternalApis: React.FC = () => {
                   <Input
                     id="webhook_url"
                     value={webhookForm.url}
-                    onChange={(e) => setWebhookForm({...webhookForm, url: e.target.value})}
+                    onChange={(e) => setWebhookForm({ ...webhookForm, url: e.target.value })}
                     placeholder="https://exemplo.com/webhook"
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="webhook_description">Descrição</Label>
                 <Textarea
                   id="webhook_description"
                   value={webhookForm.description}
-                  onChange={(e) => setWebhookForm({...webhookForm, description: e.target.value})}
+                  onChange={(e) => setWebhookForm({ ...webhookForm, description: e.target.value })}
                   placeholder="Descrição do webhook"
                   rows={3}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="webhook_events">Eventos (JSON)</Label>
                 <Textarea
                   id="webhook_events"
                   value={webhookForm.events}
-                  onChange={(e) => setWebhookForm({...webhookForm, events: e.target.value})}
+                  onChange={(e) => setWebhookForm({ ...webhookForm, events: e.target.value })}
                   placeholder='["payment.completed", "order.shipped"]'
                   rows={3}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="webhook_retry">Tentativas</Label>
@@ -968,7 +909,7 @@ const ExternalApis: React.FC = () => {
                     id="webhook_retry"
                     type="number"
                     value={webhookForm.retry_count}
-                    onChange={(e) => setWebhookForm({...webhookForm, retry_count: parseInt(e.target.value)})}
+                    onChange={(e) => setWebhookForm({ ...webhookForm, retry_count: parseInt(e.target.value) })}
                     placeholder="3"
                   />
                 </div>
@@ -978,12 +919,12 @@ const ExternalApis: React.FC = () => {
                     id="webhook_timeout"
                     type="number"
                     value={webhookForm.timeout_seconds}
-                    onChange={(e) => setWebhookForm({...webhookForm, timeout_seconds: parseInt(e.target.value)})}
+                    onChange={(e) => setWebhookForm({ ...webhookForm, timeout_seconds: parseInt(e.target.value) })}
                     placeholder="30"
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createWebhook} className="flex-1">
                   Criar Webhook

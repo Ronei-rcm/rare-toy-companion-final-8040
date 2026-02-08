@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { financialApi } from '@/services/financial-api';
 
 export interface Transacao {
-  id: number;
+  id: number | string;
   descricao: string;
   categoria: string;
   tipo: 'entrada' | 'saida';
@@ -30,8 +31,8 @@ export interface UseTransacoesFinanceirasReturn {
   error: string | null;
   carregarTransacoes: () => Promise<void>;
   criarTransacao: (dados: Omit<Transacao, 'id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
-  atualizarTransacao: (id: number, dados: Partial<Transacao>) => Promise<boolean>;
-  excluirTransacao: (id: number) => Promise<boolean>;
+  atualizarTransacao: (id: number | string, dados: Partial<Transacao>) => Promise<boolean>;
+  excluirTransacao: (id: number | string) => Promise<boolean>;
 }
 
 export const useTransacoesFinanceiras = (): UseTransacoesFinanceirasReturn => {
@@ -45,147 +46,81 @@ export const useTransacoesFinanceiras = (): UseTransacoesFinanceirasReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Função para calcular resumo financeiro
-  const calcularResumo = (transacoes: Transacao[]): ResumoFinanceiro => {
-    const totalEntradas = transacoes
+  const calcularResumo = useCallback((transacoesList: Transacao[]): ResumoFinanceiro => {
+    const totalEntradas = transacoesList
       .filter(t => t.tipo === 'entrada')
       .reduce((sum, t) => sum + Number(t.valor), 0);
-    
-    const totalSaidas = transacoes
+
+    const totalSaidas = transacoesList
       .filter(t => t.tipo === 'saida')
       .reduce((sum, t) => sum + Number(t.valor), 0);
-    
+
     return {
       totalEntradas,
       totalSaidas,
       saldoLiquido: totalEntradas - totalSaidas,
-      totalTransacoes: transacoes.length
+      totalTransacoes: transacoesList.length
     };
-  };
+  }, []);
 
-  // Função para carregar transações
   const carregarTransacoes = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 Carregando transações...');
-      
-      const response = await fetch('/api/financial/transactions');
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const transacoesData = data.transactions || [];
-      
-      console.log('✅ Transações carregadas:', transacoesData.length);
+
+      const data = await financialApi.getTransactions();
+      const transacoesData = data.transactions || data || [];
+
       setTransacoes(transacoesData);
-      
-      // Calcular resumo
-      const resumoCalculado = calcularResumo(transacoesData);
-      setResumo(resumoCalculado);
-      
-    } catch (error) {
-      console.error('❌ Erro ao carregar transações:', error);
-      setError(error instanceof Error ? error.message : 'Erro desconhecido');
+      setResumo(calcularResumo(transacoesData));
+    } catch (error: any) {
+      console.error('Erro ao carregar transações:', error);
+      setError(error.message || 'Erro ao carregar transações');
       toast.error('Erro ao carregar transações');
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para criar transação
   const criarTransacao = async (dados: Omit<Transacao, 'id' | 'created_at' | 'updated_at'>): Promise<boolean> => {
     try {
-      console.log('💾 Criando transação:', dados);
-
-      const response = await fetch('/api/financial/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Transação criada:', result);
-
-      toast.success(`Transação criada com sucesso! ID: ${result.id}`);
-      
-      // Recarregar dados
+      await financialApi.createTransaction(dados);
+      toast.success('Transação criada com sucesso!');
       await carregarTransacoes();
-      
       return true;
     } catch (error) {
-      console.error('❌ Erro ao criar transação:', error);
+      console.error('Erro ao criar transação:', error);
       toast.error('Erro ao criar transação');
       return false;
     }
   };
 
-  // Função para atualizar transação
-  const atualizarTransacao = async (id: number, dados: Partial<Transacao>): Promise<boolean> => {
+  const atualizarTransacao = async (id: number | string, dados: Partial<Transacao>): Promise<boolean> => {
     try {
-      console.log('✏️ Atualizando transação:', id, dados);
-
-      const response = await fetch(`/api/financial/transactions/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Transação atualizada:', result);
-
+      await financialApi.updateTransaction(id.toString(), dados);
       toast.success('Transação atualizada com sucesso!');
-      
-      // Recarregar dados
       await carregarTransacoes();
-      
       return true;
     } catch (error) {
-      console.error('❌ Erro ao atualizar transação:', error);
+      console.error('Erro ao atualizar transação:', error);
       toast.error('Erro ao atualizar transação');
       return false;
     }
   };
 
-  // Função para excluir transação
-  const excluirTransacao = async (id: number): Promise<boolean> => {
+  const excluirTransacao = async (id: number | string): Promise<boolean> => {
     try {
-      console.log('🗑️ Excluindo transação:', id);
-
-      const response = await fetch(`/api/financial/transactions/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Transação excluída:', result);
-
+      await financialApi.deleteTransaction(id.toString());
       toast.success('Transação excluída com sucesso!');
-      
-      // Recarregar dados
       await carregarTransacoes();
-      
       return true;
     } catch (error) {
-      console.error('❌ Erro ao excluir transação:', error);
+      console.error('Erro ao excluir transação:', error);
       toast.error('Erro ao excluir transação');
       return false;
     }
   };
 
-  // Carregar dados na inicialização
   useEffect(() => {
     carregarTransacoes();
   }, []);

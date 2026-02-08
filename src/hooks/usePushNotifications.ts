@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { pushApi } from '@/services/push-api';
 
 interface PushNotificationState {
   isSupported: boolean;
@@ -14,8 +15,6 @@ export function usePushNotifications() {
     permission: 'default',
     subscription: null,
   });
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
   useEffect(() => {
     checkSubscription();
@@ -47,7 +46,7 @@ export function usePushNotifications() {
 
     try {
       const permission = await Notification.requestPermission();
-      
+
       setState(prev => ({ ...prev, permission }));
 
       if (permission === 'granted') {
@@ -69,20 +68,15 @@ export function usePushNotifications() {
       const registration = await navigator.serviceWorker.ready;
 
       // Obter VAPID public key do servidor
-      const response = await fetch(`${API_BASE_URL}/push/vapid-public-key`);
-      const { publicKey } = await response.json();
+      const { publicKey } = await pushApi.getPublicKey();
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as any,
       });
 
       // Enviar subscription para o servidor
-      await fetch(`${API_BASE_URL}/push/subscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subscription }),
-      });
+      await pushApi.subscribe(subscription);
 
       setState(prev => ({
         ...prev,
@@ -105,13 +99,9 @@ export function usePushNotifications() {
       await state.subscription.unsubscribe();
 
       // Remover do servidor
-      await fetch(`${API_BASE_URL}/push/unsubscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          endpoint: state.subscription.endpoint 
-        }),
-      });
+      // Only send endpoint if necessary, or check if pushApi.unsubscribe expects endpoint or subscription object.
+      // push-api.ts defined unsubscribe(endpoint: string).
+      await pushApi.unsubscribe(state.subscription.endpoint);
 
       setState(prev => ({
         ...prev,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { integrationsApi } from '@/services/integrations-api';
 
 interface MarketplaceIntegration {
   id: string;
@@ -130,8 +131,7 @@ export function useIntegrationExpansion() {
   const loadMarketplaceIntegrations = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/integrations/marketplaces');
-      const data = await response.json();
+      const data = await integrationsApi.marketplaces.list();
       setMarketplaceIntegrations(data);
     } catch (error) {
       console.error('Erro ao carregar integrações de marketplace:', error);
@@ -143,8 +143,7 @@ export function useIntegrationExpansion() {
   // Carregar integrações de ERP
   const loadERPIntegrations = useCallback(async () => {
     try {
-      const response = await fetch('/api/integrations/erp');
-      const data = await response.json();
+      const data = await integrationsApi.erp.list();
       setErpIntegrations(data);
     } catch (error) {
       console.error('Erro ao carregar integrações de ERP:', error);
@@ -154,8 +153,7 @@ export function useIntegrationExpansion() {
   // Carregar integrações de marketing
   const loadMarketingIntegrations = useCallback(async () => {
     try {
-      const response = await fetch('/api/integrations/marketing');
-      const data = await response.json();
+      const data = await integrationsApi.marketing.list();
       setMarketingIntegrations(data);
     } catch (error) {
       console.error('Erro ao carregar integrações de marketing:', error);
@@ -165,8 +163,7 @@ export function useIntegrationExpansion() {
   // Carregar histórico de sincronização
   const loadSyncHistory = useCallback(async () => {
     try {
-      const response = await fetch('/api/integrations/sync-history');
-      const data = await response.json();
+      const data = await integrationsApi.getSyncHistory();
       setSyncHistory(data);
     } catch (error) {
       console.error('Erro ao carregar histórico de sincronização:', error);
@@ -176,8 +173,7 @@ export function useIntegrationExpansion() {
   // Carregar métricas
   const loadMetrics = useCallback(async () => {
     try {
-      const response = await fetch('/api/integrations/metrics');
-      const data = await response.json();
+      const data = await integrationsApi.getMetrics();
       setMetrics(data);
     } catch (error) {
       console.error('Erro ao carregar métricas:', error);
@@ -191,28 +187,21 @@ export function useIntegrationExpansion() {
     settings: Partial<MarketplaceIntegration['settings']>
   ) => {
     try {
-      const response = await fetch('/api/integrations/marketplaces/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          marketplace: marketplaceName,
-          apiKey,
-          settings: {
-            autoSync: true,
-            priceSync: true,
-            stockSync: true,
-            orderSync: true,
-            imageSync: true,
-            descriptionSync: true,
-            ...settings
-          }
-        })
+      await integrationsApi.marketplaces.connect({
+        marketplace: marketplaceName,
+        apiKey,
+        settings: {
+          autoSync: true,
+          priceSync: true,
+          stockSync: true,
+          orderSync: true,
+          imageSync: true,
+          descriptionSync: true,
+          ...settings
+        }
       });
-
-      if (response.ok) {
-        await loadMarketplaceIntegrations();
-        return true;
-      }
+      await loadMarketplaceIntegrations();
+      return true;
     } catch (error) {
       console.error('Erro ao conectar marketplace:', error);
     }
@@ -226,28 +215,21 @@ export function useIntegrationExpansion() {
     modules: Partial<ERPIntegration['modules']>
   ) => {
     try {
-      const response = await fetch('/api/integrations/erp/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          erp: erpName,
-          credentials,
-          modules: {
-            inventory: true,
-            sales: true,
-            customers: true,
-            products: true,
-            financial: false,
-            nfe: false,
-            ...modules
-          }
-        })
+      await integrationsApi.erp.connect({
+        erp: erpName,
+        credentials,
+        modules: {
+          inventory: true,
+          sales: true,
+          customers: true,
+          products: true,
+          financial: false,
+          nfe: false,
+          ...modules
+        }
       });
-
-      if (response.ok) {
-        await loadERPIntegrations();
-        return true;
-      }
+      await loadERPIntegrations();
+      return true;
     } catch (error) {
       console.error('Erro ao conectar ERP:', error);
     }
@@ -261,29 +243,22 @@ export function useIntegrationExpansion() {
     features: Partial<MarketingToolIntegration['features']>
   ) => {
     try {
-      const response = await fetch('/api/integrations/marketing/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tool: toolName,
-          apiKey,
-          features: {
-            campaigns: true,
-            audiences: true,
-            analytics: true,
-            automation: false,
-            email: true,
-            sms: false,
-            tracking: true,
-            ...features
-          }
-        })
+      await integrationsApi.marketing.connect({
+        tool: toolName,
+        apiKey,
+        features: {
+          campaigns: true,
+          audiences: true,
+          analytics: true,
+          automation: false,
+          email: true,
+          sms: false,
+          tracking: true,
+          ...features
+        }
       });
-
-      if (response.ok) {
-        await loadMarketingIntegrations();
-        return true;
-      }
+      await loadMarketingIntegrations();
+      return true;
     } catch (error) {
       console.error('Erro ao conectar ferramenta de marketing:', error);
     }
@@ -296,24 +271,21 @@ export function useIntegrationExpansion() {
     integrationType: 'marketplace' | 'erp' | 'marketing'
   ) => {
     try {
-      const response = await fetch(`/api/integrations/${integrationType}/${integrationId}/disconnect`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        switch (integrationType) {
-          case 'marketplace':
-            await loadMarketplaceIntegrations();
-            break;
-          case 'erp':
-            await loadERPIntegrations();
-            break;
-          case 'marketing':
-            await loadMarketingIntegrations();
-            break;
-        }
-        return true;
+      switch (integrationType) {
+        case 'marketplace':
+          await integrationsApi.marketplaces.disconnect(integrationId);
+          await loadMarketplaceIntegrations();
+          break;
+        case 'erp':
+          await integrationsApi.erp.disconnect(integrationId);
+          await loadERPIntegrations();
+          break;
+        case 'marketing':
+          await integrationsApi.marketing.disconnect(integrationId);
+          await loadMarketingIntegrations();
+          break;
       }
+      return true;
     } catch (error) {
       console.error('Erro ao desconectar integração:', error);
     }
@@ -328,34 +300,25 @@ export function useIntegrationExpansion() {
   ) => {
     try {
       setIsSyncing(true);
-      
-      const response = await fetch(`/api/integrations/${integrationType}/${integrationId}/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ syncType: syncType || 'incremental' })
-      });
 
-      if (response.ok) {
-        const syncResult = await response.json();
-        
-        // Atualizar histórico de sincronização
-        await loadSyncHistory();
-        
-        // Atualizar status da integração
-        switch (integrationType) {
-          case 'marketplace':
-            await loadMarketplaceIntegrations();
-            break;
-          case 'erp':
-            await loadERPIntegrations();
-            break;
-          case 'marketing':
-            await loadMarketingIntegrations();
-            break;
-        }
-        
-        return syncResult;
+      let syncResult;
+      switch (integrationType) {
+        case 'marketplace':
+          syncResult = await integrationsApi.marketplaces.sync(integrationId, syncType);
+          await loadMarketplaceIntegrations();
+          break;
+        case 'erp':
+          syncResult = await integrationsApi.erp.sync(integrationId, syncType);
+          await loadERPIntegrations();
+          break;
+        case 'marketing':
+          syncResult = await integrationsApi.marketing.sync(integrationId, syncType);
+          await loadMarketingIntegrations();
+          break;
       }
+
+      await loadSyncHistory();
+      return syncResult;
     } catch (error) {
       console.error('Erro ao sincronizar integração:', error);
     } finally {
@@ -371,27 +334,21 @@ export function useIntegrationExpansion() {
     settings: any
   ) => {
     try {
-      const response = await fetch(`/api/integrations/${integrationType}/${integrationId}/settings`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
-
-      if (response.ok) {
-        // Atualizar lista de integrações
-        switch (integrationType) {
-          case 'marketplace':
-            await loadMarketplaceIntegrations();
-            break;
-          case 'erp':
-            await loadERPIntegrations();
-            break;
-          case 'marketing':
-            await loadMarketingIntegrations();
-            break;
-        }
-        return true;
+      switch (integrationType) {
+        case 'marketplace':
+          await integrationsApi.marketplaces.updateSettings(integrationId, settings);
+          await loadMarketplaceIntegrations();
+          break;
+        case 'erp':
+          await integrationsApi.erp.updateSettings(integrationId, settings);
+          await loadERPIntegrations();
+          break;
+        case 'marketing':
+          await integrationsApi.marketing.updateSettings(integrationId, settings);
+          await loadMarketingIntegrations();
+          break;
       }
+      return true;
     } catch (error) {
       console.error('Erro ao atualizar configurações:', error);
     }
@@ -404,14 +361,19 @@ export function useIntegrationExpansion() {
     integrationType: 'marketplace' | 'erp' | 'marketing'
   ) => {
     try {
-      const response = await fetch(`/api/integrations/${integrationType}/${integrationId}/test`, {
-        method: 'POST'
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        return result;
+      let result;
+      switch (integrationType) {
+        case 'marketplace':
+          result = await integrationsApi.marketplaces.test(integrationId);
+          break;
+        case 'erp':
+          result = await integrationsApi.erp.test(integrationId);
+          break;
+        case 'marketing':
+          result = await integrationsApi.marketing.test(integrationId);
+          break;
       }
+      return result;
     } catch (error) {
       console.error('Erro ao testar conexão:', error);
     }
@@ -430,7 +392,7 @@ export function useIntegrationExpansion() {
   ) => {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value) {
@@ -439,8 +401,19 @@ export function useIntegrationExpansion() {
         });
       }
 
-      const response = await fetch(`/api/integrations/${integrationType}/${integrationId}/logs?${params.toString()}`);
-      const data = await response.json();
+      const qs = params.toString();
+      let data;
+      switch (integrationType) {
+        case 'marketplace':
+          data = await integrationsApi.marketplaces.logs(integrationId, qs);
+          break;
+        case 'erp':
+          data = await integrationsApi.erp.logs(integrationId, qs);
+          break;
+        case 'marketing':
+          data = await integrationsApi.marketing.logs(integrationId, qs);
+          break;
+      }
       return data;
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
@@ -456,28 +429,17 @@ export function useIntegrationExpansion() {
   ) => {
     try {
       setIsSyncing(true);
-      
-      const response = await fetch('/api/integrations/bulk-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          integrationIds,
-          integrationType,
-          syncType
-        })
+
+      const results = await integrationsApi.bulkSync({
+        integrationIds,
+        integrationType,
+        syncType
       });
 
-      if (response.ok) {
-        const results = await response.json();
-        
-        // Atualizar histórico
-        await loadSyncHistory();
-        
-        // Atualizar métricas
-        await loadMetrics();
-        
-        return results;
-      }
+      await loadSyncHistory();
+      await loadMetrics();
+
+      return results;
     } catch (error) {
       console.error('Erro na sincronização em lote:', error);
     } finally {
@@ -492,7 +454,7 @@ export function useIntegrationExpansion() {
     const safeERP = Array.isArray(erpIntegrations) ? erpIntegrations : [];
     const safeMarketing = Array.isArray(marketingIntegrations) ? marketingIntegrations : [];
     const safeSyncHistory = Array.isArray(syncHistory) ? syncHistory : [];
-    
+
     const allIntegrations = [
       ...safeMarketplace,
       ...safeERP,
@@ -501,7 +463,7 @@ export function useIntegrationExpansion() {
 
     const activeIntegrations = allIntegrations.filter(i => i.status === 'connected').length;
     const failedIntegrations = allIntegrations.filter(i => i.status === 'error').length;
-    
+
     const recentSyncs = safeSyncHistory.filter(s => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       return s.startedAt >= oneDayAgo;
@@ -509,14 +471,14 @@ export function useIntegrationExpansion() {
 
     const successfulSyncs = recentSyncs.filter(s => s.status === 'completed').length;
     const failedSyncs = recentSyncs.filter(s => s.status === 'failed').length;
-    
-    const averageSyncTime = recentSyncs.length > 0 
+
+    const averageSyncTime = recentSyncs.length > 0
       ? recentSyncs.reduce((sum, sync) => {
-          if (sync.completedAt) {
-            return sum + (sync.completedAt.getTime() - sync.startedAt.getTime());
-          }
-          return sum;
-        }, 0) / recentSyncs.length / 1000 // em segundos
+        if (sync.completedAt) {
+          return sum + (sync.completedAt.getTime() - sync.startedAt.getTime());
+        }
+        return sum;
+      }, 0) / recentSyncs.length / 1000 // em segundos
       : 0;
 
     return {
@@ -549,7 +511,7 @@ export function useIntegrationExpansion() {
     metrics,
     isLoading,
     isSyncing,
-    
+
     // Ações
     loadMarketplaceIntegrations,
     loadERPIntegrations,
@@ -565,7 +527,7 @@ export function useIntegrationExpansion() {
     testConnection,
     getIntegrationLogs,
     runBulkSync,
-    
+
     // Utilitários
     getIntegrationStatistics
   };

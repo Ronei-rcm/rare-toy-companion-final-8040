@@ -8,14 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Bell, 
-  Send, 
-  Plus, 
-  Search, 
-  Filter, 
-  Eye, 
-  CheckCircle, 
+import {
+  Bell,
+  Send,
+  Plus,
+  Search,
+  Filter,
+  Eye,
+  CheckCircle,
   XCircle,
   Clock,
   Mail,
@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { pushApi } from '@/services/push-api';
 
 interface Notification {
   id: string;
@@ -83,13 +84,7 @@ const Notifications: React.FC = () => {
 
   const loadNotifications = async () => {
     try {
-      const response = await fetch('/api/notifications', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await pushApi.getNotifications();
       if (data.success) {
         setNotifications(data.data);
       }
@@ -102,13 +97,7 @@ const Notifications: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/notifications/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await pushApi.getStats();
       if (data.success) {
         setStats(data.data.overview);
       }
@@ -119,16 +108,8 @@ const Notifications: React.FC = () => {
 
   const createNotification = async () => {
     try {
-      const response = await fetch('/api/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newNotification)
-      });
-      
-      const data = await response.json();
+      const data = await pushApi.sendBulk(newNotification);
+
       if (data.success) {
         setShowCreateForm(false);
         setNewNotification({
@@ -152,14 +133,7 @@ const Notifications: React.FC = () => {
 
   const sendNotification = async (id: string) => {
     try {
-      const response = await fetch(`/api/notifications/${id}/send`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await pushApi.sendNow(id);
       if (data.success) {
         loadNotifications();
       }
@@ -244,7 +218,7 @@ const Notifications: React.FC = () => {
 
   const filteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || notification.type === filterType;
     const matchesChannel = filterChannel === 'all' || notification.channel === filterChannel;
     return matchesSearch && matchesType && matchesChannel;
@@ -417,9 +391,9 @@ const Notifications: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       <p className="text-gray-700 mb-3">{notification.message}</p>
-                      
+
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span>Criado: {formatDate(notification.created_at)}</span>
                         {notification.sent_at && (
@@ -430,7 +404,7 @@ const Notifications: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {notification.status === 'pending' && (
                         <Button
@@ -526,7 +500,7 @@ const Notifications: React.FC = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Notificações por Email</p>
@@ -534,7 +508,7 @@ const Notifications: React.FC = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Notificações WhatsApp</p>
@@ -542,7 +516,7 @@ const Notifications: React.FC = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Notificações SMS</p>
@@ -569,26 +543,26 @@ const Notifications: React.FC = () => {
                 <Input
                   id="title"
                   value={newNotification.title}
-                  onChange={(e) => setNewNotification({...newNotification, title: e.target.value})}
+                  onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
                   placeholder="Título da notificação"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="message">Mensagem</Label>
                 <Textarea
                   id="message"
                   value={newNotification.message}
-                  onChange={(e) => setNewNotification({...newNotification, message: e.target.value})}
+                  onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
                   placeholder="Conteúdo da notificação"
                   rows={3}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="type">Tipo</Label>
-                  <Select value={newNotification.type} onValueChange={(value: any) => setNewNotification({...newNotification, type: value})}>
+                  <Select value={newNotification.type} onValueChange={(value: any) => setNewNotification({ ...newNotification, type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -603,10 +577,10 @@ const Notifications: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="channel">Canal</Label>
-                  <Select value={newNotification.channel} onValueChange={(value: any) => setNewNotification({...newNotification, channel: value})}>
+                  <Select value={newNotification.channel} onValueChange={(value: any) => setNewNotification({ ...newNotification, channel: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -620,7 +594,7 @@ const Notifications: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createNotification} className="flex-1">
                   <Send className="w-4 h-4 mr-2" />

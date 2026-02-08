@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { financialApi } from '@/services/financial-api';
 
 interface SupplierFinancialData {
   id: string;
@@ -57,52 +58,67 @@ export const useSupplierFinancial = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Buscar fornecedores da API
-      const response = await fetch('/api/suppliers');
-      if (!response.ok) throw new Error('Erro ao buscar fornecedores');
-      
-      const data = await response.json();
-      
+      const data = await financialApi.getSuppliers();
+      const suppliersList = data.suppliers || [];
+
       // Enriquecer com dados financeiros
       const enrichedSuppliers = await Promise.all(
-        data.suppliers?.map(async (supplier: any) => {
-          // Buscar transações financeiras do fornecedor
-          const transactionsResponse = await fetch(`/api/financial/suppliers/${supplier.id}/transactions`);
-          const transactions = transactionsResponse.ok ? await transactionsResponse.json() : [];
-          
-          // Buscar pagamentos pendentes
-          const paymentsResponse = await fetch(`/api/financial/suppliers/${supplier.id}/payments`);
-          const payments = paymentsResponse.ok ? await paymentsResponse.json() : [];
-          
-          return {
-            id: supplier.id,
-            nome: supplier.nome || supplier.name,
-            email: supplier.email,
-            telefone: supplier.telefone || supplier.phone,
-            status: supplier.status || 'ativo',
-            limiteCredito: supplier.limiteCredito || 10000,
-            saldoDevedor: calculateSaldoDevedor(transactions, payments),
-            totalCompras: calculateTotalCompras(transactions),
-            ultimaCompra: getUltimaCompra(transactions),
-            prazoPagamento: supplier.prazoPagamento || 30,
-            descontoPadrao: supplier.descontoPadrao || 0,
-            transacoes: transactions,
-            scoreFinanceiro: calculateScoreFinanceiro(transactions, payments),
-            riscoCredito: calculateRiscoCredito(transactions, payments),
-            banco: supplier.banco,
-            agencia: supplier.agencia,
-            conta: supplier.conta,
-            pix: supplier.pix
-          };
-        }) || []
+        suppliersList.map(async (supplier: any) => {
+          try {
+            // Buscar transações financeiras do fornecedor
+            const transactions = await financialApi.getSupplierTransactions(supplier.id);
+
+            // Buscar pagamentos pendentes
+            const payments = await financialApi.getSupplierPayments(supplier.id);
+
+            return {
+              id: supplier.id,
+              nome: supplier.nome || supplier.name,
+              email: supplier.email,
+              telefone: supplier.telefone || supplier.phone,
+              status: supplier.status || 'ativo',
+              limiteCredito: supplier.limiteCredito || 10000,
+              saldoDevedor: calculateSaldoDevedor(transactions || [], payments || []),
+              totalCompras: calculateTotalCompras(transactions || []),
+              ultimaCompra: getUltimaCompra(transactions || []),
+              prazoPagamento: supplier.prazoPagamento || 30,
+              descontoPadrao: supplier.descontoPadrao || 0,
+              transacoes: transactions || [],
+              scoreFinanceiro: calculateScoreFinanceiro(transactions || [], payments || []),
+              riscoCredito: calculateRiscoCredito(transactions || [], payments || []),
+              banco: supplier.banco,
+              agencia: supplier.agencia,
+              conta: supplier.conta,
+              pix: supplier.pix
+            };
+          } catch (e) {
+            console.error(`Erro ao enriquecer fornecedor ${supplier.id}:`, e);
+            return {
+              id: supplier.id,
+              nome: supplier.nome || supplier.name,
+              email: supplier.email,
+              status: 'pendente',
+              limiteCredito: 0,
+              saldoDevedor: 0,
+              totalCompras: 0,
+              ultimaCompra: '',
+              prazoPagamento: 0,
+              descontoPadrao: 0,
+              transacoes: [],
+              scoreFinanceiro: 0,
+              riscoCredito: 'alto' as const
+            } as SupplierFinancialData;
+          }
+        })
       );
-      
+
       setSuppliers(enrichedSuppliers);
     } catch (error: any) {
       console.error('Erro ao buscar fornecedores financeiros:', error);
       setError(error.message);
-      
+
       // Fallback com dados simulados
       setSuppliers(getMockSupplierFinancialData());
     } finally {
@@ -112,20 +128,11 @@ export const useSupplierFinancial = () => {
 
   // Criar transação financeira para fornecedor
   const createSupplierTransaction = async (
-    supplierId: string, 
+    supplierId: string,
     transactionData: Omit<SupplierTransaction, 'id'>
   ): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/financial/suppliers/${supplierId}/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transactionData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao criar transação');
-      }
-
+      await financialApi.updateSupplierTransaction(supplierId, transactionData);
       toast.success('Transação criada com sucesso!');
       await fetchSuppliers(); // Recarregar dados
       return true;
@@ -142,16 +149,7 @@ export const useSupplierFinancial = () => {
     paymentData: Omit<SupplierPayment, 'id'>
   ): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/financial/suppliers/${supplierId}/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao registrar pagamento');
-      }
-
+      await financialApi.updateSupplierPayment(supplierId, paymentData);
       toast.success('Pagamento registrado com sucesso!');
       await fetchSuppliers(); // Recarregar dados
       return true;
@@ -165,16 +163,7 @@ export const useSupplierFinancial = () => {
   // Atualizar limite de crédito
   const updateCreditLimit = async (supplierId: string, newLimit: number): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/financial/suppliers/${supplierId}/credit-limit`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limiteCredito: newLimit })
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar limite de crédito');
-      }
-
+      await financialApi.updateSupplierCreditLimit(supplierId, { limiteCredito: newLimit });
       toast.success('Limite de crédito atualizado!');
       await fetchSuppliers(); // Recarregar dados
       return true;
@@ -205,11 +194,11 @@ const calculateSaldoDevedor = (transactions: any[], payments: any[]): number => 
   const totalCompras = transactions
     .filter(t => t.tipo === 'compra')
     .reduce((sum, t) => sum + t.valor, 0);
-  
+
   const totalPagamentos = payments
     .filter(p => p.status === 'pago')
     .reduce((sum, p) => sum + p.valor, 0);
-  
+
   return totalCompras - totalPagamentos;
 };
 
@@ -222,7 +211,7 @@ const calculateTotalCompras = (transactions: any[]): number => {
 const getUltimaCompra = (transactions: any[]): string => {
   const compras = transactions.filter(t => t.tipo === 'compra');
   if (compras.length === 0) return '';
-  
+
   const ultima = compras.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0];
   return ultima.data;
 };
@@ -230,24 +219,24 @@ const getUltimaCompra = (transactions: any[]): string => {
 const calculateScoreFinanceiro = (transactions: any[], payments: any[]): number => {
   // Score baseado em pagamentos em dia, volume de compras, etc.
   let score = 100;
-  
+
   const pagamentosAtrasados = payments.filter(p => p.status === 'atrasado').length;
   const totalPagamentos = payments.length;
-  
+
   if (totalPagamentos > 0) {
     const taxaAtraso = pagamentosAtrasados / totalPagamentos;
     score -= taxaAtraso * 50; // Penalizar atrasos
   }
-  
+
   const volumeCompras = calculateTotalCompras(transactions);
   if (volumeCompras > 50000) score += 10; // Bonus por volume
-  
+
   return Math.max(0, Math.min(100, score));
 };
 
 const calculateRiscoCredito = (transactions: any[], payments: any[]): 'baixo' | 'medio' | 'alto' => {
   const score = calculateScoreFinanceiro(transactions, payments);
-  
+
   if (score >= 80) return 'baixo';
   if (score >= 60) return 'medio';
   return 'alto';

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { securityApi } from '@/services/security-api';
 
 interface SecurityEvent {
   id: string;
@@ -22,15 +23,6 @@ interface SecurityEvent {
   resolvedBy?: string;
 }
 
-interface TwoFactorAuth {
-  enabled: boolean;
-  method: 'totp' | 'sms' | 'email' | 'backup_codes';
-  backupCodes: string[];
-  lastUsed?: Date;
-  qrCode?: string;
-  secret?: string;
-}
-
 interface SecuritySettings {
   passwordPolicy: {
     minLength: number;
@@ -38,11 +30,11 @@ interface SecuritySettings {
     requireLowercase: boolean;
     requireNumbers: boolean;
     requireSymbols: boolean;
-    maxAge: number; // dias
-    preventReuse: number; // últimas N senhas
+    maxAge: number;
+    preventReuse: number;
   };
   sessionSettings: {
-    timeout: number; // minutos
+    timeout: number;
     maxConcurrent: number;
     requireReauth: boolean;
   };
@@ -57,7 +49,7 @@ interface SecuritySettings {
     loginAttempts: number;
     apiRequests: number;
     passwordReset: number;
-    timeWindow: number; // minutos
+    timeWindow: number;
   };
   auditLogging: {
     enabled: boolean;
@@ -89,7 +81,7 @@ interface ComplianceReport {
   id: string;
   type: 'gdpr' | 'lgpd' | 'pci_dss' | 'sox' | 'hipaa';
   status: 'compliant' | 'non_compliant' | 'partial' | 'pending';
-  score: number; // 0-100
+  score: number;
   issues: Array<{
     id: string;
     title: string;
@@ -127,34 +119,25 @@ export function useSecurityEnhancement() {
   const [isLoading, setIsLoading] = useState(false);
   const [isMonitoring, setIsMonitoring] = useState(false);
 
-  const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const monitoringIntervalRef = useRef<any>(null);
   const eventListenersRef = useRef<Array<() => void>>([]);
 
   // Carregar eventos de segurança
-  const loadSecurityEvents = useCallback(async (filters?: {
-    type?: string;
-    severity?: string;
-    userId?: string;
-    dateFrom?: Date;
-    dateTo?: Date;
-  }) => {
+  const loadSecurityEvents = useCallback(async (filters?: any) => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
-
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
-          if (value) {
-            params.append(key, value instanceof Date ? value.toISOString() : value.toString());
-          }
+          if (value) params.append(key, value instanceof Date ? value.toISOString() : String(value));
         });
       }
-
-      const response = await fetch(`/api/security/events?${params.toString()}`);
-      const data = await response.json();
+      const data = await securityApi.getEvents(params.toString());
       setSecurityEvents(data);
+      return data;
     } catch (error) {
-      console.error('Erro ao carregar eventos de segurança:', error);
+      console.error('Erro ao buscar eventos de segurança:', error);
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -163,118 +146,65 @@ export function useSecurityEnhancement() {
   // Carregar alertas de segurança
   const loadSecurityAlerts = useCallback(async () => {
     try {
-      const response = await fetch('/api/security/alerts');
-      const data = await response.json();
+      const data = await securityApi.getAlerts();
       setSecurityAlerts(data);
+      return data;
     } catch (error) {
-      console.error('Erro ao carregar alertas de segurança:', error);
+      console.error('Erro ao buscar alertas:', error);
+      return [];
     }
   }, []);
 
   // Carregar relatórios de compliance
   const loadComplianceReports = useCallback(async () => {
     try {
-      const response = await fetch('/api/security/compliance');
-      const data = await response.json();
+      const data = await securityApi.getCompliance();
       setComplianceReports(data);
+      return data;
     } catch (error) {
-      console.error('Erro ao carregar relatórios de compliance:', error);
+      console.error('Erro ao buscar conformidade:', error);
+      return [];
     }
   }, []);
 
   // Carregar configurações de segurança
   const loadSecuritySettings = useCallback(async () => {
     try {
-      const response = await fetch('/api/security/settings');
-      const data = await response.json();
+      const data = await securityApi.getSettings();
       setSecuritySettings(data);
+      return data;
     } catch (error) {
-      console.error('Erro ao carregar configurações de segurança:', error);
+      console.error('Erro ao buscar configurações:', error);
+      return null;
     }
   }, []);
 
   // Carregar métricas de segurança
   const loadSecurityMetrics = useCallback(async () => {
     try {
-      const response = await fetch('/api/security/metrics');
-      const data = await response.json();
+      const data = await securityApi.getMetrics();
       setSecurityMetrics(data);
+      return data;
     } catch (error) {
-      console.error('Erro ao carregar métricas de segurança:', error);
+      console.error('Erro ao buscar métricas:', error);
+      return null;
     }
   }, []);
 
   // Registrar evento de segurança
-  const logSecurityEvent = useCallback(async (eventData: Omit<SecurityEvent, 'id' | 'timestamp' | 'resolved'>) => {
+  const logSecurityEvent = useCallback(async (eventData: any) => {
     try {
-      const response = await fetch('/api/security/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...eventData,
-          timestamp: new Date(),
-          resolved: false
-        })
-      });
-
-      if (response.ok) {
-        const newEvent = await response.json();
-        setSecurityEvents(prev => [newEvent, ...prev]);
-
-        // Verificar se precisa gerar alerta
-        if (eventData.severity === 'high' || eventData.severity === 'critical') {
-          await generateSecurityAlert(eventData);
-        }
-
-        return newEvent;
-      }
-    } catch (error) {
-      console.error('Erro ao registrar evento de segurança:', error);
-    }
-    return null;
-  }, []);
-
-  // Gerar alerta de segurança
-  const generateSecurityAlert = useCallback(async (eventData: any) => {
-    try {
-      const alertTypes = {
-        'failed_login': 'brute_force',
-        'suspicious_activity': 'suspicious_login',
-        'permission_change': 'privilege_escalation',
-        'data_access': 'unusual_activity'
-      };
-
-      const alertType = (alertTypes[eventData.type as keyof typeof alertTypes] || 'unusual_activity') as SecurityAlert['type'];
-
-      const alert: Omit<SecurityAlert, 'id'> = {
-        type: alertType,
-        severity: eventData.severity,
-        title: `Alerta de Segurança: ${eventData.type}`,
-        description: eventData.description,
-        affectedUsers: eventData.userId ? [eventData.userId] : [],
-        source: {
-          ipAddress: eventData.ipAddress,
-          userAgent: eventData.userAgent,
-          location: eventData.location ? `${eventData.location.city}, ${eventData.location.country}` : undefined
-        },
+      const data = await securityApi.logEvent({
+        ...eventData,
         timestamp: new Date(),
-        status: 'new',
-        metadata: eventData.metadata
-      };
-
-      const response = await fetch('/api/security/alerts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alert)
+        resolved: false
       });
-
-      if (response.ok) {
-        const newAlert = await response.json();
-        setSecurityAlerts(prev => [newAlert, ...prev]);
-        return newAlert;
+      if (data) {
+        setSecurityEvents(prev => [data, ...prev]);
+        return data;
       }
     } catch (error) {
-      console.error('Erro ao gerar alerta de segurança:', error);
+      console.error('Erro ao registrar evento:', error);
     }
     return null;
   }, []);
@@ -282,20 +212,15 @@ export function useSecurityEnhancement() {
   // Resolver alerta
   const resolveAlert = useCallback(async (alertId: string, resolution: string, resolvedBy: string) => {
     try {
-      const response = await fetch(`/api/security/alerts/${alertId}/resolve`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'resolved',
-          resolution,
-          resolvedBy
-        })
+      const data = await securityApi.resolveAlert(alertId, {
+        status: 'resolved',
+        resolution,
+        resolvedBy
       });
-
-      if (response.ok) {
+      if (data) {
         setSecurityAlerts(prev => prev.map(alert =>
           alert.id === alertId
-            ? { ...alert, status: 'resolved' as const, resolution, resolvedBy }
+            ? { ...alert, status: 'resolved', resolution, assignedTo: resolvedBy }
             : alert
         ));
         return true;
@@ -309,176 +234,96 @@ export function useSecurityEnhancement() {
   // Configurar 2FA
   const setupTwoFactor = useCallback(async (method: 'totp' | 'sms' | 'email') => {
     try {
-      const response = await fetch('/api/security/2fa/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method })
+      const data = await securityApi.twoFactor.setup({ method });
+      await logSecurityEvent({
+        type: '2fa_enabled',
+        severity: 'medium',
+        description: `2FA habilitado usando ${method}`
       });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Registrar evento
-        await logSecurityEvent({
-          type: '2fa_enabled',
-          ipAddress: '127.0.0.1', // Será preenchido pelo backend
-          userAgent: navigator.userAgent,
-          severity: 'medium',
-          description: `2FA habilitado usando ${method}`
-        });
-
-        return data;
-      }
+      return data;
     } catch (error) {
       console.error('Erro ao configurar 2FA:', error);
+      return null;
     }
-    return null;
   }, [logSecurityEvent]);
 
   // Verificar código 2FA
-  const verifyTwoFactor = useCallback(async (code: string, method: 'totp' | 'sms' | 'email') => {
+  const verifyTwoFactor = useCallback(async (code: string, method: string) => {
     try {
-      const response = await fetch('/api/security/2fa/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, method })
+      const data = await securityApi.twoFactor.verify({ code, method });
+      await logSecurityEvent({
+        type: 'login',
+        severity: 'low',
+        description: `Login com 2FA usando ${method}`
       });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Registrar evento
-        await logSecurityEvent({
-          type: 'login',
-          ipAddress: '127.0.0.1',
-          userAgent: navigator.userAgent,
-          severity: 'low',
-          description: `Login com 2FA usando ${method}`
-        });
-
-        return data;
-      }
+      return data;
     } catch (error) {
       console.error('Erro ao verificar 2FA:', error);
-
-      // Registrar evento de falha
-      await logSecurityEvent({
-        type: 'failed_login',
-        ipAddress: '127.0.0.1',
-        userAgent: navigator.userAgent,
-        severity: 'medium',
-        description: `Falha na verificação 2FA usando ${method}`
-      });
+      return null;
     }
-    return null;
   }, [logSecurityEvent]);
 
   // Gerar códigos de backup
   const generateBackupCodes = useCallback(async () => {
     try {
-      const response = await fetch('/api/security/2fa/backup-codes', {
-        method: 'POST'
+      const data = await securityApi.twoFactor.getBackupCodes({});
+      await logSecurityEvent({
+        type: '2fa_enabled',
+        severity: 'medium',
+        description: 'Códigos de backup 2FA gerados'
       });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Registrar evento
-        await logSecurityEvent({
-          type: '2fa_enabled',
-          ipAddress: '127.0.0.1',
-          userAgent: navigator.userAgent,
-          severity: 'medium',
-          description: 'Códigos de backup 2FA gerados'
-        });
-
-        return data;
-      }
+      return data;
     } catch (error) {
       console.error('Erro ao gerar códigos de backup:', error);
+      return null;
     }
-    return null;
   }, [logSecurityEvent]);
 
-  // Atualizar configurações de segurança
+  // Atualizar configurações
   const updateSecuritySettings = useCallback(async (settings: Partial<SecuritySettings>) => {
     try {
-      const response = await fetch('/api/security/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+      const updated = await securityApi.updateSettings(settings);
+      setSecuritySettings(updated);
+      await logSecurityEvent({
+        type: 'permission_change',
+        severity: 'medium',
+        description: 'Configurações de segurança atualizadas'
       });
-
-      if (response.ok) {
-        const updatedSettings = await response.json();
-        setSecuritySettings(updatedSettings);
-
-        // Registrar evento
-        await logSecurityEvent({
-          type: 'permission_change',
-          ipAddress: '127.0.0.1',
-          userAgent: navigator.userAgent,
-          severity: 'medium',
-          description: 'Configurações de segurança atualizadas'
-        });
-
-        return true;
-      }
+      return true;
     } catch (error) {
       console.error('Erro ao atualizar configurações:', error);
+      return false;
     }
-    return false;
   }, [logSecurityEvent]);
 
-  // Executar auditoria de compliance
-  const runComplianceAudit = useCallback(async (type: 'gdpr' | 'lgpd' | 'pci_dss' | 'sox' | 'hipaa') => {
+  // Auditoria de compliance
+  const runComplianceAudit = useCallback(async (type: string) => {
     try {
-      const response = await fetch('/api/security/compliance/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type })
+      const report = await securityApi.runAudit({ type });
+      setComplianceReports(prev => [report, ...prev]);
+      await logSecurityEvent({
+        type: 'data_access',
+        severity: 'medium',
+        description: `Auditoria de compliance ${type} executada`
       });
-
-      if (response.ok) {
-        const report = await response.json();
-        setComplianceReports(prev => [report, ...prev]);
-
-        // Registrar evento
-        await logSecurityEvent({
-          type: 'data_access',
-          ipAddress: '127.0.0.1',
-          userAgent: navigator.userAgent,
-          severity: 'medium',
-          description: `Auditoria de compliance ${type} executada`
-        });
-
-        return report;
-      }
+      return report;
     } catch (error) {
       console.error('Erro ao executar auditoria:', error);
+      return null;
     }
-    return null;
   }, [logSecurityEvent]);
 
   // Bloquear IP
   const blockIP = useCallback(async (ipAddress: string, reason: string) => {
     try {
-      const response = await fetch('/api/security/block-ip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ipAddress, reason })
-      });
-
-      if (response.ok) {
-        // Registrar evento
+      const success = await securityApi.ipManagement.block({ ipAddress, reason });
+      if (success) {
         await logSecurityEvent({
           type: 'suspicious_activity',
           ipAddress,
-          userAgent: 'System',
           severity: 'high',
           description: `IP bloqueado: ${reason}`
         });
-
         return true;
       }
     } catch (error) {
@@ -490,22 +335,13 @@ export function useSecurityEnhancement() {
   // Desbloquear IP
   const unblockIP = useCallback(async (ipAddress: string) => {
     try {
-      const response = await fetch('/api/security/unblock-ip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ipAddress })
-      });
-
-      if (response.ok) {
-        // Registrar evento
+      const success = await securityApi.ipManagement.unblock({ ipAddress });
+      if (success) {
         await logSecurityEvent({
           type: 'permission_change',
-          ipAddress: '127.0.0.1',
-          userAgent: navigator.userAgent,
           severity: 'medium',
           description: `IP desbloqueado: ${ipAddress}`
         });
-
         return true;
       }
     } catch (error) {
@@ -514,137 +350,72 @@ export function useSecurityEnhancement() {
     return false;
   }, [logSecurityEvent]);
 
-  // Exportar logs de auditoria
-  const exportAuditLogs = useCallback(async (filters?: {
-    dateFrom?: Date;
-    dateTo?: Date;
-    eventType?: string;
-    severity?: string;
-  }) => {
+  // Exportar logs
+  const exportAuditLogs = useCallback(async (filters?: any) => {
     try {
       const params = new URLSearchParams();
-
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
-          if (value) {
-            params.append(key, value instanceof Date ? value.toISOString() : value.toString());
-          }
+          if (value) params.append(key, value instanceof Date ? value.toISOString() : String(value));
         });
       }
-
-      const response = await fetch(`/api/security/export?${params.toString()}`);
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-
-        return true;
-      }
+      const blob = await securityApi.exportData(params.toString());
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      return true;
     } catch (error) {
       console.error('Erro ao exportar logs:', error);
+      return false;
     }
-    return false;
   }, []);
 
-  // Iniciar monitoramento em tempo real
+  // Monitoramento
   const startMonitoring = useCallback(() => {
     if (isMonitoring) return;
-
     setIsMonitoring(true);
-
-    // Monitorar eventos em tempo real
     monitoringIntervalRef.current = setInterval(async () => {
       await Promise.all([
         loadSecurityEvents(),
         loadSecurityAlerts(),
         loadSecurityMetrics()
       ]);
-    }, 30000); // A cada 30 segundos
-
-    // WebSocket para eventos em tempo real (se disponível)
-    if ('WebSocket' in window) {
-      try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`;
-        const ws = new WebSocket(`${host}/security-events`);
-
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'security_event') {
-            setSecurityEvents(prev => [data.event, ...prev]);
-          } else if (data.type === 'security_alert') {
-            setSecurityAlerts(prev => [data.alert, ...prev]);
-          }
-        };
-
-        ws.onclose = () => {
-          // Reconectar após 5 segundos
-          setTimeout(() => {
-            if (isMonitoring) {
-              startMonitoring();
-            }
-          }, 5000);
-        };
-
-        eventListenersRef.current.push(() => ws.close());
-      } catch (error) {
-        console.warn('WebSocket não disponível, usando polling');
-      }
-    }
+    }, 30000);
   }, [isMonitoring, loadSecurityEvents, loadSecurityAlerts, loadSecurityMetrics]);
 
-  // Parar monitoramento
   const stopMonitoring = useCallback(() => {
     setIsMonitoring(false);
-
     if (monitoringIntervalRef.current) {
       clearInterval(monitoringIntervalRef.current);
       monitoringIntervalRef.current = null;
     }
-
     eventListenersRef.current.forEach(cleanup => cleanup());
     eventListenersRef.current = [];
   }, []);
 
-  // Obter estatísticas de segurança
   const getSecurityStatistics = useCallback(() => {
     const now = new Date();
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const safeEvents = Array.isArray(securityEvents) ? securityEvents : [];
+    const safeAlerts = Array.isArray(securityAlerts) ? securityAlerts : [];
 
-    const safeSecurityEvents = Array.isArray(securityEvents) ? securityEvents : [];
-    const safeSecurityAlerts = Array.isArray(securityAlerts) ? securityAlerts : [];
-    const safeComplianceReports = Array.isArray(complianceReports) ? complianceReports : [];
-
-    const events24h = safeSecurityEvents.filter(e => e.timestamp >= last24h);
-    const events7d = safeSecurityEvents.filter(e => e.timestamp >= last7d);
-    const criticalAlerts = safeSecurityAlerts.filter(a => a.severity === 'critical' && a.status === 'new');
-    const highAlerts = safeSecurityAlerts.filter(a => a.severity === 'high' && a.status === 'new');
+    const events24h = safeEvents.filter(e => new Date(e.timestamp) >= last24h);
+    const criticalAlerts = safeAlerts.filter(a => a.severity === 'critical' && a.status === 'new');
 
     return {
-      totalEvents: safeSecurityEvents.length,
+      totalEvents: safeEvents.length,
       eventsLast24h: events24h.length,
-      eventsLast7d: events7d.length,
       criticalAlerts: criticalAlerts.length,
-      highAlerts: highAlerts.length,
-      totalAlerts: safeSecurityAlerts.length,
-      resolvedAlerts: safeSecurityAlerts.filter(a => a.status === 'resolved').length,
-      complianceScore: safeComplianceReports.length > 0
-        ? Math.round(safeComplianceReports.reduce((sum, r) => sum + r.score, 0) / safeComplianceReports.length)
-        : 0,
+      totalAlerts: safeAlerts.length,
       lastUpdated: now
     };
-  }, [securityEvents, securityAlerts, complianceReports]);
+  }, [securityEvents, securityAlerts]);
 
-  // Inicializar dados
   useEffect(() => {
     loadSecurityEvents();
     loadSecurityAlerts();
@@ -653,15 +424,11 @@ export function useSecurityEnhancement() {
     loadSecurityMetrics();
   }, [loadSecurityEvents, loadSecurityAlerts, loadComplianceReports, loadSecuritySettings, loadSecurityMetrics]);
 
-  // Cleanup ao desmontar
   useEffect(() => {
-    return () => {
-      stopMonitoring();
-    };
+    return () => stopMonitoring();
   }, [stopMonitoring]);
 
   return {
-    // Estado
     securityEvents,
     securityAlerts,
     complianceReports,
@@ -669,15 +436,12 @@ export function useSecurityEnhancement() {
     securityMetrics,
     isLoading,
     isMonitoring,
-
-    // Ações
     loadSecurityEvents,
     loadSecurityAlerts,
     loadComplianceReports,
     loadSecuritySettings,
     loadSecurityMetrics,
     logSecurityEvent,
-    generateSecurityAlert,
     resolveAlert,
     setupTwoFactor,
     verifyTwoFactor,
@@ -689,8 +453,6 @@ export function useSecurityEnhancement() {
     exportAuditLogs,
     startMonitoring,
     stopMonitoring,
-
-    // Utilitários
     getSecurityStatistics
   };
 }

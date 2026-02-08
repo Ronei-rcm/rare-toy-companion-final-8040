@@ -7,13 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Copy, 
-  Gift, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Copy,
+  Gift,
   Star,
   Users,
   TrendingUp,
@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { couponsApi } from '@/services/coupons-api';
 
 interface Coupon {
   id: string;
@@ -84,13 +85,7 @@ const Coupons: React.FC = () => {
 
   const loadCoupons = async () => {
     try {
-      const response = await fetch('/api/coupons', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await couponsApi.getCoupons();
       if (data.success) {
         setCoupons(data.data);
       }
@@ -103,13 +98,7 @@ const Coupons: React.FC = () => {
 
   const loadLoyaltyStats = async () => {
     try {
-      const response = await fetch('/api/coupons/loyalty/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await couponsApi.getLoyaltyStats();
       if (data.success) {
         setLoyaltyStats(data.data.overview);
       }
@@ -120,16 +109,8 @@ const Coupons: React.FC = () => {
 
   const createCoupon = async () => {
     try {
-      const response = await fetch('/api/coupons', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newCoupon)
-      });
-      
-      const data = await response.json();
+      const data = await couponsApi.createCoupon(newCoupon);
+
       if (data.success) {
         setShowCreateForm(false);
         setNewCoupon({
@@ -157,16 +138,7 @@ const Coupons: React.FC = () => {
 
   const toggleCouponStatus = async (id: string, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/coupons/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ is_active: !isActive })
-      });
-      
-      const data = await response.json();
+      const data = await couponsApi.updateCoupon(id, { is_active: !isActive });
       if (data.success) {
         loadCoupons();
       }
@@ -177,16 +149,9 @@ const Coupons: React.FC = () => {
 
   const deleteCoupon = async (id: string) => {
     if (!confirm('Tem certeza que deseja deletar este cupom?')) return;
-    
+
     try {
-      const response = await fetch(`/api/coupons/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await couponsApi.deleteCoupon(id);
       if (data.success) {
         loadCoupons();
       }
@@ -241,7 +206,7 @@ const Coupons: React.FC = () => {
 
   const filteredCoupons = coupons.filter(coupon => {
     const matchesSearch = coupon.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         coupon.code.toLowerCase().includes(searchTerm.toLowerCase());
+      coupon.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || coupon.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -383,7 +348,7 @@ const Coupons: React.FC = () => {
                           {getTypeLabel(coupon.type)}
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
                         <div>
                           <span className="font-medium">Código:</span> {coupon.code}
@@ -391,8 +356,8 @@ const Coupons: React.FC = () => {
                         <div>
                           <span className="font-medium">Valor:</span> {
                             coupon.type === 'percentage' ? `${coupon.value}%` :
-                            coupon.type === 'fixed_amount' ? formatCurrency(coupon.value) :
-                            'Frete Grátis'
+                              coupon.type === 'fixed_amount' ? formatCurrency(coupon.value) :
+                                'Frete Grátis'
                           }
                         </div>
                         <div>
@@ -402,11 +367,11 @@ const Coupons: React.FC = () => {
                           <span className="font-medium">Valor Mín:</span> {formatCurrency(coupon.min_order_amount)}
                         </div>
                       </div>
-                      
+
                       {coupon.description && (
                         <p className="text-sm text-gray-500 mt-2">{coupon.description}</p>
                       )}
-                      
+
                       <div className="flex items-center space-x-4 text-xs text-gray-500 mt-2">
                         <span>Criado: {formatDate(coupon.created_at)}</span>
                         {coupon.expires_at && (
@@ -414,7 +379,7 @@ const Coupons: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="outline"
@@ -511,24 +476,24 @@ const Coupons: React.FC = () => {
                 <Input
                   id="code"
                   value={newCoupon.code}
-                  onChange={(e) => setNewCoupon({...newCoupon, code: e.target.value})}
+                  onChange={(e) => setNewCoupon({ ...newCoupon, code: e.target.value })}
                   placeholder="Ex: DESCONTO10"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="name">Nome</Label>
                 <Input
                   id="name"
                   value={newCoupon.name}
-                  onChange={(e) => setNewCoupon({...newCoupon, name: e.target.value})}
+                  onChange={(e) => setNewCoupon({ ...newCoupon, name: e.target.value })}
                   placeholder="Ex: Desconto de 10%"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="type">Tipo</Label>
-                <Select value={newCoupon.type} onValueChange={(value: any) => setNewCoupon({...newCoupon, type: value})}>
+                <Select value={newCoupon.type} onValueChange={(value: any) => setNewCoupon({ ...newCoupon, type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -539,29 +504,29 @@ const Coupons: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="value">Valor</Label>
                 <Input
                   id="value"
                   type="number"
                   value={newCoupon.value}
-                  onChange={(e) => setNewCoupon({...newCoupon, value: parseFloat(e.target.value)})}
+                  onChange={(e) => setNewCoupon({ ...newCoupon, value: parseFloat(e.target.value) })}
                   placeholder="10"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="min_order">Valor Mínimo do Pedido</Label>
                 <Input
                   id="min_order"
                   type="number"
                   value={newCoupon.min_order_amount}
-                  onChange={(e) => setNewCoupon({...newCoupon, min_order_amount: parseFloat(e.target.value)})}
+                  onChange={(e) => setNewCoupon({ ...newCoupon, min_order_amount: parseFloat(e.target.value) })}
                   placeholder="50"
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createCoupon} className="flex-1">
                   Criar Cupom

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { socialApi } from '@/services/social-api';
 
 export interface LojaStats {
   totalProdutos: number;
@@ -35,23 +36,13 @@ export const useSocialProof = () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Buscar estatísticas e compras recentes em paralelo
-        const base = (import.meta as any).env?.VITE_API_URL || '/api';
-        const [statsResponse, comprasResponse] = await Promise.all([
-          fetch(`${base}/stats`),
-          fetch(`${base}/compras-recentes`)
-        ]);
-        
-        if (!statsResponse.ok || !comprasResponse.ok) {
-          throw new Error('Erro ao buscar dados de prova social');
-        }
-        
         const [statsData, comprasData] = await Promise.all([
-          statsResponse.json(),
-          comprasResponse.json()
+          socialApi.getSocialProofStats(),
+          socialApi.getRecentPurchases()
         ]);
-        
+
         setStats(statsData);
         setComprasRecentes(comprasData);
       } catch (err) {

@@ -2,6 +2,7 @@
  * Handler para processar retorno do InfiniteTap
  * Baseado na documentação oficial: https://www.infinitepay.io/desenvolvedores#codeSetupBlock
  */
+import { ordersApi } from '@/services/orders-api';
 
 interface InfiniteTapResult {
   order_id: string;
@@ -74,30 +75,7 @@ export function isInfiniteTapReturn(url: string): boolean {
  */
 export async function sendTapResultToBackend(result: InfiniteTapResult): Promise<boolean> {
   try {
-    const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
-    
-    const response = await fetch(`${API_BASE_URL}/orders/${result.order_id}/infinitetap-result`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nsu: result.nsu,
-        aut: result.aut,
-        card_brand: result.card_brand,
-        user_id: result.user_id,
-        access_id: result.access_id,
-        handle: result.handle,
-        merchant_document: result.merchant_document,
-        warning: result.warning,
-        success: !result.warning // Sucesso se não houver warning
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao processar resultado: ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const data = await ordersApi.getInfiniteTapResult(result.order_id);
     console.log('✅ [InfiniteTap] Resultado enviado ao backend:', data);
     return true;
   } catch (error) {

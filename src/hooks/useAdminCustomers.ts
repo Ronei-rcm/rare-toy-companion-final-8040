@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+import { adminCustomersApi } from '@/services/admin-customers-api';
 
 export interface Customer {
   id: string | number;
@@ -83,113 +82,7 @@ export const useAdminCustomers = () => {
     pages: 0,
   });
 
-  // Carregar clientes
-  const loadCustomers = useCallback(async (filters: CustomerFilters = {}) => {
-    try {
-      setLoading(true);
-      const queryParams = new URLSearchParams();
-      
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          queryParams.append(key, value.toString());
-        }
-      });
-
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers?${queryParams}`, {
-        credentials: 'include',
-        headers: {
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const customersData = data.customers || data || [];
-        // Garantir que total_gasto e total_pedidos sejam números
-        const normalizedCustomers = Array.isArray(customersData) ? customersData.map((c: any) => ({
-          ...c,
-          total_gasto: c.total_gasto !== null && c.total_gasto !== undefined ? Number(c.total_gasto) : 0,
-          total_pedidos: c.total_pedidos !== null && c.total_pedidos !== undefined ? Number(c.total_pedidos) : 0,
-          average_ticket: c.average_ticket !== null && c.average_ticket !== undefined ? Number(c.average_ticket) : 0,
-        })) : [];
-        setCustomers(normalizedCustomers);
-        if (data.pagination) {
-          setPagination(data.pagination);
-        }
-      } else if (response.status === 401) {
-        // Se não autenticado, tentar usar endpoint público
-        const publicResponse = await fetch(`${API_BASE_URL}/users?${queryParams}`, {
-          credentials: 'include',
-        });
-        if (publicResponse.ok) {
-          const publicData = await publicResponse.json();
-          const customersData = Array.isArray(publicData) ? publicData : [];
-          // Garantir que total_gasto e total_pedidos sejam números
-          const normalizedCustomers = customersData.map((c: any) => ({
-            ...c,
-            total_gasto: c.total_gasto !== null && c.total_gasto !== undefined ? Number(c.total_gasto) : 0,
-            total_pedidos: c.total_pedidos !== null && c.total_pedidos !== undefined ? Number(c.total_pedidos) : 0,
-            average_ticket: c.average_ticket !== null && c.average_ticket !== undefined ? Number(c.average_ticket) : 0,
-          }));
-          setCustomers(normalizedCustomers);
-        } else {
-          throw new Error('Erro ao carregar clientes');
-        }
-      } else {
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar clientes:', error);
-      toast({
-        title: 'Erro ao carregar clientes',
-        description: 'Não foi possível carregar os clientes',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  // Carregar estatísticas
-  const loadStats = useCallback(async () => {
-    try {
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers/stats`, {
-        credentials: 'include',
-        headers: {
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats({
-          total: Number(data.total || 0),
-          ativos: Number(data.ativos || 0),
-          inativos: Number(data.inativos || 0),
-          bloqueados: Number(data.bloqueados || 0),
-          novos: Number(data.novos || 0),
-          vip: Number(data.vip || 0),
-          receita_total: Number(data.receita_total || 0),
-          ticket_medio: Number(data.ticket_medio || 0),
-          crescimento_mensal: Number(data.crescimento_mensal || 0),
-          clientes_hoje: Number(data.clientes_hoje || 0),
-        });
-      } else {
-        // Calcular stats localmente se endpoint não existir
-        const localStats = calculateLocalStats(customers);
-        setStats(localStats);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
-      const localStats = calculateLocalStats(customers);
-      setStats(localStats);
-    }
-  }, [customers]);
-
-  // Calcular estatísticas localmente
-  const calculateLocalStats = (customersList: Customer[]): CustomerStats => {
+  const calculateLocalStats = useCallback((customersList: Customer[]): CustomerStats => {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -214,10 +107,7 @@ export const useAdminCustomers = () => {
       ? ((novos - clientesMesPassado) / clientesMesPassado) * 100
       : 0;
 
-    const receitaTotal = customersList.reduce((sum, c) => {
-      const gasto = c.total_gasto !== null && c.total_gasto !== undefined ? Number(c.total_gasto) : 0;
-      return sum + gasto;
-    }, 0);
+    const receitaTotal = customersList.reduce((sum, c) => sum + (Number(c.total_gasto) || 0), 0);
     const ticketMedio = customersList.length > 0 ? receitaTotal / customersList.length : 0;
 
     return {
@@ -232,211 +122,129 @@ export const useAdminCustomers = () => {
       crescimento_mensal: crescimentoMensal,
       clientes_hoje: clientesHoje,
     };
-  };
+  }, []);
 
-  // Atualizar cliente
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await adminCustomersApi.getStats();
+      setStats({
+        total: Number(data.total || 0),
+        ativos: Number(data.ativos || 0),
+        inativos: Number(data.inativos || 0),
+        bloqueados: Number(data.bloqueados || 0),
+        novos: Number(data.novos || 0),
+        vip: Number(data.vip || 0),
+        receita_total: Number(data.receita_total || 0),
+        ticket_medio: Number(data.ticket_medio || 0),
+        crescimento_mensal: Number(data.crescimento_mensal || 0),
+        clientes_hoje: Number(data.clientes_hoje || 0),
+      });
+    } catch (error) {
+      console.warn('Falha ao carregar estatísticas reais, calculando locais:', error);
+      setStats(calculateLocalStats(customers));
+    }
+  }, [customers, calculateLocalStats]);
+
+  const loadCustomers = useCallback(async (filters: CustomerFilters = {}) => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, value.toString());
+        }
+      });
+
+      let data;
+      try {
+        data = await adminCustomersApi.getCustomers(queryParams.toString());
+      } catch (e) {
+        // Fallback para endpoint público
+        data = await adminCustomersApi.getPublicUsers(queryParams.toString());
+      }
+
+      const customersData = data.customers || data || [];
+      const normalizedCustomers = Array.isArray(customersData) ? customersData.map((c: any) => ({
+        ...c,
+        total_gasto: Number(c.total_gasto || 0),
+        total_pedidos: Number(c.total_pedidos || 0),
+        average_ticket: Number(c.average_ticket || 0),
+      })) : [];
+
+      setCustomers(normalizedCustomers);
+      if (data.pagination) setPagination(data.pagination);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+      toast({
+        title: 'Erro ao carregar clientes',
+        description: 'Não foi possível carregar os clientes',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   const updateCustomer = useCallback(async (customerId: string | number, data: Partial<Customer>) => {
     try {
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers/${customerId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-
-      if (response.ok) {
-        toast({
-          title: 'Cliente atualizado',
-          description: 'Cliente atualizado com sucesso',
-        });
-        await loadCustomers();
-        await loadStats();
-        return true;
-      } else {
-        throw new Error('Falha ao atualizar cliente');
-      }
-    } catch (error) {
-      console.error('Erro ao atualizar cliente:', error);
-      toast({
-        title: 'Erro ao atualizar cliente',
-        description: 'Não foi possível atualizar o cliente',
-        variant: 'destructive',
-      });
-      return false;
-    }
-  }, [toast, loadCustomers, loadStats]);
-
-  // Deletar cliente
-  const deleteCustomer = useCallback(async (customerId: string | number) => {
-    try {
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers/${customerId}`, {
-        method: 'DELETE',
-        headers: {
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        toast({
-          title: 'Cliente excluído',
-          description: 'Cliente excluído com sucesso',
-        });
-        await loadCustomers();
-        await loadStats();
-        return true;
-      } else {
-        throw new Error('Falha ao excluir cliente');
-      }
-    } catch (error) {
-      console.error('Erro ao excluir cliente:', error);
-      toast({
-        title: 'Erro ao excluir cliente',
-        description: 'Não foi possível excluir o cliente',
-        variant: 'destructive',
-      });
-      return false;
-    }
-  }, [toast, loadCustomers, loadStats]);
-
-  // Sincronizar users -> customers (admin)
-  const syncUsersToCustomers = useCallback(async () => {
-    try {
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers/sync-users`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      toast({
-        title: data.success ? 'Sincronização concluída' : 'Sincronização',
-        description: data.message || 'Sincronização executada com sucesso',
-      });
-
-      // Recarregar lista e estatísticas após sincronizar
+      await adminCustomersApi.updateCustomer(customerId, data);
+      toast({ title: 'Cliente atualizado', description: 'Cliente atualizado com sucesso' });
       await loadCustomers();
-      await loadStats();
-
       return true;
     } catch (error) {
-      console.error('Erro ao sincronizar clientes:', error);
-      toast({
-        title: 'Erro ao sincronizar clientes',
-        description: 'Não foi possível sincronizar users com customers',
-        variant: 'destructive',
-      });
+      console.error('Erro ao atualizar cliente:', error);
+      toast({ title: 'Erro ao atualizar cliente', variant: 'destructive' });
       return false;
     }
-  }, [toast, loadCustomers, loadStats]);
+  }, [toast, loadCustomers]);
 
-  // Ações em lote
+  const deleteCustomer = useCallback(async (customerId: string | number) => {
+    try {
+      await adminCustomersApi.deleteCustomer(customerId);
+      toast({ title: 'Cliente excluído', description: 'Cliente excluído com sucesso' });
+      await loadCustomers();
+      return true;
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+      toast({ title: 'Erro ao excluir cliente', variant: 'destructive' });
+      return false;
+    }
+  }, [toast, loadCustomers]);
+
+  const syncUsersToCustomers = useCallback(async () => {
+    try {
+      const data = await adminCustomersApi.syncUsers();
+      toast({ title: 'Sincronização concluída', description: data.message || 'Sucesso' });
+      await loadCustomers();
+      return true;
+    } catch (error) {
+      console.error('Erro ao sincronizar:', error);
+      toast({ title: 'Erro ao sincronizar', variant: 'destructive' });
+      return false;
+    }
+  }, [toast, loadCustomers]);
+
   const bulkAction = useCallback(async (customerIds: (string | number)[], action: string, value?: string) => {
     try {
-      if (!Array.isArray(customerIds) || customerIds.length === 0) {
-        throw new Error('IDs dos clientes são obrigatórios');
-      }
-
-      const validCustomerIds = customerIds.filter(id => id !== null && id !== undefined && id !== '');
-
-      if (validCustomerIds.length === 0) {
-        throw new Error('Nenhum ID de cliente válido encontrado');
-      }
-
-      console.log('[BulkAction Customers] Enviando requisição:', {
-        customerIds: validCustomerIds,
-        action,
-        value,
-      });
-
-      const adminToken = localStorage.getItem('admin_token');
-      const requestBody = {
-        customerIds: validCustomerIds,
-        action,
-        ...(value && { value }),
-      };
-
-      const response = await fetch(`${API_BASE_URL}/admin/customers/bulk-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-        credentials: 'include',
-        body: JSON.stringify(requestBody),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        toast({
-          title: 'Ação em lote executada',
-          description: data.message,
-        });
-        await loadCustomers();
-        await loadStats();
-        return true;
-      } else {
-        const errorText = await response.text();
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText || `Erro ${response.status}: ${response.statusText}` };
-        }
-        console.error('[BulkAction Customers] Erro na resposta do servidor:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-        });
-        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-      }
+      const data = await adminCustomersApi.bulkAction({ customerIds, action, value });
+      toast({ title: 'Ação executada', description: data.message });
+      await loadCustomers();
+      return true;
     } catch (error: any) {
-      console.error('[BulkAction Customers] Erro completo:', error);
-      const errorMessage = error?.message || 'Não foi possível executar a ação em lote';
-      toast({
-        title: 'Erro na ação em lote',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro na ação em lote', description: error.message, variant: 'destructive' });
       return false;
     }
-  }, [toast, loadCustomers, loadStats]);
+  }, [toast, loadCustomers]);
 
-  // Buscar pedidos do cliente
   const getCustomerOrders = useCallback(async (customerId: string | number) => {
     try {
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers/${customerId}/orders`, {
-        credentials: 'include',
-        headers: {
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
+      return await adminCustomersApi.getCustomerOrders(customerId);
     } catch (error) {
-      console.error('Erro ao buscar pedidos do cliente:', error);
+      console.error('Erro ao buscar pedidos:', error);
       return [];
     }
   }, []);
 
-  // Exportar clientes
   const exportCustomers = useCallback(async (format: 'csv' | 'json' = 'csv', filters?: CustomerFilters) => {
     try {
       const queryParams = new URLSearchParams();
@@ -449,65 +257,30 @@ export const useAdminCustomers = () => {
       }
       queryParams.append('format', format);
 
-      const adminToken = localStorage.getItem('admin_token');
-      const response = await fetch(`${API_BASE_URL}/admin/customers/export?${queryParams}`, {
-        credentials: 'include',
-        headers: {
-          ...(adminToken && { 'X-Admin-Token': adminToken }),
-        },
-      });
-
-      if (response.ok) {
-        if (format === 'csv') {
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `clientes_export_${new Date().toISOString().slice(0, 10)}.csv`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        } else {
-          const data = await response.json();
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `clientes_export_${new Date().toISOString().slice(0, 10)}.json`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }
-        toast({
-          title: 'Exportação concluída',
-          description: `Clientes exportados em formato ${format.toUpperCase()}`,
-        });
-        return true;
-      } else {
-        throw new Error('Falha na exportação');
+      const response = await adminCustomersApi.exportCustomers(queryParams.toString());
+      // Lógica de download simplificada (supondo que a API retorne o Blob ou JSON)
+      if (format === 'csv') {
+        const blob = response instanceof Blob ? response : new Blob([response], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `clientes.${format}`;
+        a.click();
       }
+      toast({ title: 'Exportação concluída' });
+      return true;
     } catch (error) {
-      console.error('Erro ao exportar clientes:', error);
-      toast({
-        title: 'Erro na exportação',
-        description: 'Não foi possível exportar os clientes',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro na exportação', variant: 'destructive' });
       return false;
     }
   }, [toast]);
 
-  // Carregar dados iniciais
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
 
   useEffect(() => {
-    if (customers.length > 0) {
-      loadStats();
-    }
+    if (customers.length > 0) loadStats();
   }, [customers, loadStats]);
 
   return {
@@ -525,4 +298,3 @@ export const useAdminCustomers = () => {
     syncUsersToCustomers,
   };
 };
-

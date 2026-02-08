@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useFavicon } from '@/hooks/useFavicon';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { configApi } from '@/services/config-api';
 
 export interface HomeSectionConfig {
   id: string;
@@ -243,7 +244,7 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
           // Salvar a configuração corrigida
           localStorage.setItem('homeConfig', JSON.stringify({ ...defaultConfig, ...parsed }));
         }
-        
+
         // Garantir que a seção video-gallery exista e esteja habilitada se houver vídeos
         const videoGallerySection = parsed.sections?.find((s: HomeSectionConfig) => s.id === 'video-gallery');
         if (!videoGallerySection) {
@@ -251,19 +252,12 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
           parsed.sections.push({ id: 'video-gallery', name: 'Galeria de Vídeos', enabled: true, order: 6 });
           console.log('✅ Seção video-gallery adicionada à configuração');
         } else {
-          // Verificar se há vídeos e habilitar automaticamente
-          fetch('/api/videos/active').catch(e => {
-            if (e instanceof TypeError || e.message?.includes('Failed to fetch')) {
-              console.warn('⚠️ Erro de conexão ao carregar vídeos. Continuando sem vídeos.');
-              return { ok: false, json: () => Promise.resolve({ videos: [] }) };
-            }
-            throw e;
-          })
-            .then(res => res.json())
+          // Verificar se há vídeos e habilitar automaticamente usando configApi
+          configApi.getActiveVideos()
             .then(videos => {
               if (videos && videos.length > 0 && !videoGallerySection.enabled) {
                 videoGallerySection.enabled = true;
-                parsed.sections = parsed.sections.map((s: HomeSectionConfig) => 
+                parsed.sections = parsed.sections.map((s: HomeSectionConfig) =>
                   s.id === 'video-gallery' ? videoGallerySection : s
                 );
                 localStorage.setItem('homeConfig', JSON.stringify({ ...defaultConfig, ...parsed }));
@@ -271,11 +265,11 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
                 setConfig({ ...defaultConfig, ...parsed });
               }
             })
-            .catch(() => {
-              // Se falhar, apenas usar a configuração salva
+            .catch(e => {
+              console.warn('⚠️ Erro de conexão ao carregar vídeos via configApi. Continuando sem vídeos.', e);
             });
         }
-        
+
         setConfig({ ...defaultConfig, ...parsed });
       } catch (error) {
         console.error('Erro ao carregar configuração da home:', error);
@@ -360,13 +354,13 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
         logoUrl: config.theme?.logoUrl,
         faviconUrl: config.theme?.faviconUrl
       });
-      
+
       // Salvar no localStorage (em produção, salvaria na API)
       localStorage.setItem('homeConfig', JSON.stringify(config));
-      
+
       // Simular delay da API
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       console.log('✅ Configuração da home salva:', {
         heroBackground: config.theme?.heroBackground,
         logoUrl: config.theme?.logoUrl,
@@ -385,8 +379,8 @@ export function HomeConfigProvider({ children }: { children: ReactNode }) {
   const safeConfig = {
     ...defaultConfig,
     ...config,
-    sections: config.sections && Array.isArray(config.sections) 
-      ? config.sections 
+    sections: config.sections && Array.isArray(config.sections)
+      ? config.sections
       : defaultConfig.sections
   };
 

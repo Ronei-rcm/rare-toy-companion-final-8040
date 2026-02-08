@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { externalApi } from '@/services/external-api';
 
 interface CepData {
   cep: string;
@@ -15,10 +16,7 @@ export function useCepLookup() {
   const [error, setError] = useState<string | null>(null);
 
   const lookupCep = async (cep: string): Promise<CepData | null> => {
-    // Remove caracteres não numéricos
     const cleanCep = cep.replace(/\D/g, '');
-
-    // Validação básica
     if (cleanCep.length !== 8) {
       setError('CEP deve ter 8 dígitos');
       return null;
@@ -28,21 +26,12 @@ export function useCepLookup() {
     setError(null);
 
     try {
-      // Tenta ViaCEP primeiro
-      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-      
-      if (!response.ok) {
-        throw new Error('Erro ao consultar CEP');
-      }
-
-      const data: CepData = await response.json();
-
+      const data = await externalApi.lookupCep(cleanCep);
       if (data.erro) {
         setError('CEP não encontrado');
         setLoading(false);
         return null;
       }
-
       setLoading(false);
       return data;
     } catch (err) {
@@ -55,4 +44,3 @@ export function useCepLookup() {
 
   return { lookupCep, loading, error };
 }
-

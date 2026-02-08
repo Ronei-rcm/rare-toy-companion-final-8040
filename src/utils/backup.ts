@@ -1,6 +1,7 @@
 /**
  * Sistema de backup automático para dados críticos
  */
+import { backupApi } from '@/services/backup-api';
 
 interface BackupConfig {
   enabled: boolean;
@@ -102,9 +103,7 @@ class BackupManager {
   // Obter produtos
   private async getProducts(): Promise<any[]> {
     try {
-      const response = await fetch('/api/produtos');
-      if (!response.ok) throw new Error('Erro ao buscar produtos');
-      return await response.json();
+      return await backupApi.getProducts();
     } catch (error) {
       console.error('Erro ao buscar produtos:', error);
       return [];
@@ -114,9 +113,7 @@ class BackupManager {
   // Obter pedidos
   private async getOrders(): Promise<any[]> {
     try {
-      const response = await fetch('/api/pedidos');
-      if (!response.ok) throw new Error('Erro ao buscar pedidos');
-      return await response.json();
+      return await backupApi.getOrders();
     } catch (error) {
       console.error('Erro ao buscar pedidos:', error);
       return [];
@@ -126,9 +123,7 @@ class BackupManager {
   // Obter clientes
   private async getCustomers(): Promise<any[]> {
     try {
-      const response = await fetch('/api/clientes');
-      if (!response.ok) throw new Error('Erro ao buscar clientes');
-      return await response.json();
+      return await backupApi.getCustomers();
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       return [];
@@ -138,9 +133,7 @@ class BackupManager {
   // Obter categorias
   private async getCategories(): Promise<any[]> {
     try {
-      const response = await fetch('/api/categorias');
-      if (!response.ok) throw new Error('Erro ao buscar categorias');
-      return await response.json();
+      return await backupApi.getCategories();
     } catch (error) {
       console.error('Erro ao buscar categorias:', error);
       return [];
@@ -150,9 +143,7 @@ class BackupManager {
   // Obter configurações
   private async getSettings(): Promise<any> {
     try {
-      const response = await fetch('/api/configuracoes');
-      if (!response.ok) throw new Error('Erro ao buscar configurações');
-      return await response.json();
+      return await backupApi.getSettings();
     } catch (error) {
       console.error('Erro ao buscar configurações:', error);
       return {};
@@ -162,9 +153,7 @@ class BackupManager {
   // Obter usuários
   private async getUsers(): Promise<any[]> {
     try {
-      const response = await fetch('/api/usuarios');
-      if (!response.ok) throw new Error('Erro ao buscar usuários');
-      return await response.json();
+      return await backupApi.getUsers();
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
       return [];
@@ -226,7 +215,7 @@ class BackupManager {
   async restoreBackup(backup: BackupData): Promise<void> {
     try {
       const data = backup.data;
-      
+
       // Restaurar produtos
       if (data.products) {
         await this.restoreProducts(data.products);
@@ -263,11 +252,7 @@ class BackupManager {
   private async restoreProducts(products: any[]): Promise<void> {
     for (const product of products) {
       try {
-        await fetch('/api/produtos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(product)
-        });
+        await backupApi.saveProduct(product);
       } catch (error) {
         console.error('Erro ao restaurar produto:', product.id, error);
       }
@@ -278,11 +263,7 @@ class BackupManager {
   private async restoreOrders(orders: any[]): Promise<void> {
     for (const order of orders) {
       try {
-        await fetch('/api/pedidos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(order)
-        });
+        await backupApi.saveOrder(order);
       } catch (error) {
         console.error('Erro ao restaurar pedido:', order.id, error);
       }
@@ -293,11 +274,7 @@ class BackupManager {
   private async restoreCustomers(customers: any[]): Promise<void> {
     for (const customer of customers) {
       try {
-        await fetch('/api/clientes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(customer)
-        });
+        await backupApi.saveCustomer(customer);
       } catch (error) {
         console.error('Erro ao restaurar cliente:', customer.id, error);
       }
@@ -308,11 +285,7 @@ class BackupManager {
   private async restoreCategories(categories: any[]): Promise<void> {
     for (const category of categories) {
       try {
-        await fetch('/api/categorias', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(category)
-        });
+        await backupApi.saveCategory(category);
       } catch (error) {
         console.error('Erro ao restaurar categoria:', category.id, error);
       }
@@ -322,11 +295,7 @@ class BackupManager {
   // Restaurar configurações
   private async restoreSettings(settings: any): Promise<void> {
     try {
-      await fetch('/api/configuracoes', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
+      await backupApi.updateSettings(settings);
     } catch (error) {
       console.error('Erro ao restaurar configurações:', error);
     }
@@ -353,12 +322,12 @@ class BackupManager {
     const dataStr = JSON.stringify(backup, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `backup-${new Date(backup.timestamp).toISOString().split('T')[0]}.json`;
     link.click();
-    
+
     URL.revokeObjectURL(url);
   }
 
