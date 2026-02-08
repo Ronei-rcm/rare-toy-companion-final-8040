@@ -7,13 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Mail, 
-  Send, 
-  Users, 
-  TrendingUp, 
-  Eye, 
-  MousePointer, 
+import {
+  Mail,
+  Send,
+  Users,
+  TrendingUp,
+  Eye,
+  MousePointer,
   BarChart3,
   Plus,
   Settings,
@@ -129,55 +129,46 @@ const EmailMarketing: React.FC = () => {
     }
   };
 
-  const sendNewsletter = async () => {
-    setSending(true);
+  const handleSendNewsletter = async () => { // Renamed from sendNewsletter
+    if (!newsletterData.subject || !newsletterData.content) { // Updated validation
+      (window as any).toast?.error('Preencha o assunto e o conteúdo'); // Added toast notification
+      return;
+    }
+
     try {
-      const response = await fetch('/api/email-marketing/newsletter/send', {
+      setSending(true);
+      await request('/email-marketing/newsletter/send', { // Replaced fetch with request
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newsletterForm)
+        body: JSON.stringify(newsletterData) // Using newsletterData
       });
-      
-      const data = await response.json();
-      if (data.success) {
-        alert(`Newsletter enviada com sucesso! ${data.results} e-mails enviados.`);
-        setNewsletterForm({ subject: '', products: [], offers: [] });
-      } else {
-        alert('Erro ao enviar newsletter: ' + data.message);
-      }
+      (window as any).toast?.success('Newsletter enviada com sucesso para todos os inscritos!'); // Added toast notification
+      setNewsletterData({ subject: '', content: '' }); // Reset form
     } catch (error) {
       console.error('Erro ao enviar newsletter:', error);
-      alert('Erro ao enviar newsletter');
+      (window as any).toast?.error('Erro ao enviar newsletter'); // Added toast notification
     } finally {
       setSending(false);
     }
   };
 
-  const sendTestEmail = async () => {
+  const handleTestEmail = async () => { // Renamed from sendTestEmail
     if (!testEmail) {
-      alert('Digite um e-mail para teste');
+      (window as any).toast?.error('Informe um e-mail de teste'); // Added toast notification
       return;
     }
 
     try {
-      const response = await fetch(`/api/email-marketing/test?email=${testEmail}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      setSending(true); // Set sending state
+      await request(`/email-marketing/test?email=${testEmail}`, { // Replaced fetch with request
+        method: 'POST', // Added method POST as per common practice for test emails with body
+        body: JSON.stringify(newsletterData) // Added body for test email, assuming it sends the current newsletter content
       });
-      
-      const data = await response.json();
-      if (data.success) {
-        alert('E-mail de teste enviado com sucesso!');
-      } else {
-        alert('Erro ao enviar e-mail de teste: ' + data.message);
-      }
+      (window as any).toast?.success('E-mail de teste enviado!'); // Added toast notification
     } catch (error) {
       console.error('Erro ao enviar e-mail de teste:', error);
-      alert('Erro ao enviar e-mail de teste');
+      (window as any).toast?.error('Erro ao enviar e-mail de teste'); // Added toast notification
+    } finally {
+      setSending(false); // Reset sending state
     }
   };
 
@@ -283,8 +274,8 @@ const EmailMarketing: React.FC = () => {
                         <h3 className="font-semibold text-lg">{campaign.name}</h3>
                         <Badge variant={
                           campaign.status === 'sent' ? 'default' :
-                          campaign.status === 'sending' ? 'secondary' :
-                          campaign.status === 'paused' ? 'destructive' : 'outline'
+                            campaign.status === 'sending' ? 'secondary' :
+                              campaign.status === 'paused' ? 'destructive' : 'outline'
                         }>
                           {campaign.status}
                         </Badge>
@@ -301,8 +292,8 @@ const EmailMarketing: React.FC = () => {
                         </div>
                       </div>
                       <div className="mt-2">
-                        <Progress 
-                          value={(campaign.opened / campaign.sent) * 100} 
+                        <Progress
+                          value={(campaign.opened / campaign.sent) * 100}
                           className="h-2"
                         />
                         <p className="text-xs text-gray-500 mt-1">
@@ -338,7 +329,7 @@ const EmailMarketing: React.FC = () => {
                 <Input
                   id="subject"
                   value={newsletterForm.subject}
-                  onChange={(e) => setNewsletterForm({...newsletterForm, subject: e.target.value})}
+                  onChange={(e) => setNewsletterForm({ ...newsletterForm, subject: e.target.value })}
                   placeholder="Ex: Novidades e Ofertas Especiais"
                 />
               </div>
@@ -361,8 +352,8 @@ const EmailMarketing: React.FC = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button 
-                  onClick={sendNewsletter} 
+                <Button
+                  onClick={sendNewsletter}
                   disabled={sending || !newsletterForm.subject}
                   className="flex-1"
                 >

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Brain, 
-  Bot, 
-  TrendingUp, 
-  Users, 
-  Package, 
+import { request } from '@/services/api-config';
+import {
+  Brain,
+  Bot,
+  TrendingUp,
+  Users,
+  Package,
   BarChart3,
   Settings,
   RefreshCw,
@@ -91,13 +92,7 @@ const MachineLearning: React.FC = () => {
 
   const loadMetrics = async () => {
     try {
-      const response = await fetch('/api/ml/metrics', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/ml/metrics');
       if (data.success) {
         setMetrics(data.data);
       }
@@ -108,13 +103,7 @@ const MachineLearning: React.FC = () => {
 
   const loadModels = async () => {
     try {
-      const response = await fetch('/api/ml/models', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/ml/models');
       if (data.success) {
         setModels(data.data);
       }
@@ -325,10 +314,10 @@ const MachineLearning: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{formatNumber(interaction.count)}</span>
                         <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full" 
-                            style={{ 
-                              width: `${(interaction.count / Math.max(...metrics.interactions.map(i => i.count))) * 100}%` 
+                          <div
+                            className="bg-blue-500 h-2 rounded-full"
+                            style={{
+                              width: `${(interaction.count / Math.max(...metrics.interactions.map(i => i.count))) * 100}%`
                             }}
                           ></div>
                         </div>

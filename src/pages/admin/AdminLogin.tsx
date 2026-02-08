@@ -9,11 +9,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Lock, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+import { request } from '@/services/api-config';
+
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -34,22 +36,16 @@ const AdminLogin = () => {
 
     try {
       console.log('🔐 Tentando login admin:', formData.email);
-      
-      const response = await fetch('/api/admin/login', {
+
+      const data = await request('/admin/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Importante para cookies
         body: JSON.stringify({
           email: formData.email,
           password: formData.password
         })
       });
 
-      const data = await response.json();
-      
-      if (response.ok && data.ok) {
+      if (data.ok) {
         // Salvar dados do usuário no localStorage
         localStorage.setItem('admin_user', JSON.stringify(data.user));
         localStorage.setItem('admin_token', data.token);
@@ -76,12 +72,12 @@ const AdminLogin = () => {
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro na requisição de login:', error);
-      setError('Erro de conexão. Tente novamente.');
+      setError(error.message || 'Erro de conexão. Tente novamente.');
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor.",
+        title: "Erro no login",
+        description: error.message || "Não foi possível conectar ao servidor.",
         variant: "destructive"
       });
     }
@@ -93,18 +89,13 @@ const AdminLogin = () => {
     try {
       const email = formData.email || prompt('Digite seu email de administrador:') || '';
       if (!email) return;
-      const res = await fetch('/api/admin/forgot-password', {
+      await request('/admin/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      if (res.ok) {
-        toast({ title: 'Verifique o link de reset', description: 'Link gerado e registrado nos logs do servidor.' });
-      } else {
-        toast({ title: 'Erro ao solicitar reset', description: 'Tente novamente', variant: 'destructive' });
-      }
-    } catch (e) {
-      toast({ title: 'Erro ao solicitar reset', description: 'Tente novamente', variant: 'destructive' });
+      toast({ title: 'Verifique o link de reset', description: 'Link gerado e registrado nos logs do servidor.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao solicitar reset', description: e.message || 'Tente novamente', variant: 'destructive' });
     }
   };
 
@@ -118,22 +109,17 @@ const AdminLogin = () => {
       return;
     }
     try {
-      const res = await fetch('/api/admin/change-password', {
+      await request('/admin/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ new_password: newPassword })
       });
-      if (res.ok) {
-        setShowPwdDialog(false);
-        setNewPassword('');
-        setConfirmNewPassword('');
-        toast({ title: 'Senha alterada com sucesso' });
-        navigate(redirectTo);
-      } else {
-        toast({ title: 'Erro ao alterar senha', variant: 'destructive' });
-      }
-    } catch (e) {
-      toast({ title: 'Erro ao alterar senha', variant: 'destructive' });
+      setShowPwdDialog(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
+      toast({ title: 'Senha alterada com sucesso' });
+      navigate(redirectTo);
+    } catch (e: any) {
+      toast({ title: 'Erro ao alterar senha', description: e.message || 'Tente novamente', variant: 'destructive' });
     }
   };
 
@@ -161,7 +147,7 @@ const AdminLogin = () => {
             Acesse o painel de administração da loja
           </p>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
@@ -229,36 +215,36 @@ const AdminLogin = () => {
           </form>
 
           {showExamples && (
-          <div className="mt-6">
-            <p className="text-sm text-gray-500 mb-3 text-center font-medium">
-              ✨ Usuários Disponíveis:
-            </p>
-            <div className="space-y-2">
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-3 rounded-md border border-orange-200">
-                <p className="text-xs text-gray-700 font-medium mb-1">👤 Admin Exemplo</p>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p><strong>Email:</strong> admin@exemplo.com</p>
-                  <p><strong>Senha:</strong> admin123</p>
+            <div className="mt-6">
+              <p className="text-sm text-gray-500 mb-3 text-center font-medium">
+                ✨ Usuários Disponíveis:
+              </p>
+              <div className="space-y-2">
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-3 rounded-md border border-orange-200">
+                  <p className="text-xs text-gray-700 font-medium mb-1">👤 Admin Exemplo</p>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    <p><strong>Email:</strong> admin@exemplo.com</p>
+                    <p><strong>Senha:</strong> admin123</p>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-md border border-blue-200">
-                <p className="text-xs text-gray-700 font-medium mb-1">👤 Administrador Principal</p>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p><strong>Email:</strong> admin@muhlstore.com</p>
-                  <p><strong>Senha:</strong> admin123</p>
+
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-md border border-blue-200">
+                  <p className="text-xs text-gray-700 font-medium mb-1">👤 Administrador Principal</p>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    <p><strong>Email:</strong> admin@muhlstore.com</p>
+                    <p><strong>Senha:</strong> admin123</p>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-md border border-green-200">
-                <p className="text-xs text-gray-700 font-medium mb-1">👤 Ronei Cesar (Dono)</p>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p><strong>Email:</strong> roneinetslim@gmail.com</p>
-                  <p><strong>Senha:</strong> admin123</p>
+
+                <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-md border border-green-200">
+                  <p className="text-xs text-gray-700 font-medium mb-1">👤 Ronei Cesar (Dono)</p>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    <p><strong>Email:</strong> roneinetslim@gmail.com</p>
+                    <p><strong>Senha:</strong> admin123</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           )}
 
           <div className="mt-4 text-center">

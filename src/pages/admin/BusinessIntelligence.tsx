@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Package, 
+import {
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Package,
   DollarSign,
   Calendar,
   Download,
@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { request } from '@/services/api-config';
 
 interface KPIMetric {
   id: string;
@@ -141,13 +142,7 @@ const BusinessIntelligence: React.FC = () => {
 
   const loadKPIMetrics = async () => {
     try {
-      const response = await fetch('/api/bi/kpi-metrics', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/bi/kpi-metrics');
       if (data.success) {
         setKpiMetrics(data.data);
       }
@@ -158,13 +153,7 @@ const BusinessIntelligence: React.FC = () => {
 
   const loadReportTemplates = async () => {
     try {
-      const response = await fetch('/api/bi/report-templates', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/bi/report-templates');
       if (data.success) {
         setReportTemplates(data.data);
       }
@@ -175,13 +164,7 @@ const BusinessIntelligence: React.FC = () => {
 
   const loadDashboardWidgets = async () => {
     try {
-      const response = await fetch('/api/bi/widgets', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/bi/widgets');
       if (data.success) {
         setDashboardWidgets(data.data);
       }
@@ -192,13 +175,7 @@ const BusinessIntelligence: React.FC = () => {
 
   const loadSystemStats = async () => {
     try {
-      const response = await fetch('/api/bi/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/bi/stats');
       if (data.success) {
         setSystemStats(data.data.overview);
       }
@@ -209,12 +186,8 @@ const BusinessIntelligence: React.FC = () => {
 
   const createReportTemplate = async () => {
     try {
-      const response = await fetch('/api/bi/report-templates', {
+      const data = await request<any>('/bi/report-templates', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           ...templateForm,
           parameters: JSON.parse(templateForm.parameters),
@@ -222,8 +195,7 @@ const BusinessIntelligence: React.FC = () => {
           created_by: 'admin'
         })
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowCreateTemplate(false);
         setTemplateForm({
@@ -243,20 +215,15 @@ const BusinessIntelligence: React.FC = () => {
 
   const createDashboardWidget = async () => {
     try {
-      const response = await fetch('/api/bi/widgets', {
+      const data = await request<any>('/bi/widgets', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           ...widgetForm,
           chart_config: JSON.parse(widgetForm.chart_config),
           created_by: 'admin'
         })
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowCreateWidget(false);
         setWidgetForm({
@@ -280,19 +247,14 @@ const BusinessIntelligence: React.FC = () => {
 
   const createKPIMetric = async () => {
     try {
-      const response = await fetch('/api/bi/kpi-metrics', {
+      const data = await request<any>('/bi/kpi-metrics', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           ...kpiForm,
           created_by: 'admin'
         })
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowCreateKPI(false);
         setKpiForm({
@@ -312,16 +274,10 @@ const BusinessIntelligence: React.FC = () => {
 
   const updateKPIMetrics = async () => {
     try {
-      const response = await fetch('/api/bi/kpi-metrics/update', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      await request('/bi/kpi-metrics/update', {
+        method: 'POST'
       });
-      
-      if (response.ok) {
-        loadKPIMetrics();
-      }
+      loadKPIMetrics();
     } catch (error) {
       console.error('Erro ao atualizar métricas:', error);
     }
@@ -501,28 +457,28 @@ const BusinessIntelligence: React.FC = () => {
                     </div>
                     <Badge variant="outline">{metric.metric_type}</Badge>
                   </div>
-                  
+
                   <div className="text-3xl font-bold mb-2">
-                    {metric.unit === 'currency' ? formatCurrency(metric.current_value) : 
-                     metric.unit === 'percentage' ? `${metric.current_value}%` :
-                     formatNumber(metric.current_value)} {metric.unit}
+                    {metric.unit === 'currency' ? formatCurrency(metric.current_value) :
+                      metric.unit === 'percentage' ? `${metric.current_value}%` :
+                        formatNumber(metric.current_value)} {metric.unit}
                   </div>
-                  
+
                   {metric.target_value && (
                     <div className="text-sm text-gray-600 mb-2">
-                      Meta: {metric.unit === 'currency' ? formatCurrency(metric.target_value) : 
-                             metric.unit === 'percentage' ? `${metric.target_value}%` :
-                             formatNumber(metric.target_value)} {metric.unit}
+                      Meta: {metric.unit === 'currency' ? formatCurrency(metric.target_value) :
+                        metric.unit === 'percentage' ? `${metric.target_value}%` :
+                          formatNumber(metric.target_value)} {metric.unit}
                     </div>
                   )}
-                  
+
                   <div className="flex items-center space-x-2">
                     {getTrendIcon(metric.trend_direction)}
                     <span className={`text-sm ${getTrendColor(metric.trend_direction)}`}>
                       {metric.trend_percentage > 0 ? '+' : ''}{metric.trend_percentage.toFixed(1)}%
                     </span>
                   </div>
-                  
+
                   <p className="text-sm text-gray-500 mt-2">{metric.description}</p>
                 </CardContent>
               </Card>
@@ -548,9 +504,9 @@ const BusinessIntelligence: React.FC = () => {
                     <h3 className="font-semibold">{template.name}</h3>
                     <Badge variant="outline">{template.category}</Badge>
                   </div>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">{template.description}</p>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">
                       {format(parseISO(template.created_at), 'dd/MM/yyyy', { locale: ptBR })}
@@ -591,14 +547,14 @@ const BusinessIntelligence: React.FC = () => {
                     </div>
                     <Badge variant="outline">{widget.widget_type}</Badge>
                   </div>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">{widget.description}</p>
-                  
+
                   <div className="text-xs text-gray-500 mb-4">
-                    Posição: {widget.position_x}, {widget.position_y} | 
+                    Posição: {widget.position_x}, {widget.position_y} |
                     Tamanho: {widget.width}x{widget.height}
                   </div>
-                  
+
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm">
                       <Eye className="w-4 h-4" />
@@ -701,13 +657,13 @@ const BusinessIntelligence: React.FC = () => {
                   <Input
                     id="template_name"
                     value={templateForm.name}
-                    onChange={(e) => setTemplateForm({...templateForm, name: e.target.value})}
+                    onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                     placeholder="Nome do template"
                   />
                 </div>
                 <div>
                   <Label htmlFor="template_category">Categoria</Label>
-                  <Select value={templateForm.category} onValueChange={(value) => setTemplateForm({...templateForm, category: value})}>
+                  <Select value={templateForm.category} onValueChange={(value) => setTemplateForm({ ...templateForm, category: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -721,36 +677,36 @@ const BusinessIntelligence: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="template_description">Descrição</Label>
                 <Textarea
                   id="template_description"
                   value={templateForm.description}
-                  onChange={(e) => setTemplateForm({...templateForm, description: e.target.value})}
+                  onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                   placeholder="Descrição do template"
                   rows={3}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="template_query">Query SQL</Label>
                 <Textarea
                   id="template_query"
                   value={templateForm.query_template}
-                  onChange={(e) => setTemplateForm({...templateForm, query_template: e.target.value})}
+                  onChange={(e) => setTemplateForm({ ...templateForm, query_template: e.target.value })}
                   placeholder="SELECT * FROM orders WHERE created_at >= {date_from}"
                   rows={6}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="template_parameters">Parâmetros (JSON)</Label>
                   <Textarea
                     id="template_parameters"
                     value={templateForm.parameters}
-                    onChange={(e) => setTemplateForm({...templateForm, parameters: e.target.value})}
+                    onChange={(e) => setTemplateForm({ ...templateForm, parameters: e.target.value })}
                     placeholder='[{"name": "date_from", "type": "date"}]'
                     rows={3}
                   />
@@ -760,13 +716,13 @@ const BusinessIntelligence: React.FC = () => {
                   <Textarea
                     id="template_chart"
                     value={templateForm.chart_config}
-                    onChange={(e) => setTemplateForm({...templateForm, chart_config: e.target.value})}
+                    onChange={(e) => setTemplateForm({ ...templateForm, chart_config: e.target.value })}
                     placeholder='{"type": "line", "x": "date", "y": "revenue"}'
                     rows={3}
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createReportTemplate} className="flex-1">
                   Criar Template
@@ -794,13 +750,13 @@ const BusinessIntelligence: React.FC = () => {
                   <Input
                     id="widget_name"
                     value={widgetForm.name}
-                    onChange={(e) => setWidgetForm({...widgetForm, name: e.target.value})}
+                    onChange={(e) => setWidgetForm({ ...widgetForm, name: e.target.value })}
                     placeholder="Nome do widget"
                   />
                 </div>
                 <div>
                   <Label htmlFor="widget_type">Tipo</Label>
-                  <Select value={widgetForm.widget_type} onValueChange={(value) => setWidgetForm({...widgetForm, widget_type: value})}>
+                  <Select value={widgetForm.widget_type} onValueChange={(value) => setWidgetForm({ ...widgetForm, widget_type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -814,29 +770,29 @@ const BusinessIntelligence: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="widget_description">Descrição</Label>
                 <Textarea
                   id="widget_description"
                   value={widgetForm.description}
-                  onChange={(e) => setWidgetForm({...widgetForm, description: e.target.value})}
+                  onChange={(e) => setWidgetForm({ ...widgetForm, description: e.target.value })}
                   placeholder="Descrição do widget"
                   rows={3}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="widget_query">Query SQL</Label>
                 <Textarea
                   id="widget_query"
                   value={widgetForm.query_template}
-                  onChange={(e) => setWidgetForm({...widgetForm, query_template: e.target.value})}
+                  onChange={(e) => setWidgetForm({ ...widgetForm, query_template: e.target.value })}
                   placeholder="SELECT * FROM orders WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
                   rows={4}
                 />
               </div>
-              
+
               <div className="grid grid-cols-4 gap-4">
                 <div>
                   <Label htmlFor="widget_x">Posição X</Label>
@@ -844,7 +800,7 @@ const BusinessIntelligence: React.FC = () => {
                     id="widget_x"
                     type="number"
                     value={widgetForm.position_x}
-                    onChange={(e) => setWidgetForm({...widgetForm, position_x: parseInt(e.target.value)})}
+                    onChange={(e) => setWidgetForm({ ...widgetForm, position_x: parseInt(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -853,7 +809,7 @@ const BusinessIntelligence: React.FC = () => {
                     id="widget_y"
                     type="number"
                     value={widgetForm.position_y}
-                    onChange={(e) => setWidgetForm({...widgetForm, position_y: parseInt(e.target.value)})}
+                    onChange={(e) => setWidgetForm({ ...widgetForm, position_y: parseInt(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -862,7 +818,7 @@ const BusinessIntelligence: React.FC = () => {
                     id="widget_width"
                     type="number"
                     value={widgetForm.width}
-                    onChange={(e) => setWidgetForm({...widgetForm, width: parseInt(e.target.value)})}
+                    onChange={(e) => setWidgetForm({ ...widgetForm, width: parseInt(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -871,11 +827,11 @@ const BusinessIntelligence: React.FC = () => {
                     id="widget_height"
                     type="number"
                     value={widgetForm.height}
-                    onChange={(e) => setWidgetForm({...widgetForm, height: parseInt(e.target.value)})}
+                    onChange={(e) => setWidgetForm({ ...widgetForm, height: parseInt(e.target.value) })}
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createDashboardWidget} className="flex-1">
                   Criar Widget
@@ -902,26 +858,26 @@ const BusinessIntelligence: React.FC = () => {
                 <Input
                   id="kpi_name"
                   value={kpiForm.name}
-                  onChange={(e) => setKpiForm({...kpiForm, name: e.target.value})}
+                  onChange={(e) => setKpiForm({ ...kpiForm, name: e.target.value })}
                   placeholder="Nome da métrica"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="kpi_description">Descrição</Label>
                 <Textarea
                   id="kpi_description"
                   value={kpiForm.description}
-                  onChange={(e) => setKpiForm({...kpiForm, description: e.target.value})}
+                  onChange={(e) => setKpiForm({ ...kpiForm, description: e.target.value })}
                   placeholder="Descrição da métrica"
                   rows={3}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="kpi_type">Tipo</Label>
-                  <Select value={kpiForm.metric_type} onValueChange={(value) => setKpiForm({...kpiForm, metric_type: value})}>
+                  <Select value={kpiForm.metric_type} onValueChange={(value) => setKpiForm({ ...kpiForm, metric_type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -940,34 +896,34 @@ const BusinessIntelligence: React.FC = () => {
                   <Input
                     id="kpi_unit"
                     value={kpiForm.unit}
-                    onChange={(e) => setKpiForm({...kpiForm, unit: e.target.value})}
+                    onChange={(e) => setKpiForm({ ...kpiForm, unit: e.target.value })}
                     placeholder="R$, %, unidade"
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="kpi_formula">Fórmula de Cálculo</Label>
                 <Textarea
                   id="kpi_formula"
                   value={kpiForm.calculation_formula}
-                  onChange={(e) => setKpiForm({...kpiForm, calculation_formula: e.target.value})}
+                  onChange={(e) => setKpiForm({ ...kpiForm, calculation_formula: e.target.value })}
                   placeholder="SELECT SUM(total) FROM orders WHERE created_at >= {TODAY}"
                   rows={3}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="kpi_target">Valor Meta</Label>
                 <Input
                   id="kpi_target"
                   type="number"
                   value={kpiForm.target_value}
-                  onChange={(e) => setKpiForm({...kpiForm, target_value: parseFloat(e.target.value)})}
+                  onChange={(e) => setKpiForm({ ...kpiForm, target_value: parseFloat(e.target.value) })}
                   placeholder="0"
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createKPIMetric} className="flex-1">
                   Criar Métrica

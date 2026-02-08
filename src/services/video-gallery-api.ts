@@ -37,12 +37,22 @@ const resolveThumbnailUrl = (url: string | undefined): string => {
   return '/' + trimmed;
 };
 
-const normalizeVideos = (videos: any[]): VideoItem[] => {
-  if (!videos || !Array.isArray(videos)) {
-    console.warn('⚠️ [video-gallery-api] normalizeVideos recebeu dados inválidos:', videos);
+const normalizeVideos = (input: any): VideoItem[] => {
+  let videos_to_normalize = input;
+
+  // Se for um objeto com propriedade de array, extrair o array
+  if (input && !Array.isArray(input)) {
+    if (Array.isArray(input.videos)) videos_to_normalize = input.videos;
+    else if (Array.isArray(input.data)) videos_to_normalize = input.data;
+    else if (Array.isArray(input.items)) videos_to_normalize = input.items;
+  }
+
+  if (!videos_to_normalize || !Array.isArray(videos_to_normalize)) {
+    console.warn('⚠️ [video-gallery-api] normalizeVideos não encontrou array de vídeos:', input);
     return [];
   }
-  const normalized = videos.map(video => ({
+
+  const normalized = videos_to_normalize.map(video => ({
     id: video.id,
     titulo: video.title || video.titulo,
     descricao: video.description || video.descricao,

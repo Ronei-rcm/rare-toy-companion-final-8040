@@ -1,17 +1,53 @@
 import { request } from './api-config';
 
+const normalize = <T>(data: any, context: string): T[] => {
+    if (Array.isArray(data)) return data;
+    if (data && data.data && Array.isArray(data.data)) return data.data;
+    if (data && data.items && Array.isArray(data.items)) return data.items;
+    if (data && data[context] && Array.isArray(data[context])) return data[context];
+    console.warn(`⚠️ [backupApi] Resposta de ${context} não é um array:`, data);
+    return [];
+};
+
 export const backupApi = {
-    getProdutos: async () => request<any>('/produtos'),
-    getPedidos: async () => request<any>('/pedidos'),
-    getClientes: async () => request<any>('/clientes'),
-    getCategorias: async () => request<any>('/categorias'),
+    getProdutos: async () => {
+        const data = await request<any>('/produtos');
+        return normalize(data, 'produtos');
+    },
+    getPedidos: async () => {
+        const data = await request<any>('/pedidos');
+        return normalize(data, 'pedidos');
+    },
+    getClientes: async () => {
+        const data = await request<any>('/clientes');
+        return normalize(data, 'clientes');
+    },
+    getCategorias: async () => {
+        const data = await request<any>('/categorias');
+        return normalize(data, 'categorias');
+    },
     getConfiguracoes: async () => request<any>('/configuracoes'),
-    getProducts: async () => request<any[]>('/produtos'),
-    getOrders: async () => request<any[]>('/pedidos'),
-    getCustomers: async () => request<any[]>('/clientes'),
-    getCategories: async () => request<any[]>('/categorias'),
+    getProducts: async () => {
+        const data = await request<any>('/produtos');
+        return normalize(data, 'produtos');
+    },
+    getOrders: async () => {
+        const data = await request<any>('/pedidos');
+        return normalize(data, 'orders');
+    },
+    getCustomers: async () => {
+        const data = await request<any>('/clientes');
+        return normalize(data, 'customers');
+    },
+    getCategories: async () => {
+        const data = await request<any>('/categorias');
+        return normalize(data, 'categories');
+    },
     getSettings: async () => request<any>('/configuracoes'),
-    getUsers: async () => request<any[]>('/usuarios'),
+    getUsers: async () => {
+        const data = await request<any>('/usuarios');
+        return normalize(data, 'users');
+    },
 
     restoreProdutos: async (data: any) => request<any>('/produtos', { method: 'POST', body: JSON.stringify(data) }),
     restorePedidos: async (data: any) => request<any>('/pedidos', { method: 'POST', body: JSON.stringify(data) }),

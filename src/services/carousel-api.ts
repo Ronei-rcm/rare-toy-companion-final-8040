@@ -70,6 +70,9 @@ function removeBadge(id: string) {
 // Função para análise de imagem com IA
 export const analyzeImageWithAI = async (imageUrl: string): Promise<string> => {
   try {
+    // This fetch call is to an external API (Hugging Face), not the application's backend.
+    // The 'request' helper from api-config.ts is typically for internal API calls.
+    // Therefore, this fetch call remains as is.
     const response = await fetch('https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base', {
       method: 'POST',
       headers: {

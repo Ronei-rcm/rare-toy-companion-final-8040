@@ -1,3 +1,6 @@
+import { request } from './api-config';
+import { useState, useCallback } from 'react';
+
 /**
  * Sistema de Marketing Automation
  * Campanhas automáticas, segmentação e automação de marketing
@@ -163,53 +166,41 @@ class MarketingAutomationEngine {
   // Carregar dados iniciais
   private async loadInitialData() {
     try {
-      // Carregar clientes
-      const customersResponse = await fetch('/api/customers');
-      if (customersResponse.ok) {
-        const customers = await customersResponse.json();
-        customers.forEach((customer: Customer) => {
-          this.customers.set(customer.id, customer);
-        });
-      }
+      // Carregar dados iniciais em paralelo
+      const [customersRes, campaignsRes, segmentsRes, templatesRes, rulesRes] = await Promise.all([
+        request<any>('/customers'),
+        request<any>('/campaigns'),
+        request<any>('/segments'),
+        request<any>('/email-templates'),
+        request<any>('/automation-rules')
+      ]);
 
-      // Carregar campanhas
-      const campaignsResponse = await fetch('/api/campaigns');
-      if (campaignsResponse.ok) {
-        const campaigns = await campaignsResponse.json();
-        campaigns.forEach((campaign: Campaign) => {
-          this.campaigns.set(campaign.id, campaign);
-        });
-      }
+      const customers = this.normalizeArray<Customer>(customersRes, 'customers');
+      const campaigns = this.normalizeArray<Campaign>(campaignsRes, 'campaigns');
+      const segments = this.normalizeArray<Segment>(segmentsRes, 'segments');
+      const templates = this.normalizeArray<EmailTemplate>(templatesRes, 'templates');
+      const rules = this.normalizeArray<AutomationRule>(rulesRes, 'rules');
 
-      // Carregar segmentos
-      const segmentsResponse = await fetch('/api/segments');
-      if (segmentsResponse.ok) {
-        const segments = await segmentsResponse.json();
-        segments.forEach((segment: Segment) => {
-          this.segments.set(segment.id, segment);
-        });
-      }
+      customers.forEach((customer: Customer) => this.customers.set(customer.id, customer));
+      campaigns.forEach((campaign: Campaign) => this.campaigns.set(campaign.id, campaign));
+      segments.forEach((segment: Segment) => this.segments.set(segment.id, segment));
+      templates.forEach((template: EmailTemplate) => this.templates.set(template.id, template));
+      rules.forEach((rule: AutomationRule) => this.automationRules.set(rule.id, rule));
 
-      // Carregar templates
-      const templatesResponse = await fetch('/api/email-templates');
-      if (templatesResponse.ok) {
-        const templates = await templatesResponse.json();
-        templates.forEach((template: EmailTemplate) => {
-          this.templates.set(template.id, template);
-        });
-      }
-
-      // Carregar regras de automação
-      const rulesResponse = await fetch('/api/automation-rules');
-      if (rulesResponse.ok) {
-        const rules = await rulesResponse.json();
-        rules.forEach((rule: AutomationRule) => {
-          this.automationRules.set(rule.id, rule);
-        });
-      }
     } catch (error) {
       console.error('Erro ao carregar dados iniciais:', error);
     }
+  }
+
+  // Utilitário para normalizar respostas de array da API
+  private normalizeArray<T>(data: any, context: string): T[] {
+    if (Array.isArray(data)) return data;
+    if (data && data.data && Array.isArray(data.data)) return data.data;
+    if (data && data.items && Array.isArray(data.items)) return data.items;
+    if (data && data[context] && Array.isArray(data[context])) return data[context];
+
+    console.warn(`⚠️ [MarketingAutomation] Resposta de ${context} não é um array:`, data);
+    return [];
   }
 
   // Iniciar motor de automação
@@ -217,7 +208,7 @@ class MarketingAutomationEngine {
     if (this.isRunning) return;
 
     this.isRunning = true;
-    
+
     // Verificar campanhas agendadas a cada minuto
     setInterval(() => {
       this.processScheduledCampaigns();
@@ -239,11 +230,11 @@ class MarketingAutomationEngine {
   // Processar campanhas agendadas
   private async processScheduledCampaigns() {
     const now = new Date();
-    
+
     for (const campaign of this.campaigns.values()) {
       if (campaign.status === 'scheduled' && campaign.schedule.date) {
         const scheduledDate = new Date(campaign.schedule.date);
-        
+
         if (now >= scheduledDate) {
           await this.executeCampaign(campaign.id);
         }
@@ -272,7 +263,7 @@ class MarketingAutomationEngine {
 
       // Obter audiência
       const audience = await this.getCampaignAudience(campaign);
-      
+
       // Enviar para cada cliente
       for (const customerId of audience) {
         await this.sendToCustomer(campaign, customerId);
@@ -280,7 +271,7 @@ class MarketingAutomationEngine {
 
       // Atualizar métricas
       campaign.metrics.sent = audience.length;
-      
+
       console.log(`📧 Campanha "${campaign.name}" executada para ${audience.length} clientes`);
       return true;
     } catch (error) {
@@ -314,7 +305,7 @@ class MarketingAutomationEngine {
   // Verificar se cliente corresponde ao segmento
   private customerMatchesSegment(customer: Customer, segment: Segment): boolean {
     const { operator, rules } = segment.conditions;
-    
+
     if (operator === 'AND') {
       return rules.every(rule => this.evaluateRule(customer, rule));
     } else {
@@ -325,10 +316,10 @@ class MarketingAutomationEngine {
   // Avaliar regra individual
   private evaluateRule(customer: Customer, rule: any): boolean {
     const { field, operator, value } = rule;
-    
+
     // Obter valor do campo
     const fieldValue = this.getFieldValue(customer, field);
-    
+
     switch (operator) {
       case 'equals':
         return fieldValue === value;
@@ -436,12 +427,11 @@ class MarketingAutomationEngine {
   // Enviar email
   private async sendEmail(to: string, subject: string, content: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/send-email', {
+      await request('/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, subject, content })
       });
-      return response.ok;
+      return true;
     } catch (error) {
       console.error('Erro ao enviar email:', error);
       return false;
@@ -451,12 +441,11 @@ class MarketingAutomationEngine {
   // Enviar SMS
   private async sendSMS(to: string, content: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/send-sms', {
+      await request('/send-sms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, content })
       });
-      return response.ok;
+      return true;
     } catch (error) {
       console.error('Erro ao enviar SMS:', error);
       return false;
@@ -466,12 +455,11 @@ class MarketingAutomationEngine {
   // Enviar notificação push
   private async sendPushNotification(to: string, title: string, content: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/send-push', {
+      await request('/send-push', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to, title, content })
       });
-      return response.ok;
+      return true;
     } catch (error) {
       console.error('Erro ao enviar push:', error);
       return false;

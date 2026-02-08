@@ -41,6 +41,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { uploadApi } from '@/services/upload-api';
 import { onImageError } from '@/utils/resolveImage';
+import { request } from '@/services/api-config';
 
 interface BlogPost {
   id: string;
@@ -72,14 +73,14 @@ const BlogAdmin = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [filterCategoria, setFilterCategoria] = useState<string>('todas');
-  
+
   // Estados do formulário
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null);
   const [activeTab, setActiveTab] = useState('conteudo');
-  
+
   const [formData, setFormData] = useState({
     titulo: '',
     slug: '',
@@ -98,7 +99,7 @@ const BlogAdmin = () => {
     meta_description: '',
     meta_keywords: ''
   });
-  
+
   const [newTag, setNewTag] = useState('');
   const [uploading, setUploading] = useState(false);
 
@@ -112,11 +113,8 @@ const BlogAdmin = () => {
       if (filterStatus !== 'todos') params.append('status', filterStatus);
       if (filterCategoria !== 'todas') params.append('categoria', filterCategoria);
       if (searchTerm) params.append('busca', searchTerm);
-      
-      const response = await fetch(`/api/admin/blog/posts?${params}`);
-      if (!response.ok) throw new Error('Erro ao carregar posts');
-      
-      const data = await response.json();
+
+      const data = await request<BlogPost[]>(`/admin/blog/posts?${params}`);
       setPosts(data);
     } catch (error) {
       console.error('Erro ao carregar posts:', error);
@@ -216,10 +214,7 @@ const BlogAdmin = () => {
   const handleEdit = async (post: BlogPost) => {
     try {
       // Buscar post completo
-      const response = await fetch(`/api/admin/blog/posts/${post.id}`);
-      if (!response.ok) throw new Error('Erro ao carregar post');
-      
-      const fullPost = await response.json();
+      const fullPost = await request<BlogPost>(`/admin/blog/posts/${post.id}`);
       setEditingPost(fullPost);
       setFormData({
         titulo: fullPost.titulo,
@@ -255,24 +250,16 @@ const BlogAdmin = () => {
     }
 
     try {
-      const url = editingPost 
-        ? `/api/admin/blog/posts/${editingPost.id}`
-        : '/api/admin/blog/posts';
-      
+      const endpoint = editingPost
+        ? `/admin/blog/posts/${editingPost.id}`
+        : '/admin/blog/posts';
+
       const method = editingPost ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
+
+      await request(endpoint, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formData)
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Erro ao salvar post');
-      }
 
       toast.success(editingPost ? 'Post atualizado com sucesso!' : 'Post criado com sucesso!');
       setIsEditDialogOpen(false);
@@ -288,11 +275,9 @@ const BlogAdmin = () => {
     if (!postToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/blog/posts/${postToDelete.id}`, {
+      await request(`/admin/blog/posts/${postToDelete.id}`, {
         method: 'DELETE'
       });
-
-      if (!response.ok) throw new Error('Erro ao deletar post');
 
       toast.success('Post deletado com sucesso!');
       setIsDeleteDialogOpen(false);
@@ -307,15 +292,10 @@ const BlogAdmin = () => {
   // Alterar status
   const handleStatusChange = async (post: BlogPost, newStatus: string) => {
     try {
-      const response = await fetch(`/api/admin/blog/posts/${post.id}/status`, {
+      await request(`/admin/blog/posts/${post.id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ status: newStatus })
       });
-
-      if (!response.ok) throw new Error('Erro ao alterar status');
 
       toast.success('Status atualizado com sucesso!');
       loadPosts();
@@ -328,7 +308,7 @@ const BlogAdmin = () => {
   // Filtrar posts
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.resumo.toLowerCase().includes(searchTerm.toLowerCase());
+      post.resumo.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -357,11 +337,10 @@ const BlogAdmin = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
-          <Button 
+          <Button
             onClick={async () => {
               try {
-                const response = await fetch('/api/admin/blog/clean-broken-images', { method: 'POST' });
-                const data = await response.json();
+                const data = await request<any>('/admin/blog/clean-broken-images', { method: 'POST' });
                 if (data.success) {
                   toast.success(data.message || 'Imagens quebradas limpas com sucesso!');
                   loadPosts();
@@ -373,7 +352,7 @@ const BlogAdmin = () => {
                 toast.error('Erro ao limpar imagens quebradas');
               }
             }}
-            variant="outline" 
+            variant="outline"
             size="sm"
             className="text-orange-600 hover:text-orange-700"
           >
@@ -398,7 +377,7 @@ const BlogAdmin = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -408,7 +387,7 @@ const BlogAdmin = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -418,7 +397,7 @@ const BlogAdmin = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -428,7 +407,7 @@ const BlogAdmin = () => {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -456,7 +435,7 @@ const BlogAdmin = () => {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label>Status</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -471,7 +450,7 @@ const BlogAdmin = () => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label>Categoria</Label>
               <Select value={filterCategoria} onValueChange={setFilterCategoria}>
@@ -486,9 +465,9 @@ const BlogAdmin = () => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex items-end">
-              <Button 
+              <Button
                 onClick={() => {
                   setSearchTerm('');
                   setFilterStatus('todos');
@@ -545,7 +524,7 @@ const BlogAdmin = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Conteúdo */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between mb-2">
@@ -561,7 +540,7 @@ const BlogAdmin = () => {
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-3">
                         <div className="flex items-center gap-1">
                           <Tag className="h-4 w-4" />
@@ -584,10 +563,10 @@ const BlogAdmin = () => {
                           {new Date(post.created_at).toLocaleDateString('pt-BR')}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
-                        <Select 
-                          value={post.status} 
+                        <Select
+                          value={post.status}
                           onValueChange={(value) => handleStatusChange(post, value)}
                         >
                           <SelectTrigger className="w-32">
@@ -599,7 +578,7 @@ const BlogAdmin = () => {
                             <SelectItem value="arquivado">Arquivado</SelectItem>
                           </SelectContent>
                         </Select>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -608,7 +587,7 @@ const BlogAdmin = () => {
                           <Edit className="h-4 w-4 mr-1" />
                           Editar
                         </Button>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -642,14 +621,14 @@ const BlogAdmin = () => {
               Preencha as informações do post
             </DialogDescription>
           </DialogHeader>
-          
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
               <TabsTrigger value="imagens">Imagens</TabsTrigger>
               <TabsTrigger value="seo">SEO</TabsTrigger>
             </TabsList>
-            
+
             {/* Aba Conteúdo */}
             <TabsContent value="conteudo" className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -661,7 +640,7 @@ const BlogAdmin = () => {
                     placeholder="Título do post"
                   />
                 </div>
-                
+
                 <div className="col-span-2">
                   <Label>Slug</Label>
                   <Input
@@ -670,11 +649,11 @@ const BlogAdmin = () => {
                     placeholder="slug-do-post"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Categoria</Label>
-                  <Select 
-                    value={formData.categoria} 
+                  <Select
+                    value={formData.categoria}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, categoria: value }))}
                   >
                     <SelectTrigger>
@@ -687,11 +666,11 @@ const BlogAdmin = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label>Status</Label>
-                  <Select 
-                    value={formData.status} 
+                  <Select
+                    value={formData.status}
                     onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
                   >
                     <SelectTrigger>
@@ -704,7 +683,7 @@ const BlogAdmin = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label>Autor</Label>
                   <Input
@@ -713,7 +692,7 @@ const BlogAdmin = () => {
                     placeholder="Nome do autor"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Tempo de Leitura (min)</Label>
                   <Input
@@ -722,7 +701,7 @@ const BlogAdmin = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, tempo_leitura: parseInt(e.target.value) || 5 }))}
                   />
                 </div>
-                
+
                 <div className="col-span-2">
                   <Label>Resumo *</Label>
                   <Textarea
@@ -732,7 +711,7 @@ const BlogAdmin = () => {
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="col-span-2">
                   <Label>Conteúdo * (HTML permitido)</Label>
                   <Textarea
@@ -743,7 +722,7 @@ const BlogAdmin = () => {
                     className="font-mono text-sm"
                   />
                 </div>
-                
+
                 <div className="col-span-2">
                   <Label>Tags</Label>
                   <div className="flex gap-2 mb-2">
@@ -766,7 +745,7 @@ const BlogAdmin = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="col-span-2 flex items-center gap-2">
                   <Switch
                     checked={formData.destaque}
@@ -776,7 +755,7 @@ const BlogAdmin = () => {
                 </div>
               </div>
             </TabsContent>
-            
+
             {/* Aba Imagens */}
             <TabsContent value="imagens" className="space-y-4">
               <div className="space-y-4">
@@ -790,16 +769,16 @@ const BlogAdmin = () => {
                   />
                   {formData.imagem_url && (
                     <div className="mt-2">
-                      <img 
-                        src={formData.imagem_url} 
-                        alt="Preview" 
-                        className="w-full h-48 object-cover rounded border" 
+                      <img
+                        src={formData.imagem_url}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded border"
                         onError={onImageError}
                       />
                     </div>
                   )}
                 </div>
-                
+
                 <div>
                   <Label>Imagem Destaque (Banner)</Label>
                   <Input
@@ -810,10 +789,10 @@ const BlogAdmin = () => {
                   />
                   {formData.imagem_destaque && (
                     <div className="mt-2">
-                      <img 
-                        src={formData.imagem_destaque} 
-                        alt="Preview" 
-                        className="w-full h-48 object-cover rounded border" 
+                      <img
+                        src={formData.imagem_destaque}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded border"
                         onError={onImageError}
                       />
                     </div>
@@ -821,7 +800,7 @@ const BlogAdmin = () => {
                 </div>
               </div>
             </TabsContent>
-            
+
             {/* Aba SEO */}
             <TabsContent value="seo" className="space-y-4">
               <div className="space-y-4">
@@ -833,7 +812,7 @@ const BlogAdmin = () => {
                     placeholder="Título para SEO"
                   />
                 </div>
-                
+
                 <div>
                   <Label>Meta Description</Label>
                   <Textarea
@@ -846,7 +825,7 @@ const BlogAdmin = () => {
                     {formData.meta_description.length}/160 caracteres
                   </p>
                 </div>
-                
+
                 <div>
                   <Label>Meta Keywords</Label>
                   <Input
@@ -858,7 +837,7 @@ const BlogAdmin = () => {
               </div>
             </TabsContent>
           </Tabs>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar

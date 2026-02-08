@@ -7,14 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Save, 
-  Plus, 
-  Trash2, 
-  Edit, 
-  Phone, 
-  Mail, 
-  Clock, 
+import {
+  Save,
+  Plus,
+  Trash2,
+  Edit,
+  Phone,
+  Mail,
+  Clock,
   MapPin,
   MessageCircle,
   HelpCircle,
@@ -22,8 +22,8 @@ import {
   CheckCircle,
   RefreshCw
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { request } from '@/services/api-config';
 
 interface FAQ {
   id: number;
@@ -105,33 +105,18 @@ const SuporteAdmin = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // Carregar FAQs
-      const faqResponse = await fetch('/api/admin/suporte/faqs', {
-        credentials: 'include'
-      });
-      if (faqResponse.ok) {
-        const data = await faqResponse.json();
-        setFaqs(data.faqs || []);
-      }
+      const faqData = await request<any>('/admin/suporte/faqs');
+      setFaqs(faqData.faqs || []);
 
       // Carregar informações de contato
-      const contactResponse = await fetch('/api/admin/suporte/contact', {
-        credentials: 'include'
-      });
-      if (contactResponse.ok) {
-        const data = await contactResponse.json();
-        if (data.contact) setContactInfo(data.contact);
-      }
+      const contactData = await request<any>('/admin/suporte/contact');
+      if (contactData.contact) setContactInfo(contactData.contact);
 
       // Carregar localização
-      const locationResponse = await fetch('/api/admin/suporte/location', {
-        credentials: 'include'
-      });
-      if (locationResponse.ok) {
-        const data = await locationResponse.json();
-        if (data.location) setStoreLocation(data.location);
-      }
+      const locationData = await request<any>('/admin/suporte/location');
+      if (locationData.location) setStoreLocation(locationData.location);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -142,18 +127,11 @@ const SuporteAdmin = () => {
   const saveFAQs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/suporte/faqs', {
+      await request('/admin/suporte/faqs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ faqs })
       });
-
-      if (response.ok) {
-        toast.success('FAQs salvos com sucesso!');
-      } else {
-        toast.error('Erro ao salvar FAQs');
-      }
+      toast.success('FAQs salvos com sucesso!');
     } catch (error) {
       toast.error('Erro ao salvar FAQs');
     } finally {
@@ -164,18 +142,11 @@ const SuporteAdmin = () => {
   const saveContactInfo = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/suporte/contact', {
+      await request('/admin/suporte/contact', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(contactInfo)
       });
-
-      if (response.ok) {
-        toast.success('Informações de contato salvas!');
-      } else {
-        toast.error('Erro ao salvar contato');
-      }
+      toast.success('Informações de contato salvas!');
     } catch (error) {
       toast.error('Erro ao salvar contato');
     } finally {
@@ -186,18 +157,11 @@ const SuporteAdmin = () => {
   const saveLocation = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/suporte/location', {
+      await request('/admin/suporte/location', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(storeLocation)
       });
-
-      if (response.ok) {
-        toast.success('Localização salva!');
-      } else {
-        toast.error('Erro ao salvar localização');
-      }
+      toast.success('Localização salva!');
     } catch (error) {
       toast.error('Erro ao salvar localização');
     } finally {
@@ -247,15 +211,15 @@ const SuporteAdmin = () => {
   const moveFAQ = (index: number, direction: 'up' | 'down') => {
     const newFaqs = [...faqs];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
+
     if (targetIndex < 0 || targetIndex >= faqs.length) return;
-    
+
     [newFaqs[index], newFaqs[targetIndex]] = [newFaqs[targetIndex], newFaqs[index]];
-    
+
     newFaqs.forEach((faq, idx) => {
       faq.order = idx;
     });
-    
+
     setFaqs(newFaqs);
     toast.info('Ordem alterada! Não esqueça de salvar.');
   };

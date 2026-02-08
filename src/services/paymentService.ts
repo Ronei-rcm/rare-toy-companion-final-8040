@@ -1,3 +1,5 @@
+import { request } from './api-config';
+
 interface PaymentMethod {
   id: string;
   name: string;
@@ -33,13 +35,12 @@ interface PaymentResponse {
   method: string;
 }
 
+declare const ApplePaySession: any;
+
 export class PaymentService {
   private static instance: PaymentService;
-  private apiBaseUrl: string;
 
-  private constructor() {
-    this.apiBaseUrl = (import.meta as any).env?.VITE_API_URL || '/api';
-  }
+  private constructor() { }
 
   public static getInstance(): PaymentService {
     if (!PaymentService.instance) {
@@ -53,11 +54,11 @@ export class PaymentService {
    */
   isApplePayAvailable(): boolean {
     if (typeof window === 'undefined') return false;
-    
+
     try {
       return (
         'ApplePaySession' in window &&
-        ApplePaySession.canMakePayments()
+        (window as any).ApplePaySession.canMakePayments()
       );
     } catch (error) {
       console.error('Erro ao verificar Apple Pay:', error);
@@ -70,7 +71,7 @@ export class PaymentService {
    */
   isGooglePayAvailable(): boolean {
     if (typeof window === 'undefined') return false;
-    
+
     try {
       return 'google' in window && 'payments' in (window as any).google;
     } catch (error) {
@@ -120,18 +121,24 @@ export class PaymentService {
 
     // Verificar configurações do servidor
     try {
-      const response = await fetch(`${this.apiBaseUrl}/payment-methods`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const serverMethods = await response.json();
-        // Mesclar com configurações do servidor
-        return methods.map(method => {
-          const serverMethod = serverMethods.find((sm: any) => sm.id === method.id);
-          return serverMethod ? { ...method, ...serverMethod } : method;
-        });
+      const data = await request<any>('/payment-methods');
+      let serverMethods: any[] = [];
+
+      if (Array.isArray(data)) {
+        serverMethods = data;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        serverMethods = data.data;
+      } else if (data && data.methods && Array.isArray(data.methods)) {
+        serverMethods = data.methods;
+      } else {
+        console.warn('⚠️ [PaymentService] Resposta de métodos de pagamento inesperada:', data);
       }
+
+      // Mesclar com configurações do servidor
+      return methods.map(method => {
+        const serverMethod = serverMethods.find((sm: any) => sm.id === method.id);
+        return serverMethod ? { ...method, ...serverMethod } : method;
+      });
     } catch (error) {
       console.error('Erro ao obter métodos de pagamento do servidor:', error);
     }
@@ -142,23 +149,13 @@ export class PaymentService {
   /**
    * Processa pagamento via PIX
    */
-  async processPixPayment(request: PaymentRequest): Promise<PaymentResponse> {
+  async processPixPayment(requestData: PaymentRequest): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/payments/pix`, {
+      const data = await request<any>('/payments/pix', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(request)
+        body: JSON.stringify(requestData)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao processar pagamento PIX');
-      }
-
-      const data = await response.json();
       return {
         success: true,
         transactionId: data.transactionId,
@@ -179,7 +176,7 @@ export class PaymentService {
   /**
    * Processa pagamento via Apple Pay
    */
-  async processApplePayPayment(request: PaymentRequest): Promise<PaymentResponse> {
+  async processApplePayPayment(requestData: PaymentRequest): Promise<PaymentResponse> {
     if (!this.isApplePayAvailable()) {
       return {
         success: false,
@@ -195,44 +192,30 @@ export class PaymentService {
         supportedNetworks: ['visa', 'mastercard', 'amex'],
         merchantCapabilities: ['supports3DS'],
         total: {
-          label: request.description,
-          amount: request.amount.toString()
+          label: requestData.description,
+          amount: requestData.amount.toString()
         },
-        lineItems: request.items.map(item => ({
+        lineItems: requestData.items.map(item => ({
           label: item.name,
           amount: (item.price * item.quantity).toString()
         }))
       };
 
       const session = new ApplePaySession(3, paymentRequest);
-      
+
       return new Promise((resolve) => {
-        session.onvalidatemerchant = async (event) => {
+        session.onvalidatemerchant = async (event: any) => {
           try {
             const validationURL = event.validationURL;
-            const response = await fetch(`${this.apiBaseUrl}/apple-pay/validate`, {
+            const validationData = await request<any>('/apple-pay/validate', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
               body: JSON.stringify({
                 validationURL,
                 domainName: window.location.hostname
               })
             });
 
-            if (response.ok) {
-              const validationData = await response.json();
-              session.completeMerchantValidation(validationData);
-            } else {
-              session.abort();
-              resolve({
-                success: false,
-                error: 'Erro na validação do merchant',
-                method: 'apple_pay'
-              });
-            }
+            session.completeMerchantValidation(validationData);
           } catch (error) {
             session.abort();
             resolve({
@@ -243,36 +226,22 @@ export class PaymentService {
           }
         };
 
-        session.onpaymentauthorized = async (event) => {
+        session.onpaymentauthorized = async (event: any) => {
           try {
-            const response = await fetch(`${this.apiBaseUrl}/payments/apple-pay`, {
+            const data = await request<any>('/payments/apple-pay', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
               body: JSON.stringify({
-                ...request,
+                ...requestData,
                 applePayData: event.payment
               })
             });
 
-            if (response.ok) {
-              const data = await response.json();
-              session.completePayment(ApplePaySession.STATUS_SUCCESS);
-              resolve({
-                success: true,
-                transactionId: data.transactionId,
-                method: 'apple_pay'
-              });
-            } else {
-              session.completePayment(ApplePaySession.STATUS_FAILURE);
-              resolve({
-                success: false,
-                error: 'Erro ao processar pagamento',
-                method: 'apple_pay'
-              });
-            }
+            session.completePayment(ApplePaySession.STATUS_SUCCESS);
+            resolve({
+              success: true,
+              transactionId: data.transactionId,
+              method: 'apple_pay'
+            });
           } catch (error) {
             session.completePayment(ApplePaySession.STATUS_FAILURE);
             resolve({
@@ -306,7 +275,7 @@ export class PaymentService {
   /**
    * Processa pagamento via Google Pay
    */
-  async processGooglePayPayment(request: PaymentRequest): Promise<PaymentResponse> {
+  async processGooglePayPayment(requestData: PaymentRequest): Promise<PaymentResponse> {
     if (!this.isGooglePayAvailable()) {
       return {
         success: false,
@@ -342,7 +311,7 @@ export class PaymentService {
         transactionInfo: {
           totalPriceStatus: 'FINAL',
           totalPriceLabel: 'Total',
-          totalPrice: request.amount.toString(),
+          totalPrice: requestData.amount.toString(),
           currencyCode: 'BRL'
         },
         merchantInfo: {
@@ -353,33 +322,19 @@ export class PaymentService {
 
       const paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
 
-      const response = await fetch(`${this.apiBaseUrl}/payments/google-pay`, {
+      const data = await request<any>('/payments/google-pay', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
-          ...request,
+          ...requestData,
           googlePayData: paymentData
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          success: true,
-          transactionId: data.transactionId,
-          method: 'google_pay'
-        };
-      } else {
-        const errorData = await response.json();
-        return {
-          success: false,
-          error: errorData.message || 'Erro ao processar pagamento',
-          method: 'google_pay'
-        };
-      }
+      return {
+        success: true,
+        transactionId: data.transactionId,
+        method: 'google_pay'
+      };
     } catch (error: any) {
       console.error('Erro no Google Pay:', error);
       return {
@@ -393,26 +348,16 @@ export class PaymentService {
   /**
    * Processa pagamento via cartão de crédito
    */
-  async processCreditCardPayment(request: PaymentRequest, cardData: any): Promise<PaymentResponse> {
+  async processCreditCardPayment(requestData: PaymentRequest, cardData: any): Promise<PaymentResponse> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/payments/credit-card`, {
+      const data = await request<any>('/payments/credit-card', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
-          ...request,
+          ...requestData,
           cardData
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao processar pagamento');
-      }
-
-      const data = await response.json();
       return {
         success: true,
         transactionId: data.transactionId,
@@ -437,15 +382,7 @@ export class PaymentService {
     method?: string;
   }> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/payments/${transactionId}/status`, {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao verificar status do pagamento');
-      }
-
-      const data = await response.json();
+      const data = await request<any>(`/payments/${transactionId}/status`);
       return {
         status: data.status,
         amount: data.amount,

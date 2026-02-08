@@ -10,5 +10,12 @@ export const configApi = {
     saveHomeConfig: async (config: any) => request<any>('/home-config', { method: 'POST', body: JSON.stringify(config) }),
 
     // Utilitários
-    getActiveVideos: async () => request<any>('/videos/active')
+    getActiveVideos: async () => {
+        const data = await request<any>('/videos/active');
+        if (Array.isArray(data)) return data;
+        if (data && data.videos && Array.isArray(data.videos)) return data.videos;
+        if (data && data.data && Array.isArray(data.data)) return data.data;
+        console.warn('⚠️ [configApi] Resposta de vídeos ativos não é um array:', data);
+        return [];
+    }
 };

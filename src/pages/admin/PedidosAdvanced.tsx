@@ -94,6 +94,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getProductImage } from '@/utils/imageUtils';
 import { formatCurrency } from '@/utils/currencyUtils';
 import { formatDate } from '@/utils/dateUtils';
+import { request, API_BASE_URL } from '@/services/api-config';
 
 interface Order {
   id: string;
@@ -152,7 +153,6 @@ interface Customer {
 
 const PedidosAdvanced = () => {
   const { toast } = useToast();
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
   // Estados principais
   const [orders, setOrders] = useState<Order[]>([]);
@@ -220,8 +220,7 @@ const PedidosAdvanced = () => {
 
   const loadOrders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders-advanced`);
-      const data = await response.json();
+      const data = await request<any>('/admin/orders-advanced');
       setOrders(data.orders || []);
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error);
@@ -235,8 +234,7 @@ const PedidosAdvanced = () => {
 
   const loadCustomers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/customers-advanced`);
-      const data = await response.json();
+      const data = await request<any>('/admin/customers-advanced');
       setCustomers(data.customers || []);
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
@@ -245,8 +243,7 @@ const PedidosAdvanced = () => {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders-stats-advanced`);
-      const data = await response.json();
+      const data = await request<any>('/admin/orders-stats-advanced');
       setStats(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -281,7 +278,7 @@ const PedidosAdvanced = () => {
     if (dateFilter !== 'all') {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       filtered = filtered.filter(order => {
         const orderDate = new Date(order.created_at);
         switch (dateFilter) {
@@ -351,22 +348,19 @@ const PedidosAdvanced = () => {
   // Funções de ação
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
+      await request(`/admin/orders/${orderId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        setOrders(prev => prev.map(order => 
-          order.id === orderId ? { ...order, status: newStatus } : order
-        ));
-        toast({
-          title: "Sucesso",
-          description: "Status do pedido atualizado com sucesso",
-        });
-        setStatusUpdateModal(null);
-      }
+      setOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+      toast({
+        title: "Sucesso",
+        description: "Status do pedido atualizado com sucesso",
+      });
+      setStatusUpdateModal(null);
     } catch (error) {
       toast({
         title: "Erro",
@@ -378,22 +372,19 @@ const PedidosAdvanced = () => {
 
   const updateTrackingCode = async (orderId: string, trackingCode: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/tracking`, {
+      await request(`/admin/orders/${orderId}/tracking`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tracking_code: trackingCode }),
       });
 
-      if (response.ok) {
-        setOrders(prev => prev.map(order => 
-          order.id === orderId ? { ...order, tracking_code: trackingCode } : order
-        ));
-        toast({
-          title: "Sucesso",
-          description: "Código de rastreamento atualizado",
-        });
-        setTrackingModal(null);
-      }
+      setOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, tracking_code: trackingCode } : order
+      ));
+      toast({
+        title: "Sucesso",
+        description: "Código de rastreamento atualizado",
+      });
+      setTrackingModal(null);
     } catch (error) {
       toast({
         title: "Erro",
@@ -405,20 +396,17 @@ const PedidosAdvanced = () => {
 
   const addOrderNote = async (orderId: string, note: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/notes`, {
+      await request(`/admin/orders/${orderId}/notes`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note }),
       });
 
-      if (response.ok) {
-        toast({
-          title: "Sucesso",
-          description: "Nota adicionada ao pedido",
-        });
-        setNotesModal(null);
-        loadOrders();
-      }
+      toast({
+        title: "Sucesso",
+        description: "Nota adicionada ao pedido",
+      });
+      setNotesModal(null);
+      loadOrders();
     } catch (error) {
       toast({
         title: "Erro",
@@ -430,10 +418,9 @@ const PedidosAdvanced = () => {
 
   const exportOrders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/orders/export`, {
+      const data = await request<any>(`/admin/orders/export`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           filters: {
             searchTerm,
             statusFilter,
@@ -445,7 +432,17 @@ const PedidosAdvanced = () => {
         }),
       });
 
-      if (response.ok) {
+      if (data && data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        // Fallback para download direto de blob se o backend retornar o binário
+        const apiUrl = `${API_BASE_URL}/admin/orders/export`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ filters: { searchTerm, statusFilter, customerFilter, dateFilter, priorityFilter, paymentFilter } })
+        });
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -455,12 +452,12 @@ const PedidosAdvanced = () => {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        
-        toast({
-          title: "Sucesso",
-          description: "Relatório exportado com sucesso",
-        });
       }
+
+      toast({
+        title: "Sucesso",
+        description: "Relatório exportado com sucesso",
+      });
     } catch (error) {
       toast({
         title: "Erro",

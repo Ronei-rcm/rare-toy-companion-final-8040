@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Clock, Eye, Search, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { onImageError } from '@/utils/resolveImage';
+import { request } from '@/services/api-config';
 
 interface BlogPost {
   id: string;
@@ -34,13 +35,9 @@ export default function Blog() {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch(
-        'https://muhlstore.re9suainternet.com.br/api/blog/posts'
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setPosts(data.posts || []);
+      const data = await request<any>('/blog/posts');
+      if (data && data.posts) {
+        setPosts(data.posts);
       }
     } catch (error) {
       console.error('Erro ao carregar posts:', error);

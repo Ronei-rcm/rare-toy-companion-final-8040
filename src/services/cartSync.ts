@@ -1,3 +1,6 @@
+import { request } from './api-config';
+import { useState, useCallback, useEffect } from 'react';
+
 /**
  * Sistema de Sincronização Inteligente de Carrinho
  * Sincronização em tempo real entre dispositivos e sessões
@@ -124,10 +127,8 @@ class CartSyncManager {
     this.devices.set(this.deviceId, deviceInfo);
 
     try {
-      await fetch('/api/cart/sync/device', {
+      await request('/cart/sync/device', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(deviceInfo)
       });
     } catch (error) {
@@ -216,24 +217,17 @@ class CartSyncManager {
         return true;
       }
 
-      const response = await fetch('/api/cart/sync', {
+      const result = await request<any>('/cart/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           deviceId: this.deviceId,
           events: pendingEvents
         })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        this.handleSyncResponse(result);
-        this.clearPendingEvents();
-        return true;
-      } else {
-        throw new Error('Falha na sincronização');
-      }
+      this.handleSyncResponse(result);
+      this.clearPendingEvents();
+      return true;
     } catch (error) {
       console.error('Erro na sincronização:', error);
       this.handleSyncError();
@@ -258,17 +252,35 @@ class CartSyncManager {
 
   // Manipular resposta da sincronização
   private handleSyncResponse(result: any) {
-    if (result.conflicts && result.conflicts.length > 0) {
-      this.handleConflicts(result.conflicts);
+    if (!result) return;
+
+    // Normalizar listas antes de processar
+    const conflicts = this.normalizeArray<SyncConflict>(result.conflicts, 'conflicts');
+    const events = this.normalizeArray<SyncEvent>(result.events, 'events');
+    const devices = this.normalizeArray<DeviceInfo>(result.devices, 'devices');
+
+    if (conflicts.length > 0) {
+      this.handleConflicts(conflicts);
     }
 
-    if (result.events && result.events.length > 0) {
-      this.applyRemoteEvents(result.events);
+    if (events.length > 0) {
+      this.applyRemoteEvents(events);
     }
 
-    if (result.devices && result.devices.length > 0) {
-      this.updateDevices(result.devices);
+    if (devices.length > 0) {
+      this.updateDevices(devices);
     }
+  }
+
+  // Utilitário para normalizar respostas de array da API
+  private normalizeArray<T>(data: any, context: string): T[] {
+    if (Array.isArray(data)) return data;
+    if (data && data.data && Array.isArray(data.data)) return data.data;
+    if (data && data.items && Array.isArray(data.items)) return data.items;
+    if (data && data[context] && Array.isArray(data[context])) return data[context];
+
+    // Em serviços de sincronização, o aviso deve ser mais discreto para não poluir o console em background
+    return [];
   }
 
   // Manipular conflitos
@@ -443,7 +455,7 @@ class CartSyncManager {
   private getLastSyncTime(): string {
     const lastEvent = Array.from(this.events.values())
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-    
+
     return lastEvent?.timestamp || new Date().toISOString();
   }
 

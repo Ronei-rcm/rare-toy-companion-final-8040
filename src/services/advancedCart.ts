@@ -1,3 +1,7 @@
+import { request } from './api-config';
+import { useState, useCallback, useEffect } from 'react';
+import { useCurrentUser } from '@/contexts/CurrentUserContext';
+
 /**
  * Sistema Avançado de Carrinho de Compras
  * Funcionalidades inteligentes, sincronização e persistência
@@ -155,10 +159,14 @@ class AdvancedCartManager {
   // Carregar carrinho
   private async loadCart() {
     try {
-      const response = await fetch('/api/cart', { credentials: 'include' });
-      if (response.ok) {
-        const cartData = await response.json();
+      const data = await request<any>('/cart');
+      // O carrinho pode vir direto ou dentro de uma propriedade 'cart' ou 'data'
+      const cartData = data && !Array.isArray(data) && (data.cart || data.data || data);
+
+      if (cartData && cartData.id) {
         this.carts.set('current', cartData);
+      } else if (Array.isArray(cartData)) {
+        console.warn('⚠️ [AdvancedCart] Recebeu array em vez de objeto de carrinho único');
       }
     } catch (error) {
       console.error('Erro ao carregar carrinho:', error);
@@ -168,14 +176,23 @@ class AdvancedCartManager {
   // Carregar wishlist
   private async loadWishlist() {
     try {
-      const response = await fetch('/api/wishlist', { credentials: 'include' });
-      if (response.ok) {
-        const wishlistData = await response.json();
-        this.wishlists.set('current', wishlistData);
-      }
+      const data = await request<any>('/wishlist');
+      const wishlistData = this.normalizeArray<WishlistItem>(data, 'wishlist');
+      this.wishlists.set('current', wishlistData);
     } catch (error) {
       console.error('Erro ao carregar wishlist:', error);
     }
+  }
+
+  // Utilitário para normalizar respostas de array da API
+  private normalizeArray<T>(data: any, context: string): T[] {
+    if (Array.isArray(data)) return data;
+    if (data && data.data && Array.isArray(data.data)) return data.data;
+    if (data && data.items && Array.isArray(data.items)) return data.items;
+    if (data && data[context] && Array.isArray(data[context])) return data[context];
+
+    console.warn(`⚠️ [AdvancedCart] Resposta de ${context} não é um array:`, data);
+    return [];
   }
 
   // Iniciar sincronização
@@ -192,15 +209,13 @@ class AdvancedCartManager {
     if (!cart) return;
 
     try {
-      const response = await fetch('/api/cart/sync', {
+      const data = await request<any>('/cart/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(cart)
       });
 
-      if (response.ok) {
-        const updatedCart = await response.json();
+      const updatedCart = data && !Array.isArray(data) && (data.cart || data.data || data);
+      if (updatedCart && updatedCart.id) {
         this.carts.set('current', updatedCart);
       }
     } catch (error) {
@@ -211,7 +226,7 @@ class AdvancedCartManager {
   // Adicionar item ao carrinho
   async addItem(item: Omit<CartItem, 'id' | 'addedAt' | 'lastModified'>): Promise<boolean> {
     const cart = this.carts.get('current') || this.createEmptyCart();
-    
+
     const newItem: CartItem = {
       ...item,
       id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -279,28 +294,20 @@ class AdvancedCartManager {
   // Aplicar cupom de desconto
   async applyCoupon(code: string): Promise<{ success: boolean; message: string; discount?: any }> {
     try {
-      const response = await fetch('/api/cart/coupon', {
+      const result = await request<any>('/cart/coupon', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ code })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const cart = this.carts.get('current');
-        if (cart && result.discount) {
-          cart.discounts.push(result.discount);
-          this.updateCartTotals(cart);
-          this.carts.set('current', cart);
-        }
-        return { success: true, message: result.message, discount: result.discount };
-      } else {
-        const error = await response.json();
-        return { success: false, message: error.message || 'Cupom inválido' };
+      const cart = this.carts.get('current');
+      if (cart && result.discount) {
+        cart.discounts.push(result.discount);
+        this.updateCartTotals(cart);
+        this.carts.set('current', cart);
       }
-    } catch (error) {
-      return { success: false, message: 'Erro ao aplicar cupom' };
+      return { success: true, message: result.message || 'Cupom aplicado!', discount: result.discount };
+    } catch (error: any) {
+      return { success: false, message: error.message || 'Erro ao aplicar cupom' };
     }
   }
 
@@ -320,7 +327,7 @@ class AdvancedCartManager {
   // Adicionar à wishlist
   async addToWishlist(item: Omit<WishlistItem, 'id' | 'addedAt'>): Promise<boolean> {
     const wishlist = this.wishlists.get('current') || [];
-    
+
     const newItem: WishlistItem = {
       ...item,
       id: `wish_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -336,10 +343,8 @@ class AdvancedCartManager {
 
     // Sincronizar com servidor
     try {
-      await fetch('/api/wishlist', {
+      await request('/wishlist', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(newItem)
       });
     } catch (error) {
@@ -356,9 +361,8 @@ class AdvancedCartManager {
     this.wishlists.set('current', updatedWishlist);
 
     try {
-      await fetch(`/api/wishlist/${itemId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      await request(`/wishlist/${itemId}`, {
+        method: 'DELETE'
       });
     } catch (error) {
       console.error('Erro ao remover da wishlist:', error);
@@ -371,7 +375,7 @@ class AdvancedCartManager {
   async moveToCart(wishlistItemId: string): Promise<boolean> {
     const wishlist = this.wishlists.get('current') || [];
     const item = wishlist.find(wishItem => wishItem.id === wishlistItemId);
-    
+
     if (!item) return false;
 
     const cartItem: Omit<CartItem, 'id' | 'addedAt' | 'lastModified'> = {
@@ -395,18 +399,13 @@ class AdvancedCartManager {
   // Criar comparação
   async createComparison(name: string, productIds: string[]): Promise<string | null> {
     try {
-      const response = await fetch('/api/cart/comparison', {
+      const comparison = await request<CartComparison>('/cart/comparison', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ name, productIds })
       });
 
-      if (response.ok) {
-        const comparison = await response.json();
-        this.comparisons.set(comparison.id, comparison);
-        return comparison.id;
-      }
+      this.comparisons.set(comparison.id, comparison);
+      return comparison.id;
     } catch (error) {
       console.error('Erro ao criar comparação:', error);
     }
@@ -420,15 +419,10 @@ class AdvancedCartManager {
     if (!cart || cart.items.length === 0) return [];
 
     try {
-      const response = await fetch(`/api/cart/recommendations?limit=${limit}`, {
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        const recommendations = await response.json();
-        this.recommendations.set('current', recommendations);
-        return recommendations;
-      }
+      const data = await request<any>(`/cart/recommendations?limit=${limit}`);
+      const recommendations = this.normalizeArray<CartRecommendation>(data, 'recommendations');
+      this.recommendations.set('current', recommendations);
+      return recommendations;
     } catch (error) {
       console.error('Erro ao obter recomendações:', error);
     }
@@ -439,14 +433,12 @@ class AdvancedCartManager {
   // Salvar carrinho para depois
   async saveForLater(cartId: string, name: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/cart/save', {
+      await request('/cart/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ cartId, name })
       });
 
-      return response.ok;
+      return true;
     } catch (error) {
       console.error('Erro ao salvar carrinho:', error);
       return false;
@@ -456,16 +448,11 @@ class AdvancedCartManager {
   // Restaurar carrinho salvo
   async restoreCart(savedCartId: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/cart/restore/${savedCartId}`, {
-        method: 'POST',
-        credentials: 'include'
+      const cart = await request<Cart>(`/cart/restore/${savedCartId}`, {
+        method: 'POST'
       });
-
-      if (response.ok) {
-        const cart = await response.json();
-        this.carts.set('current', cart);
-        return true;
-      }
+      this.carts.set('current', cart);
+      return true;
     } catch (error) {
       console.error('Erro ao restaurar carrinho:', error);
     }
@@ -476,7 +463,7 @@ class AdvancedCartManager {
   // Calcular totais do carrinho
   private updateCartTotals(cart: Cart) {
     cart.subtotal = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
+
     // Calcular descontos
     const totalDiscount = cart.discounts.reduce((sum, discount) => {
       if (discount.percentage) {
@@ -540,11 +527,10 @@ class AdvancedCartManager {
   async clearCart(): Promise<boolean> {
     const cart = this.createEmptyCart();
     this.carts.set('current', cart);
-    
+
     try {
-      await fetch('/api/cart/clear', {
-        method: 'POST',
-        credentials: 'include'
+      await request('/cart/clear', {
+        method: 'POST'
       });
     } catch (error) {
       console.error('Erro ao limpar carrinho:', error);

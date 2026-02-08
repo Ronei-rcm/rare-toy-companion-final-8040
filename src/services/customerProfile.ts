@@ -1,3 +1,6 @@
+import { request } from './api-config';
+import { useState, useCallback, useEffect } from 'react';
+
 /**
  * Sistema Avançado de Perfil de Cliente
  * Gestão completa de dados, preferências e histórico
@@ -198,13 +201,10 @@ class CustomerProfileManager {
   // Carregar perfis existentes
   private async loadProfiles() {
     try {
-      const response = await fetch('/api/customers/profiles');
-      if (response.ok) {
-        const profiles = await response.json();
-        profiles.forEach((profile: CustomerProfile) => {
-          this.profiles.set(profile.id, profile);
-        });
-      }
+      const profiles = await request<CustomerProfile[]>('/customers/profiles');
+      profiles.forEach((profile: CustomerProfile) => {
+        this.profiles.set(profile.id, profile);
+      });
     } catch (error) {
       console.error('Erro ao carregar perfis:', error);
     }
@@ -213,17 +213,14 @@ class CustomerProfileManager {
   // Obter perfil completo
   async getProfile(customerId: string): Promise<CustomerProfile | null> {
     await this.initialize();
-    
+
     let profile = this.profiles.get(customerId);
-    
+
     if (!profile) {
       // Tentar carregar do servidor
       try {
-        const response = await fetch(`/api/customers/${customerId}/profile`);
-        if (response.ok) {
-          profile = await response.json();
-          this.profiles.set(customerId, profile);
-        }
+        profile = await request<CustomerProfile>(`/customers/${customerId}/profile`);
+        this.profiles.set(customerId, profile);
       } catch (error) {
         console.error('Erro ao carregar perfil:', error);
       }
@@ -235,21 +232,17 @@ class CustomerProfileManager {
   // Criar/atualizar perfil
   async saveProfile(profile: CustomerProfile): Promise<boolean> {
     try {
-      const response = await fetch(`/api/customers/${profile.id}/profile`, {
+      await request(`/api/customers/${profile.id}/profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profile)
       });
 
-      if (response.ok) {
-        this.profiles.set(profile.id, profile);
-        return true;
-      }
+      this.profiles.set(profile.id, profile);
+      return true;
     } catch (error) {
       console.error('Erro ao salvar perfil:', error);
+      return false;
     }
-
-    return false;
   }
 
   // Atualizar informações pessoais
@@ -377,9 +370,8 @@ class CustomerProfileManager {
 
     // Enviar para servidor
     try {
-      await fetch(`/api/customers/${customerId}/activities`, {
+      await request(`/customers/${customerId}/activities`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newActivity)
       });
     } catch (error) {
@@ -398,29 +390,21 @@ class CustomerProfileManager {
   // Obter estatísticas
   async getStats(customerId: string): Promise<CustomerStats | null> {
     try {
-      const response = await fetch(`/api/customers/${customerId}/stats`);
-      if (response.ok) {
-        return await response.json();
-      }
+      return await request<CustomerStats>(`/api/customers/${customerId}/stats`);
     } catch (error) {
       console.error('Erro ao obter estatísticas:', error);
+      return null;
     }
-
-    return null;
   }
 
   // Obter recomendações personalizadas
   async getRecommendations(customerId: string, limit: number = 10): Promise<any[]> {
     try {
-      const response = await fetch(`/api/customers/${customerId}/recommendations?limit=${limit}`);
-      if (response.ok) {
-        return await response.json();
-      }
+      return await request<any[]>(`/api/customers/${customerId}/recommendations?limit=${limit}`);
     } catch (error) {
       console.error('Erro ao obter recomendações:', error);
+      return [];
     }
-
-    return [];
   }
 
   // Exportar dados do cliente
@@ -441,20 +425,17 @@ class CustomerProfileManager {
   // Deletar conta (GDPR)
   async deleteAccount(customerId: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/customers/${customerId}`, {
+      await request(`/api/customers/${customerId}`, {
         method: 'DELETE'
       });
 
-      if (response.ok) {
-        this.profiles.delete(customerId);
-        this.activities.delete(customerId);
-        return true;
-      }
+      this.profiles.delete(customerId);
+      this.activities.delete(customerId);
+      return true;
     } catch (error) {
       console.error('Erro ao deletar conta:', error);
+      return false;
     }
-
-    return false;
   }
 }
 

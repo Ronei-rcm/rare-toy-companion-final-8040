@@ -1,3 +1,5 @@
+import { request } from './api-config';
+
 interface CartRecoveryEmailData {
   email: string;
   customerName?: string;
@@ -25,9 +27,7 @@ export class CartRecoveryService {
   private static instance: CartRecoveryService;
   private apiBaseUrl: string;
 
-  private constructor() {
-    this.apiBaseUrl = (import.meta as any).env?.VITE_API_URL || '/api';
-  }
+  private constructor() { }
 
   public static getInstance(): CartRecoveryService {
     if (!CartRecoveryService.instance) {
@@ -41,12 +41,8 @@ export class CartRecoveryService {
    */
   async sendCartRecoveryEmail(data: CartRecoveryEmailData): Promise<boolean> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/cart-recovery/email`, {
+      const result = await request<any>('/cart-recovery/email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           ...data,
           timestamp: new Date().toISOString(),
@@ -54,11 +50,6 @@ export class CartRecoveryService {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
       return result.success === true;
     } catch (error) {
       console.error('Erro ao enviar email de recuperação:', error);
@@ -76,19 +67,15 @@ export class CartRecoveryService {
     lastActivity: number;
   }): Promise<boolean> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/cart-recovery/save`, {
+      await request('/cart-recovery/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           ...data,
           timestamp: new Date().toISOString()
         })
       });
 
-      return response.ok;
+      return true;
     } catch (error) {
       console.error('Erro ao salvar dados de recuperação:', error);
       return false;
@@ -100,15 +87,7 @@ export class CartRecoveryService {
    */
   async getRecoverySettings(): Promise<CartRecoverySettings | null> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/cart-recovery/settings`, {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
+      const data = await request<any>('/cart-recovery/settings');
       return data.settings || null;
     } catch (error) {
       console.error('Erro ao obter configurações de recuperação:', error);
@@ -121,12 +100,11 @@ export class CartRecoveryService {
    */
   async markAsRecovered(recoveryId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/cart-recovery/${recoveryId}/recovered`, {
-        method: 'POST',
-        credentials: 'include'
+      await request(`/cart-recovery/${recoveryId}/recovered`, {
+        method: 'POST'
       });
 
-      return response.ok;
+      return true;
     } catch (error) {
       console.error('Erro ao marcar como recuperado:', error);
       return false;
@@ -146,19 +124,11 @@ export class CartRecoveryService {
    */
   async checkAbandonedCart(customerEmail?: string): Promise<any | null> {
     try {
-      const url = customerEmail 
-        ? `${this.apiBaseUrl}/cart-recovery/check?email=${encodeURIComponent(customerEmail)}`
-        : `${this.apiBaseUrl}/cart-recovery/check`;
-      
-      const response = await fetch(url, {
-        credentials: 'include'
-      });
+      const url = customerEmail
+        ? `/cart-recovery/check?email=${encodeURIComponent(customerEmail)}`
+        : '/cart-recovery/check';
 
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
+      const data = await request<any>(url);
       return data.cart || null;
     } catch (error) {
       console.error('Erro ao verificar carrinho abandonado:', error);
@@ -171,12 +141,8 @@ export class CartRecoveryService {
    */
   async trackRecoveryEvent(eventType: 'banner_shown' | 'email_sent' | 'cart_restored' | 'email_clicked', data?: any): Promise<void> {
     try {
-      await fetch(`${this.apiBaseUrl}/cart-recovery/track`, {
+      await request('/cart-recovery/track', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           eventType,
           data,

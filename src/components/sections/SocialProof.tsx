@@ -78,7 +78,7 @@ const SocialProof = () => {
             </div>
             <div className="text-sm text-muted-foreground">Colecionadores</div>
           </div>
-          
+
           <div className="text-center">
             <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
               <ShoppingBag className="w-8 h-8 text-green-500" />
@@ -130,7 +130,7 @@ const SocialProof = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {comprasRecentes.slice(0, 4).map((compra, index) => (
+              {(Array.isArray(comprasRecentes) ? comprasRecentes : []).slice(0, 4).map((compra, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -141,7 +141,7 @@ const SocialProof = () => {
                   <div className="relative rounded-xl overflow-hidden bg-card border">
                     <LazyImage
                       src={compra.imagemUrl || '/src/assets/mario-starwars-hero.jpg'}
-                      alt={compra.produto}
+                      alt={compra.produto || 'Produto'}
                       className="w-full aspect-square object-cover"
                       sizes="(max-width: 768px) 50vw, 25vw"
                     />
@@ -150,14 +150,16 @@ const SocialProof = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <Avatar className="w-6 h-6">
                           <AvatarFallback className="text-xs">
-                            {compra.cliente.split(' ').map(n => n[0]).join('')}
+                            {typeof compra.cliente === 'string'
+                              ? compra.cliente.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase()
+                              : '??'}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-white text-sm font-medium">{compra.cliente}</span>
+                        <span className="text-white text-sm font-medium">{compra.cliente || 'Colecionador'}</span>
                       </div>
-                      <p className="text-white/90 text-xs mb-1">{compra.produto}</p>
+                      <p className="text-white/90 text-xs mb-1">{compra.produto || 'Item Raro'}</p>
                       <div className="flex items-center gap-1">
-                        <span className="text-white/80 text-xs">R$ {compra.preco.toFixed(2)}</span>
+                        <span className="text-white/80 text-xs text-nowrap">R$ {(compra.preco || 0).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -185,43 +187,42 @@ const SocialProof = () => {
             </div>
 
             <div className="space-y-4">
-              {comprasRecentes.map((compra, index) => (
+              {(Array.isArray(comprasRecentes) ? comprasRecentes : []).map((compra, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, x: 20 }}
-                  animate={{ 
+                  animate={{
                     opacity: compraAtual === index ? 1 : 0.5,
                     scale: compraAtual === index ? 1.02 : 1,
                   }}
                   transition={{ duration: 0.3 }}
-                  className={`p-4 rounded-lg border ${
-                    compraAtual === index ? 'bg-primary/5 border-primary/20' : 'bg-card'
-                  }`}
+                  className={`p-4 rounded-lg border ${compraAtual === index ? 'bg-primary/5 border-primary/20' : 'bg-card'
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <LazyImage
                         src={compra.imagemUrl || '/src/assets/mario-starwars-hero.jpg'}
-                        alt={compra.produto}
+                        alt={compra.produto || 'Produto'}
                         className="w-12 h-12 rounded-lg object-cover"
                         sizes="48px"
                       />
                       <div>
-                        <div className="font-medium text-foreground">{compra.cliente}</div>
-                        <div className="text-sm text-muted-foreground">comprou {compra.produto}</div>
+                        <div className="font-medium text-foreground">{compra.cliente || 'Colecionador'}</div>
+                        <div className="text-sm text-muted-foreground">comprou {compra.produto || 'um item'}</div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="w-3 h-3" />
-                          {compra.cidade}
+                          {compra.cidade || 'Brasil'}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground text-nowrap">
                         <Clock className="w-3 h-3" />
-                        {compra.tempoAtras} min atrás
+                        {compra.tempoAtras || 5} min atrás
                       </div>
                       {compraAtual === index && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mt-1" />
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mt-1 ml-auto" />
                       )}
                     </div>
                   </div>

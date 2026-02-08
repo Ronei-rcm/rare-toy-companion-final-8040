@@ -1,3 +1,6 @@
+import { request } from './api-config';
+import { useState, useCallback } from 'react';
+
 /**
  * Sistema de Programa de Fidelidade e Pontos
  * Gamificação, recompensas e engajamento de clientes
@@ -279,16 +282,26 @@ class LoyaltyProgramManager {
   // Carregar clientes
   private async loadCustomers() {
     try {
-      const response = await fetch('/api/customers');
-      if (response.ok) {
-        const customers = await response.json();
-        customers.forEach((customer: Customer) => {
-          this.customers.set(customer.id, customer);
-        });
-      }
+      const data = await request<any>('/customers');
+      const customers = this.normalizeArray<Customer>(data, 'customers');
+
+      customers.forEach((customer: Customer) => {
+        this.customers.set(customer.id, customer);
+      });
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
     }
+  }
+
+  // Utilitário para normalizar respostas de array da API
+  private normalizeArray<T>(data: any, context: string): T[] {
+    if (Array.isArray(data)) return data;
+    if (data && data.data && Array.isArray(data.data)) return data.data;
+    if (data && data.items && Array.isArray(data.items)) return data.items;
+    if (data && data[context] && Array.isArray(data[context])) return data[context];
+
+    console.warn(`⚠️ [LoyaltyProgram] Resposta de ${context} não é um array:`, data);
+    return [];
   }
 
   // Adicionar pontos
@@ -331,7 +344,7 @@ class LoyaltyProgramManager {
     // Verificar se subiu de nível
     const newTier = this.calculateTier(customer.points.current);
     if (newTier !== customer.tier) {
-      customer.tier = newTier;
+      customer.tier = newTier as 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
       await this.notifyTierUpgrade(customer, newTier);
     }
 
@@ -348,7 +361,7 @@ class LoyaltyProgramManager {
   async redeemPoints(customerId: string, rewardId: string): Promise<boolean> {
     const customer = this.customers.get(customerId);
     const reward = this.rewards.get(rewardId);
-    
+
     if (!customer || !reward) return false;
 
     // Verificar se tem pontos suficientes
@@ -429,13 +442,13 @@ class LoyaltyProgramManager {
   // Calcular nível baseado nos pontos
   private calculateTier(points: number): string {
     const tiers = Array.from(this.tiers.values()).sort((a, b) => b.minPoints - a.minPoints);
-    
+
     for (const tier of tiers) {
       if (points >= tier.minPoints) {
         return tier.id;
       }
     }
-    
+
     return 'bronze';
   }
 
@@ -444,7 +457,7 @@ class LoyaltyProgramManager {
     const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
     const customerIndex = tierOrder.indexOf(customerTier);
     const requiredIndex = tierOrder.indexOf(requiredTier);
-    
+
     return customerIndex >= requiredIndex;
   }
 
@@ -561,8 +574,8 @@ class LoyaltyProgramManager {
     if (!customer) return [];
 
     return Array.from(this.rewards.values())
-      .filter(reward => 
-        reward.isActive && 
+      .filter(reward =>
+        reward.isActive &&
         customer.points.current >= reward.pointsCost &&
         (reward.tier === 'all' || this.hasRequiredTier(customer.tier, reward.tier))
       );
@@ -579,7 +592,7 @@ class LoyaltyProgramManager {
   } {
     const customers = Array.from(this.customers.values());
     const transactions = Array.from(this.transactions.values());
-    
+
     const tierDistribution: Record<string, number> = {};
     customers.forEach(customer => {
       tierDistribution[customer.tier] = (tierDistribution[customer.tier] || 0) + 1;

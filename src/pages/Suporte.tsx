@@ -8,11 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  MessageCircle, 
-  Phone, 
-  Mail, 
-  Clock, 
+import {
+  MessageCircle,
+  Phone,
+  Mail,
+  Clock,
   ChevronDown,
   ChevronUp,
   Send,
@@ -33,6 +33,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { SEO } from '@/components/SEO';
+import { request } from '@/services/api-config';
 
 interface SupportConfig {
   faqs: any[];
@@ -68,9 +69,8 @@ const Suporte = () => {
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const response = await fetch('/api/suporte/config');
-        if (response.ok) {
-          const data = await response.json();
+        const data = await request<SupportConfig>('/suporte/config');
+        if (data) {
           setConfig(data);
         }
       } catch (error) {
@@ -79,7 +79,7 @@ const Suporte = () => {
         setLoading(false);
       }
     };
-    
+
     loadConfig();
   }, []);
 
@@ -206,7 +206,7 @@ const Suporte = () => {
     { title: 'Prazos de Entrega', icon: Truck, link: '/sobre' }
   ];
 
-  const filteredFAQs = dynamicFaqs.filter(faq => 
+  const filteredFAQs = dynamicFaqs.filter(faq =>
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
     faq.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -237,7 +237,7 @@ const Suporte = () => {
           <div className="absolute inset-0 opacity-20" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }}></div>
-          
+
           <div className="container mx-auto px-4 relative z-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -281,7 +281,7 @@ const Suporte = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card 
+                <Card
                   className="cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1 bg-white/90 backdrop-blur-sm border border-orange-100/70"
                   onClick={() => window.location.href = item.link}
                 >
@@ -340,7 +340,7 @@ const Suporte = () => {
                                 <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
                               )}
                             </button>
-                            
+
                             <AnimatePresence>
                               {openFAQ === faq.id && (
                                 <motion.div
@@ -364,8 +364,8 @@ const Suporte = () => {
                       <div className="text-center py-12">
                         <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-600">Nenhum resultado encontrado para "{searchQuery}"</p>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="mt-4"
                           onClick={() => setSearchQuery('')}
                         >

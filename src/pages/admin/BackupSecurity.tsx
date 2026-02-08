@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { request } from '@/services/api-config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Shield, 
-  Database, 
-  Download, 
-  Upload, 
-  Clock, 
+import {
+  Shield,
+  Database,
+  Download,
+  Upload,
+  Clock,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -184,13 +185,7 @@ const BackupSecurity: React.FC = () => {
 
   const loadBackupJobs = async () => {
     try {
-      const response = await fetch('/api/backup-security/backup/jobs', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/backup-security/backup/jobs');
       if (data.success) {
         setBackupJobs(data.data);
       }
@@ -201,13 +196,7 @@ const BackupSecurity: React.FC = () => {
 
   const loadBackupExecutions = async () => {
     try {
-      const response = await fetch('/api/backup-security/backup/executions?limit=20', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/backup-security/backup/executions?limit=20');
       if (data.success) {
         setBackupExecutions(data.data);
       }
@@ -218,13 +207,7 @@ const BackupSecurity: React.FC = () => {
 
   const loadSecurityEvents = async () => {
     try {
-      const response = await fetch('/api/backup-security/security/events?limit=50', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/backup-security/security/events?limit=50');
       if (data.success) {
         setSecurityEvents(data.data);
       }
@@ -235,13 +218,7 @@ const BackupSecurity: React.FC = () => {
 
   const loadAccessLogs = async () => {
     try {
-      const response = await fetch('/api/backup-security/security/access-logs?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/backup-security/security/access-logs?limit=100');
       if (data.success) {
         setAccessLogs(data.data);
       }
@@ -252,13 +229,7 @@ const BackupSecurity: React.FC = () => {
 
   const loadSystemStatus = async () => {
     try {
-      const response = await fetch('/api/backup-security/status', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/backup-security/status');
       if (data.success) {
         setSystemStatus(data.data);
       }
@@ -269,19 +240,13 @@ const BackupSecurity: React.FC = () => {
 
   const createBackupJob = async () => {
     try {
-      const response = await fetch('/api/backup-security/backup/jobs', {
+      const data = await request<any>('/backup-security/backup/jobs', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           ...jobForm,
           created_by: 'admin'
         })
       });
-      
-      const data = await response.json();
       if (data.success) {
         setShowCreateJob(false);
         setJobForm({
@@ -318,14 +283,9 @@ const BackupSecurity: React.FC = () => {
 
   const executeBackup = async (jobId: string) => {
     try {
-      const response = await fetch(`/api/backup-security/backup/jobs/${jobId}/execute`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const data = await request<any>(`/backup-security/backup/jobs/${jobId}/execute`, {
+        method: 'POST'
       });
-      
-      const data = await response.json();
       if (data.success) {
         loadBackupExecutions();
         loadBackupJobs();
@@ -520,9 +480,9 @@ const BackupSecurity: React.FC = () => {
                     <h3 className="font-semibold">{job.name}</h3>
                     <Badge variant="outline">{job.backup_type}</Badge>
                   </div>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">{job.description}</p>
-                  
+
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Tipo:</span>
@@ -551,10 +511,10 @@ const BackupSecurity: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => executeBackup(job.id)}
                     >
@@ -788,13 +748,13 @@ const BackupSecurity: React.FC = () => {
                   <Input
                     id="job_name"
                     value={jobForm.name}
-                    onChange={(e) => setJobForm({...jobForm, name: e.target.value})}
+                    onChange={(e) => setJobForm({ ...jobForm, name: e.target.value })}
                     placeholder="Nome do job"
                   />
                 </div>
                 <div>
                   <Label htmlFor="job_type">Tipo de Backup</Label>
-                  <Select value={jobForm.backup_type} onValueChange={(value) => setJobForm({...jobForm, backup_type: value})}>
+                  <Select value={jobForm.backup_type} onValueChange={(value) => setJobForm({ ...jobForm, backup_type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -806,21 +766,21 @@ const BackupSecurity: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="job_description">Descrição</Label>
                 <Textarea
                   id="job_description"
                   value={jobForm.description}
-                  onChange={(e) => setJobForm({...jobForm, description: e.target.value})}
+                  onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
                   placeholder="Descrição do job"
                   rows={3}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="source_type">Fonte</Label>
-                <Select value={jobForm.source_type} onValueChange={(value) => setJobForm({...jobForm, source_type: value})}>
+                <Select value={jobForm.source_type} onValueChange={(value) => setJobForm({ ...jobForm, source_type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -831,7 +791,7 @@ const BackupSecurity: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="retention_days">Retenção (dias)</Label>
@@ -839,13 +799,13 @@ const BackupSecurity: React.FC = () => {
                     id="retention_days"
                     type="number"
                     value={jobForm.retention_days}
-                    onChange={(e) => setJobForm({...jobForm, retention_days: parseInt(e.target.value)})}
+                    onChange={(e) => setJobForm({ ...jobForm, retention_days: parseInt(e.target.value) })}
                     placeholder="30"
                   />
                 </div>
                 <div>
                   <Label htmlFor="schedule_frequency">Frequência</Label>
-                  <Select value={jobForm.schedule_config.frequency} onValueChange={(value) => setJobForm({...jobForm, schedule_config: {...jobForm.schedule_config, frequency: value}})}>
+                  <Select value={jobForm.schedule_config.frequency} onValueChange={(value) => setJobForm({ ...jobForm, schedule_config: { ...jobForm.schedule_config, frequency: value } })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -858,7 +818,7 @@ const BackupSecurity: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createBackupJob} className="flex-1">
                   Criar Job

@@ -74,19 +74,31 @@ export async function handleApiResponse<T>(response: Response, defaultErrorMessa
 export async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-    const headers: HeadersInit = {
-        ...options.headers,
+    const headers: Record<string, string> = {
+        ...(options.headers as Record<string, string> || {}),
     };
 
     // Adiciona Content-Type: application/json se não for FormData e não estiver definido
     if (!(options.body instanceof FormData) && !headers['Content-Type']) {
-        (headers as any)['Content-Type'] = 'application/json';
+        headers['Content-Type'] = 'application/json';
+    }
+
+    // Injeção automática de Token Admin para endpoints /admin/
+    if (typeof window !== 'undefined' && (endpoint.startsWith('/admin') || endpoint.includes('/api/admin'))) {
+        const adminToken = localStorage.getItem('admin_token');
+        if (adminToken) {
+            headers['X-Admin-Token'] = adminToken;
+            // Fallback para Bearer se o backend esperar Authorization
+            if (!headers['Authorization']) {
+                headers['Authorization'] = `Bearer ${adminToken}`;
+            }
+        }
     }
 
     const config: RequestInit = {
         ...options,
         headers,
-        credentials: 'include', // Sempre envia cookies
+        credentials: 'include', // Sempre envia cookies para suporte a sessões baseadas em cookie
     };
 
     try {

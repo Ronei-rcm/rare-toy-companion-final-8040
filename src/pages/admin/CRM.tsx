@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { request } from '@/services/api-config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,14 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  Eye, 
-  Edit, 
+import {
+  Users,
+  UserPlus,
+  Search,
+  Filter,
+  RefreshCw,
+  Eye,
+  Edit,
   Star,
   MessageSquare,
   Phone,
@@ -121,13 +122,7 @@ const CRM: React.FC = () => {
 
   const loadCustomers = async () => {
     try {
-      const response = await fetch('/api/crm/customers', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/crm/customers');
       if (data.success) {
         setCustomers(data.data);
       }
@@ -138,13 +133,7 @@ const CRM: React.FC = () => {
 
   const loadSegments = async () => {
     try {
-      const response = await fetch('/api/crm/segments', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/crm/segments');
       if (data.success) {
         setSegments(data.data);
       }
@@ -155,22 +144,10 @@ const CRM: React.FC = () => {
 
   const loadCustomerDetails = async (customerId: string) => {
     try {
-      const [profileRes, interactionsRes, tasksRes] = await Promise.all([
-        fetch(`/api/crm/customers/${customerId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch(`/api/crm/customers/${customerId}/interactions`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        fetch(`/api/crm/customers/${customerId}/tasks`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
-      ]);
-
       const [profileData, interactionsData, tasksData] = await Promise.all([
-        profileRes.json(),
-        interactionsRes.json(),
-        tasksRes.json()
+        request<any>(`/crm/customers/${customerId}`),
+        request<any>(`/crm/customers/${customerId}/interactions`),
+        request<any>(`/crm/customers/${customerId}/tasks`)
       ]);
 
       if (profileData.success) {
@@ -191,19 +168,14 @@ const CRM: React.FC = () => {
     if (!selectedCustomer) return;
 
     try {
-      const response = await fetch('/api/crm/tasks', {
+      const data = await request<any>('/crm/tasks', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           customer_id: selectedCustomer.id,
           ...newTask
         })
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowTaskModal(false);
         setNewTask({
@@ -222,18 +194,12 @@ const CRM: React.FC = () => {
 
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
-      const response = await fetch(`/api/crm/tasks/${taskId}/status`, {
+      await request(`/crm/tasks/${taskId}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ status })
       });
-      
-      if (response.ok) {
-        loadCustomerDetails(selectedCustomer!.id);
-      }
+
+      loadCustomerDetails(selectedCustomer!.id);
     } catch (error) {
       console.error('Erro ao atualizar status da tarefa:', error);
     }
@@ -241,20 +207,14 @@ const CRM: React.FC = () => {
 
   const markAsVIP = async (customerId: string) => {
     try {
-      const response = await fetch(`/api/crm/customers/${customerId}/vip`, {
+      await request(`/crm/customers/${customerId}/vip`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ reason: 'Cliente de alto valor' })
       });
-      
-      if (response.ok) {
-        loadCustomers();
-        if (selectedCustomer?.id === customerId) {
-          loadCustomerDetails(customerId);
-        }
+
+      loadCustomers();
+      if (selectedCustomer?.id === customerId) {
+        loadCustomerDetails(customerId);
       }
     } catch (error) {
       console.error('Erro ao marcar como VIP:', error);
@@ -348,14 +308,14 @@ const CRM: React.FC = () => {
   };
 
   const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = 
+    const matchesSearch =
       customer.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = filterStatus === 'all' || customer.status === filterStatus;
     const matchesSegment = filterSegment === 'all' || customer.tags.includes(filterSegment);
-    
+
     return matchesSearch && matchesStatus && matchesSegment;
   });
 
@@ -437,11 +397,10 @@ const CRM: React.FC = () => {
           {/* Lista de Clientes */}
           <div className="space-y-4">
             {filteredCustomers.map((customer) => (
-              <Card 
-                key={customer.id} 
-                className={`cursor-pointer hover:shadow-md transition-shadow ${
-                  selectedCustomer?.id === customer.id ? 'ring-2 ring-blue-500' : ''
-                }`}
+              <Card
+                key={customer.id}
+                className={`cursor-pointer hover:shadow-md transition-shadow ${selectedCustomer?.id === customer.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
                 onClick={() => {
                   setSelectedCustomer(customer);
                   loadCustomerDetails(customer.id);
@@ -465,20 +424,20 @@ const CRM: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <Badge className={getStatusColor(customer.status)}>
                         {getStatusIcon(customer.status)}
                         <span className="ml-1">{getStatusLabel(customer.status)}</span>
                       </Badge>
-                      
+
                       {customer.tags.map(tag => (
                         <Badge key={tag} variant="outline">
                           <Tag className="w-3 h-3 mr-1" />
                           {tag}
                         </Badge>
                       ))}
-                      
+
                       {customer.status !== 'vip' && (
                         <Button
                           variant="outline"
@@ -517,14 +476,14 @@ const CRM: React.FC = () => {
                     <p className="text-sm text-gray-600">Email</p>
                     <p className="font-medium">{selectedCustomer.email}</p>
                   </div>
-                  
+
                   {selectedCustomer.phone && (
                     <div>
                       <p className="text-sm text-gray-600">Telefone</p>
                       <p className="font-medium">{selectedCustomer.phone}</p>
                     </div>
                   )}
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Pedidos</p>
@@ -535,7 +494,7 @@ const CRM: React.FC = () => {
                       <p className="font-medium text-lg">{formatCurrency(selectedCustomer.total_spent)}</p>
                     </div>
                   </div>
-                  
+
                   {selectedCustomer.loyalty && (
                     <div>
                       <p className="text-sm text-gray-600">Programa de Fidelidade</p>
@@ -644,26 +603,26 @@ const CRM: React.FC = () => {
                 <Input
                   id="title"
                   value={newTask.title}
-                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                   placeholder="Título da tarefa"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea
                   id="description"
                   value={newTask.description}
-                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   placeholder="Descrição da tarefa"
                   rows={3}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="type">Tipo</Label>
-                  <Select value={newTask.task_type} onValueChange={(value: any) => setNewTask({...newTask, task_type: value})}>
+                  <Select value={newTask.task_type} onValueChange={(value: any) => setNewTask({ ...newTask, task_type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -676,10 +635,10 @@ const CRM: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="priority">Prioridade</Label>
-                  <Select value={newTask.priority} onValueChange={(value: any) => setNewTask({...newTask, priority: value})}>
+                  <Select value={newTask.priority} onValueChange={(value: any) => setNewTask({ ...newTask, priority: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -692,17 +651,17 @@ const CRM: React.FC = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="due_date">Data de Vencimento</Label>
                 <Input
                   id="due_date"
                   type="datetime-local"
                   value={newTask.due_date}
-                  onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
+                  onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createTask} className="flex-1">
                   Criar Tarefa

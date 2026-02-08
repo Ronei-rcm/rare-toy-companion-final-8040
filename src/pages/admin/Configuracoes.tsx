@@ -1,13 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { request } from '@/services/api-config';
 
 const ConfiguracoesAdmin = () => {
   const { toast } = useToast();
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
   const [form, setForm] = useState({
     pix_discount_percent: '5',
@@ -44,8 +40,7 @@ const ConfiguracoesAdmin = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/settings`, { credentials: 'include' });
-      const data = await res.json();
+      const data = await request<any>('/settings');
       const s = (data && data.settings) || {};
       setForm({
         pix_discount_percent: String(s.pix_discount_percent ?? '5'),
@@ -84,12 +79,8 @@ const ConfiguracoesAdmin = () => {
   const save = async () => {
     try {
       setIsSaving(true);
-      const res = await fetch(`${API_BASE_URL}/settings`, {
+      await request('/settings', {
         method: 'PUT',
-        credentials: 'include',
-        // Envia token admin básico pelo header; em prod, usar sessão/jwt do painel
-        // @ts-ignore
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': localStorage.getItem('admin_token') || '' },
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error('Falha ao salvar');
@@ -107,13 +98,10 @@ const ConfiguracoesAdmin = () => {
   const testSmtp = async () => {
     try {
       setIsTestingSmtp(true);
-      const res = await fetch(`${API_BASE_URL}/utils/smtp-test`, {
+      const data = await request<any>('/utils/smtp-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': localStorage.getItem('admin_token') || '' },
-        credentials: 'include',
         body: JSON.stringify({ to: form.smtp_user || undefined })
       });
-      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || 'Falha no teste SMTP');
       toast({ title: 'SMTP OK', description: 'E-mail de teste enviado.' });
     } catch (e: any) {
@@ -125,17 +113,11 @@ const ConfiguracoesAdmin = () => {
 
   const fetchAudit = async (pg: number) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/settings/audit?page=${pg}&pageSize=10`, {
-        credentials: 'include',
-        // @ts-ignore
-        headers: { 'X-Admin-Token': localStorage.getItem('admin_token') || '' }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await request<any>(`/settings/audit?page=${pg}&pageSize=10`);
       setAudit(Array.isArray(data.items) ? data.items : []);
       setPage(data.page || pg);
       setAuditTotal(Number(data.total || 0));
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => { fetchAudit(1); }, []);
@@ -203,33 +185,33 @@ const ConfiguracoesAdmin = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Chave PIX</Label>
-                    <Input 
-                      type="text" 
-                      value={form.pix_key} 
+                    <Input
+                      type="text"
+                      value={form.pix_key}
                       onChange={e => setField('pix_key', e.target.value)}
                       placeholder={
                         form.pix_key_type === 'email' ? 'exemplo@loja.com' :
-                        form.pix_key_type === 'cpf' ? '000.000.000-00' :
-                        form.pix_key_type === 'cnpj' ? '00.000.000/0000-00' :
-                        form.pix_key_type === 'phone' ? '+55 11 99999-9999' :
-                        'Chave aleatória do banco'
+                          form.pix_key_type === 'cpf' ? '000.000.000-00' :
+                            form.pix_key_type === 'cnpj' ? '00.000.000/0000-00' :
+                              form.pix_key_type === 'phone' ? '+55 11 99999-9999' :
+                                'Chave aleatória do banco'
                       }
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Nome do Recebedor</Label>
-                    <Input 
-                      type="text" 
-                      value={form.pix_merchant_name} 
+                    <Input
+                      type="text"
+                      value={form.pix_merchant_name}
                       onChange={e => setField('pix_merchant_name', e.target.value)}
                       placeholder="Nome da loja ou pessoa"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Cidade do Recebedor</Label>
-                    <Input 
-                      type="text" 
-                      value={form.pix_city} 
+                    <Input
+                      type="text"
+                      value={form.pix_city}
                       onChange={e => setField('pix_city', e.target.value)}
                       placeholder="São Paulo"
                     />
@@ -242,7 +224,7 @@ const ConfiguracoesAdmin = () => {
                     </select>
                   </div>
                 </div>
-                
+
                 {/* Preview do QR Code PIX */}
                 {form.pix_key && form.pix_merchant_name && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
@@ -331,51 +313,51 @@ const ConfiguracoesAdmin = () => {
         </CardContent>
       </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Histórico de Alterações</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {audit.length === 0 ? (
-          <div className="text-sm text-muted-foreground">Sem alterações recentes.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left">
-                  <th className="py-2 pr-4">Quando</th>
-                  <th className="py-2 pr-4">Chave</th>
-                  <th className="py-2 pr-4">De</th>
-                  <th className="py-2 pr-4">Para</th>
-                  <th className="py-2 pr-4">Admin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {audit.map((a) => (
-                  <tr key={a.id} className="border-t">
-                    <td className="py-2 pr-4">{new Date(a.created_at).toLocaleString('pt-BR')}</td>
-                    <td className="py-2 pr-4">{a.key_name}</td>
-                    <td className="py-2 pr-4">{String(a.old_value ?? '')}</td>
-                    <td className="py-2 pr-4">{String(a.new_value ?? '')}</td>
-                    <td className="py-2 pr-4">{a.admin_id || '-'}</td>
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Alterações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {audit.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Sem alterações recentes.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left">
+                    <th className="py-2 pr-4">Quando</th>
+                    <th className="py-2 pr-4">Chave</th>
+                    <th className="py-2 pr-4">De</th>
+                    <th className="py-2 pr-4">Para</th>
+                    <th className="py-2 pr-4">Admin</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="flex items-center justify-between gap-2 mt-3">
-              <div className="text-xs text-muted-foreground">Página {page} de {Math.max(1, Math.ceil(auditTotal / 10))}</div>
-            </div>
-            <div className="flex items-center justify-between gap-2 mt-3">
-              <div className="text-xs text-muted-foreground">Total: {auditTotal}</div>
-              <div className="flex gap-2">
-                <button className="border rounded px-3 py-1 text-sm" onClick={() => fetchAudit(Math.max(1, page - 1))} disabled={page <= 1}>Anterior</button>
-                <button className="border rounded px-3 py-1 text-sm" onClick={() => fetchAudit(page + 1)}>Próxima</button>
+                </thead>
+                <tbody>
+                  {audit.map((a) => (
+                    <tr key={a.id} className="border-t">
+                      <td className="py-2 pr-4">{new Date(a.created_at).toLocaleString('pt-BR')}</td>
+                      <td className="py-2 pr-4">{a.key_name}</td>
+                      <td className="py-2 pr-4">{String(a.old_value ?? '')}</td>
+                      <td className="py-2 pr-4">{String(a.new_value ?? '')}</td>
+                      <td className="py-2 pr-4">{a.admin_id || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex items-center justify-between gap-2 mt-3">
+                <div className="text-xs text-muted-foreground">Página {page} de {Math.max(1, Math.ceil(auditTotal / 10))}</div>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-3">
+                <div className="text-xs text-muted-foreground">Total: {auditTotal}</div>
+                <div className="flex gap-2">
+                  <button className="border rounded px-3 py-1 text-sm" onClick={() => fetchAudit(Math.max(1, page - 1))} disabled={page <= 1}>Anterior</button>
+                  <button className="border rounded px-3 py-1 text-sm" onClick={() => fetchAudit(page + 1)}>Próxima</button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { request } from '@/services/api-config';
 
 const ResetPassword: React.FC = () => {
   const [params] = useSearchParams();
@@ -26,20 +27,15 @@ const ResetPassword: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/reset-password', {
+      await request('/admin/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, new_password: newPassword })
       });
-      if (res.ok) {
-        setSuccess(true);
-        setTimeout(() => navigate('/admin/login'), 1500);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.error || 'Falha ao resetar senha');
-      }
+
+      setSuccess(true);
+      setTimeout(() => navigate('/admin/login'), 1500);
     } catch (e: any) {
-      setError('Erro de conexão');
+      setError(e.message || 'Erro de conexão');
     } finally {
       setIsLoading(false);
     }

@@ -9,12 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { 
-  Users, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
+import {
+  Users,
+  Plus,
+  Edit,
+  Trash2,
+  Search,
   Shield,
   UserCheck,
   UserX,
@@ -60,26 +60,26 @@ interface UsuarioForm {
   permissoes: string[];
 }
 
-const UsuariosAdmin = () => {
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+import { request } from '@/services/api-config';
 
+const UsuariosAdmin = () => {
   // Estados
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  
+
   // Dialogs
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  
+
   // Seleções
   const [selectedUsuario, setSelectedUsuario] = useState<Usuario | null>(null);
   const [usuarioToDelete, setUsuarioToDelete] = useState<Usuario | null>(null);
-  
+
   // Form
   const [formData, setFormData] = useState<UsuarioForm>({
     nome: '',
@@ -91,7 +91,7 @@ const UsuariosAdmin = () => {
     status: 'ativo',
     permissoes: []
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<{
@@ -119,12 +119,9 @@ const UsuariosAdmin = () => {
   const loadUsuarios = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/usuarios`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
+      const data = await request('/admin/usuarios');
+
+      if (data) {
         setUsuarios(data.map((u: any) => ({
           ...u,
           criadoEm: new Date(u.created_at),
@@ -143,10 +140,10 @@ const UsuariosAdmin = () => {
   // Filtrar usuários
   const filteredUsuarios = usuarios.filter(usuario => {
     const matchSearch = usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       usuario.email.toLowerCase().includes(searchTerm.toLowerCase());
+      usuario.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchRole = filterRole === 'all' || usuario.role === filterRole;
     const matchStatus = filterStatus === 'all' || usuario.status === filterStatus;
-    
+
     return matchSearch && matchRole && matchStatus;
   });
 
@@ -238,11 +235,11 @@ const UsuariosAdmin = () => {
 
     try {
       const url = showEditDialog && selectedUsuario
-        ? `${API_BASE_URL}/admin/usuarios/${selectedUsuario.id}`
-        : `${API_BASE_URL}/admin/usuarios`;
-      
+        ? `/admin/usuarios/${selectedUsuario.id}`
+        : `/admin/usuarios`;
+
       const method = showEditDialog ? 'PUT' : 'POST';
-      
+
       const payload = {
         nome: formData.nome,
         email: formData.email,
@@ -257,25 +254,18 @@ const UsuariosAdmin = () => {
         )
       };
 
-      const response = await fetch(url, {
+      await request(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(payload)
       });
 
-      if (response.ok) {
-        toast.success(showEditDialog ? 'Usuário atualizado!' : 'Usuário criado!');
-        setShowAddDialog(false);
-        setShowEditDialog(false);
-        loadUsuarios();
-      } else {
-        const error = await response.json();
-        toast.error(error.message || 'Erro ao salvar usuário');
-      }
-    } catch (error) {
+      toast.success(showEditDialog ? 'Usuário atualizado!' : 'Usuário criado!');
+      setShowAddDialog(false);
+      setShowEditDialog(false);
+      loadUsuarios();
+    } catch (error: any) {
       console.error('Erro:', error);
-      toast.error('Erro ao salvar usuário');
+      toast.error(error.message || 'Erro ao salvar usuário');
     }
   };
 
@@ -288,21 +278,16 @@ const UsuariosAdmin = () => {
     if (!usuarioToDelete) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/usuarios/${usuarioToDelete.id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      await request(`/admin/usuarios/${usuarioToDelete.id}`, {
+        method: 'DELETE'
       });
 
-      if (response.ok) {
-        toast.success('Usuário excluído!');
-        setShowDeleteDialog(false);
-        loadUsuarios();
-      } else {
-        toast.error('Erro ao excluir usuário');
-      }
-    } catch (error) {
+      toast.success('Usuário excluído!');
+      setShowDeleteDialog(false);
+      loadUsuarios();
+    } catch (error: any) {
       console.error('Erro:', error);
-      toast.error('Erro ao excluir usuário');
+      toast.error(error.message || 'Erro ao excluir usuário');
     }
   };
 
@@ -323,16 +308,16 @@ const UsuariosAdmin = () => {
     // Comprimento
     if (password.length >= 8) score += 1;
     else feedback.push('Use pelo menos 8 caracteres');
-    
+
     if (password.length >= 12) score += 1;
 
     // Caracteres variados
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
     else feedback.push('Use letras maiúsculas e minúsculas');
-    
+
     if (/[0-9]/.test(password)) score += 1;
     else feedback.push('Adicione números');
-    
+
     if (/[^A-Za-z0-9]/.test(password)) score += 1;
     else feedback.push('Adicione símbolos (!@#$%...)');
 
@@ -700,29 +685,27 @@ const UsuariosAdmin = () => {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
                   </div>
-                  
+
                   {/* Indicador de força de senha */}
                   {formData.senha && (
                     <div className="mt-2 space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-600">Força da senha:</span>
-                        <span className={`font-medium ${
-                          passwordStrength.score <= 2 ? 'text-red-600' :
-                          passwordStrength.score <= 3 ? 'text-yellow-600' :
-                          'text-green-600'
-                        }`}>
+                        <span className={`font-medium ${passwordStrength.score <= 2 ? 'text-red-600' :
+                            passwordStrength.score <= 3 ? 'text-yellow-600' :
+                              'text-green-600'
+                          }`}>
                           {passwordStrength.score <= 2 ? 'Fraca' :
-                           passwordStrength.score <= 3 ? 'Média' :
-                           'Forte'}
+                            passwordStrength.score <= 3 ? 'Média' :
+                              'Forte'}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className={`h-2 rounded-full transition-all ${
-                            passwordStrength.score <= 2 ? 'bg-red-500' :
-                            passwordStrength.score <= 3 ? 'bg-yellow-500' :
-                            'bg-green-500'
-                          }`}
+                          className={`h-2 rounded-full transition-all ${passwordStrength.score <= 2 ? 'bg-red-500' :
+                              passwordStrength.score <= 3 ? 'bg-yellow-500' :
+                                'bg-green-500'
+                            }`}
                           style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
                         />
                       </div>
@@ -761,7 +744,7 @@ const UsuariosAdmin = () => {
                   )}
                 </div>
               </div>
-              
+
               {showEditDialog && (
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <Key className="w-3 h-3" />

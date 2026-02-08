@@ -4,10 +4,10 @@ import { Star, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 import { ReviewModeration } from '@/components/admin/ReviewModeration';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { request } from '@/services/api-config';
 
 export default function Reviews() {
   const [stats, setStats] = React.useState<any>(null);
-  const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
   React.useEffect(() => {
     fetchStats();
@@ -15,8 +15,7 @@ export default function Reviews() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reviews/stats`);
-      const data = await response.json();
+      const data = await request<any>('/admin/reviews/stats');
       setStats(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);

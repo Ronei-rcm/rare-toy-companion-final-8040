@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Star, CheckCircle, XCircle, Trash2, Eye, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { request } from '@/services/api-config';
 
 interface Review {
   id: number;
@@ -62,20 +63,9 @@ export default function ReviewsAdmin() {
   const fetchReviews = async (status?: string) => {
     try {
       setLoading(true);
-      const url = status
-        ? `https://muhlstore.re9suainternet.com.br/api/admin/reviews?status=${status}`
-        : `https://muhlstore.re9suainternet.com.br/api/admin/reviews`;
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data.reviews || []);
-      }
+      const url = status ? `/admin/reviews?status=${status}` : '/admin/reviews';
+      const data = await request<any>(url);
+      setReviews(data.reviews || []);
     } catch (error) {
       toast({
         title: 'Erro',
@@ -90,32 +80,19 @@ export default function ReviewsAdmin() {
   const handleApprove = async (reviewId: number) => {
     setIsProcessing(true);
     try {
-      const response = await fetch(
-        `https://muhlstore.re9suainternet.com.br/api/admin/reviews/${reviewId}/approve`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
-          },
-        }
-      );
+      const data = await request<any>(`/admin/reviews/${reviewId}/approve`, {
+        method: 'PUT',
+      });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Avaliação aprovada',
-          description: data.message,
-        });
-        fetchReviews(activeTab);
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error) {
+      toast({
+        title: 'Avaliação aprovada',
+        description: data.message,
+      });
+      fetchReviews(activeTab);
+    } catch (error: any) {
       toast({
         title: 'Erro',
-        description: 'Erro ao aprovar avaliação',
+        description: error.message || 'Erro ao aprovar avaliação',
         variant: 'destructive',
       });
     } finally {
@@ -128,38 +105,25 @@ export default function ReviewsAdmin() {
 
     setIsProcessing(true);
     try {
-      const response = await fetch(
-        `https://muhlstore.re9suainternet.com.br/api/admin/reviews/${selectedReview.id}/reject`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
-          },
-          body: JSON.stringify({
-            admin_notes: rejectNotes,
-          }),
-        }
-      );
+      const data = await request<any>(`/admin/reviews/${selectedReview.id}/reject`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          admin_notes: rejectNotes,
+        }),
+      });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Avaliação rejeitada',
-          description: data.message,
-        });
-        setShowRejectDialog(false);
-        setRejectNotes('');
-        setSelectedReview(null);
-        fetchReviews(activeTab);
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error) {
+      toast({
+        title: 'Avaliação rejeitada',
+        description: data.message,
+      });
+      setShowRejectDialog(false);
+      setRejectNotes('');
+      setSelectedReview(null);
+      fetchReviews(activeTab);
+    } catch (error: any) {
       toast({
         title: 'Erro',
-        description: 'Erro ao rejeitar avaliação',
+        description: error.message || 'Erro ao rejeitar avaliação',
         variant: 'destructive',
       });
     } finally {
@@ -174,31 +138,19 @@ export default function ReviewsAdmin() {
 
     setIsProcessing(true);
     try {
-      const response = await fetch(
-        `https://muhlstore.re9suainternet.com.br/api/admin/reviews/${reviewId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
-          },
-        }
-      );
+      const data = await request<any>(`/admin/reviews/${reviewId}`, {
+        method: 'DELETE',
+      });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Avaliação excluída',
-          description: data.message,
-        });
-        fetchReviews(activeTab);
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error) {
+      toast({
+        title: 'Avaliação excluída',
+        description: data.message,
+      });
+      fetchReviews(activeTab);
+    } catch (error: any) {
       toast({
         title: 'Erro',
-        description: 'Erro ao excluir avaliação',
+        description: error.message || 'Erro ao excluir avaliação',
         variant: 'destructive',
       });
     } finally {
@@ -306,11 +258,10 @@ export default function ReviewsAdmin() {
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-3 w-3 ${
-                        i < review.rating
+                      className={`h-3 w-3 ${i < review.rating
                           ? 'fill-yellow-400 text-yellow-400'
                           : 'fill-gray-200 text-gray-200'
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>
@@ -448,11 +399,10 @@ export default function ReviewsAdmin() {
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-5 w-5 ${
-                        i < selectedReview.rating
+                      className={`h-5 w-5 ${i < selectedReview.rating
                           ? 'fill-yellow-400 text-yellow-400'
                           : 'fill-gray-200 text-gray-200'
-                      }`}
+                        }`}
                     />
                   ))}
                 </div>

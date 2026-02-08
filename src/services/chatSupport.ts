@@ -1,3 +1,6 @@
+import { request } from './api-config';
+import { useState, useCallback, useEffect } from 'react';
+
 /**
  * Sistema de Chat de Suporte em Tempo Real
  * Atendimento ao cliente com IA e agentes humanos
@@ -168,8 +171,16 @@ class ChatSupportManager {
   // Conectar WebSocket
   private connectWebSocket() {
     try {
-      this.socket = new WebSocket(import.meta.env.VITE_WS_URL || 'ws://localhost:8080/chat');
-      
+      let wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/chat';
+
+      // Se estiver em HTTPS, garantir que o WebSocket use WSS
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        wsUrl = wsUrl.replace('ws://', 'wss://');
+      }
+
+      console.log(`🔌 Conectando ao WebSocket: ${wsUrl}`);
+      this.socket = new WebSocket(wsUrl);
+
       this.socket.onopen = () => {
         this.isConnected = true;
         console.log('💬 Chat conectado');
@@ -201,13 +212,13 @@ class ChatSupportManager {
     while (this.messageQueue.length > 0 && this.isConnected) {
       const message = this.messageQueue.shift();
       if (message) {
-        this.sendMessage(message);
+        this.sendWebSocketMessage(message);
       }
     }
   }
 
-  // Enviar mensagem via WebSocket
-  private sendMessage(message: Message) {
+  // Enviar mensagem via WebSocket (interno)
+  private sendWebSocketMessage(message: Message) {
     if (this.isConnected && this.socket) {
       this.socket.send(JSON.stringify({
         type: 'message',
@@ -270,7 +281,7 @@ class ChatSupportManager {
   // Criar nova conversa
   async createConversation(customerId: string, subject?: string, category: string = 'general'): Promise<string> {
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const conversation: Conversation = {
       id: conversationId,
       customerId,
@@ -302,8 +313,8 @@ class ChatSupportManager {
 
     // Encontrar agente disponível
     const availableAgents = Array.from(this.users.values())
-      .filter(user => 
-        user.type === 'agent' && 
+      .filter(user =>
+        user.type === 'agent' &&
         user.status === 'online' &&
         this.getAgentActiveChats(user.id) < this.settings.maxConcurrentChats
       );
@@ -315,7 +326,7 @@ class ChatSupportManager {
       conversation.updatedAt = new Date().toISOString();
 
       // Notificar agente
-      this.sendMessage({
+      this.sendWebSocketMessage({
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         conversationId,
         senderId: 'system',
@@ -356,7 +367,7 @@ class ChatSupportManager {
     conversation.updatedAt = new Date().toISOString();
 
     // Enviar via WebSocket
-    this.sendMessage(fullMessage);
+    this.sendWebSocketMessage(fullMessage);
 
     // Processar com IA se habilitado
     if (this.settings.aiEnabled && message.senderId !== 'ai') {
@@ -370,7 +381,7 @@ class ChatSupportManager {
   private async processWithAI(conversation: Conversation, message: Message) {
     try {
       const aiResponse = await this.getAIResponse(message.content, conversation);
-      
+
       if (aiResponse && aiResponse.confidence > 0.7) {
         // Enviar resposta da IA
         await this.sendMessage({
@@ -393,9 +404,8 @@ class ChatSupportManager {
   // Obter resposta da IA
   private async getAIResponse(query: string, conversation: Conversation): Promise<AIResponse | null> {
     try {
-      const response = await fetch('/api/ai/chat', {
+      return await request<AIResponse>('/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
           conversationId: conversation.id,
@@ -403,10 +413,6 @@ class ChatSupportManager {
           context: conversation.messages.slice(-5).map(m => m.content)
         })
       });
-
-      if (response.ok) {
-        return await response.json();
-      }
     } catch (error) {
       console.error('Erro ao obter resposta da IA:', error);
     }
@@ -417,7 +423,7 @@ class ChatSupportManager {
   // Obter conversas do usuário
   getUserConversations(userId: string, status?: string): Conversation[] {
     return Array.from(this.conversations.values())
-      .filter(conv => 
+      .filter(conv =>
         conv.customerId === userId || conv.agentId === userId
       )
       .filter(conv => !status || conv.status === status)
@@ -435,7 +441,7 @@ class ChatSupportManager {
   markMessageAsRead(messageId: string): boolean {
     const conversation = Array.from(this.conversations.values())
       .find(conv => conv.messages.some(msg => msg.id === messageId));
-    
+
     if (conversation) {
       const message = conversation.messages.find(msg => msg.id === messageId);
       if (message) {
@@ -443,7 +449,7 @@ class ChatSupportManager {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -494,9 +500,9 @@ class ChatSupportManager {
     const activeConversations = conversations.filter(c => c.status === 'active').length;
     const waitingConversations = conversations.filter(c => c.status === 'waiting').length;
     const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
-    
+
     const ratedConversations = conversations.filter(c => c.satisfaction);
-    const satisfactionRate = ratedConversations.length > 0 
+    const satisfactionRate = ratedConversations.length > 0
       ? ratedConversations.reduce((sum, c) => sum + (c.satisfaction?.rating || 0), 0) / ratedConversations.length
       : 0;
 
@@ -563,8 +569,8 @@ export const useChatSupport = () => {
   }, []);
 
   const createConversation = useCallback(async (
-    customerId: string, 
-    subject?: string, 
+    customerId: string,
+    subject?: string,
     category: string = 'general'
   ) => {
     setLoading(true);

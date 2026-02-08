@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Package, 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  Eye, 
+import {
+  Package,
+  Search,
+  Filter,
+  RefreshCw,
+  Eye,
   CheckCircle,
   Clock,
   Truck,
@@ -38,8 +38,8 @@ import {
   ArrowRight,
   ArrowLeft
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { request } from '@/services/api-config';
 
 interface Order {
   id: string;
@@ -131,13 +131,7 @@ const Orders: React.FC = () => {
 
   const loadOrders = async () => {
     try {
-      const response = await fetch('/api/orders/report?limit=50', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/orders/report?limit=50');
       if (data.success) {
         setOrders(data.data);
       }
@@ -148,9 +142,7 @@ const Orders: React.FC = () => {
 
   const loadShippingMethods = async () => {
     try {
-      const response = await fetch('/api/orders/shipping-methods');
-      
-      const data = await response.json();
+      const data = await request<any>('/orders/shipping-methods');
       if (data.success) {
         setShippingMethods(data.data);
       }
@@ -161,13 +153,7 @@ const Orders: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/orders/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>('/orders/stats');
       if (data.success) {
         setStats(data.data.overview);
       }
@@ -178,13 +164,7 @@ const Orders: React.FC = () => {
 
   const loadOrderHistory = async (orderId: string) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/history`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      const data = await response.json();
+      const data = await request<any>(`/orders/${orderId}/history`);
       if (data.success) {
         setOrderHistory(data.data);
       }
@@ -197,20 +177,15 @@ const Orders: React.FC = () => {
     if (!selectedOrder) return;
 
     try {
-      const response = await fetch(`/api/orders/${selectedOrder.id}/status`, {
+      const data = await request<any>(`/orders/${selectedOrder.id}/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           status: statusForm.status,
           notes: statusForm.notes,
           changed_by: 'admin'
         })
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowStatusModal(false);
         setStatusForm({ status: '', notes: '' });
@@ -226,12 +201,8 @@ const Orders: React.FC = () => {
     if (!selectedOrder) return;
 
     try {
-      const response = await fetch(`/api/orders/${selectedOrder.id}/shipments`, {
+      const data = await request<any>(`/orders/${selectedOrder.id}/shipments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           shipping_method_id: shippingForm.shipping_method_id,
           tracking_number: shippingForm.tracking_number,
@@ -239,8 +210,7 @@ const Orders: React.FC = () => {
           notes: shippingForm.notes
         })
       });
-      
-      const data = await response.json();
+
       if (data.success) {
         setShowShippingModal(false);
         setShippingForm({
@@ -258,16 +228,12 @@ const Orders: React.FC = () => {
 
   const processOrder = async (orderId: string, action: string) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/process`, {
+      const data = await request<any>(`/orders/${orderId}/process`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({ action })
       });
-      
-      if (response.ok) {
+
+      if (data) {
         loadOrders();
         if (selectedOrder?.id === orderId) {
           loadOrderHistory(orderId);
@@ -353,13 +319,13 @@ const Orders: React.FC = () => {
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
+    const matchesSearch =
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer_email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -482,11 +448,10 @@ const Orders: React.FC = () => {
           {/* Lista de Pedidos */}
           <div className="space-y-4">
             {filteredOrders.map((order) => (
-              <Card 
-                key={order.id} 
-                className={`cursor-pointer hover:shadow-md transition-shadow ${
-                  selectedOrder?.id === order.id ? 'ring-2 ring-blue-500' : ''
-                }`}
+              <Card
+                key={order.id}
+                className={`cursor-pointer hover:shadow-md transition-shadow ${selectedOrder?.id === order.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
                 onClick={() => {
                   setSelectedOrder(order);
                   loadOrderHistory(order.id);
@@ -504,7 +469,7 @@ const Orders: React.FC = () => {
                           {getStatusLabel(order.status)}
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
                         <div>
                           <span className="font-medium">Cliente:</span> {order.customer_name}
@@ -519,14 +484,14 @@ const Orders: React.FC = () => {
                           <span className="font-medium">Data:</span> {formatDate(order.created_at)}
                         </div>
                       </div>
-                      
+
                       {order.tracking_number && (
                         <div className="text-sm text-gray-500 mt-2">
                           <span className="font-medium">Rastreamento:</span> {order.tracking_number}
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="outline"
@@ -540,7 +505,7 @@ const Orders: React.FC = () => {
                         <Edit className="w-4 h-4 mr-1" />
                         Status
                       </Button>
-                      
+
                       {order.status === 'confirmed' && (
                         <Button
                           variant="outline"
@@ -583,23 +548,23 @@ const Orders: React.FC = () => {
                       <span className="ml-1">{getStatusLabel(selectedOrder.status)}</span>
                     </Badge>
                   </div>
-                  
+
                   <div>
                     <p className="text-sm text-gray-600">Cliente</p>
                     <p className="font-medium">{selectedOrder.customer_name}</p>
                     <p className="text-sm text-gray-500">{selectedOrder.customer_email}</p>
                   </div>
-                  
+
                   <div>
                     <p className="text-sm text-gray-600">Total</p>
                     <p className="font-medium text-lg">{formatCurrency(selectedOrder.total)}</p>
                   </div>
-                  
+
                   <div>
                     <p className="text-sm text-gray-600">Data de Criação</p>
                     <p className="font-medium">{formatDate(selectedOrder.created_at)}</p>
                   </div>
-                  
+
                   {selectedOrder.tracking_number && (
                     <div>
                       <p className="text-sm text-gray-600">Rastreamento</p>
@@ -624,7 +589,7 @@ const Orders: React.FC = () => {
                       Confirmar Pedido
                     </Button>
                   )}
-                  
+
                   {selectedOrder.status === 'confirmed' && (
                     <Button
                       className="w-full"
@@ -634,7 +599,7 @@ const Orders: React.FC = () => {
                       Processar
                     </Button>
                   )}
-                  
+
                   {selectedOrder.status === 'processing' && (
                     <Button
                       className="w-full"
@@ -644,7 +609,7 @@ const Orders: React.FC = () => {
                       Enviar
                     </Button>
                   )}
-                  
+
                   {selectedOrder.status === 'shipped' && (
                     <Button
                       className="w-full"
@@ -654,7 +619,7 @@ const Orders: React.FC = () => {
                       Marcar como Entregue
                     </Button>
                   )}
-                  
+
                   {(selectedOrder.status === 'pending' || selectedOrder.status === 'confirmed') && (
                     <Button
                       variant="destructive"
@@ -719,7 +684,7 @@ const Orders: React.FC = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="status">Novo Status</Label>
-                <Select value={statusForm.status} onValueChange={(value) => setStatusForm({...statusForm, status: value})}>
+                <Select value={statusForm.status} onValueChange={(value) => setStatusForm({ ...statusForm, status: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -733,18 +698,18 @@ const Orders: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"
                   value={statusForm.notes}
-                  onChange={(e) => setStatusForm({...statusForm, notes: e.target.value})}
+                  onChange={(e) => setStatusForm({ ...statusForm, notes: e.target.value })}
                   placeholder="Observações sobre a mudança de status"
                   rows={3}
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={updateOrderStatus} className="flex-1">
                   Atualizar
@@ -768,7 +733,7 @@ const Orders: React.FC = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="shipping_method">Método de Envio</Label>
-                <Select value={shippingForm.shipping_method_id} onValueChange={(value) => setShippingForm({...shippingForm, shipping_method_id: value})}>
+                <Select value={shippingForm.shipping_method_id} onValueChange={(value) => setShippingForm({ ...shippingForm, shipping_method_id: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -781,38 +746,38 @@ const Orders: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="tracking_number">Código de Rastreamento</Label>
                 <Input
                   id="tracking_number"
                   value={shippingForm.tracking_number}
-                  onChange={(e) => setShippingForm({...shippingForm, tracking_number: e.target.value})}
+                  onChange={(e) => setShippingForm({ ...shippingForm, tracking_number: e.target.value })}
                   placeholder="Código de rastreamento"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="carrier">Transportadora</Label>
                 <Input
                   id="carrier"
                   value={shippingForm.carrier}
-                  onChange={(e) => setShippingForm({...shippingForm, carrier: e.target.value})}
+                  onChange={(e) => setShippingForm({ ...shippingForm, carrier: e.target.value })}
                   placeholder="Nome da transportadora"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"
                   value={shippingForm.notes}
-                  onChange={(e) => setShippingForm({...shippingForm, notes: e.target.value})}
+                  onChange={(e) => setShippingForm({ ...shippingForm, notes: e.target.value })}
                   placeholder="Observações sobre o envio"
                   rows={3}
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <Button onClick={createShipment} className="flex-1">
                   Criar Envio

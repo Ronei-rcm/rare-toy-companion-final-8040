@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { request } from '@/services/api-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -176,10 +177,7 @@ export default function FinanceiroCompleto() {
   const carregarTransacoes = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/financial/transactions');
-      if (!response.ok) throw new Error('Erro ao carregar');
-
-      const data = await response.json();
+      const data = await request<any>('/financial/transactions');
       const transacoesCarregadas = data.transactions || [];
       setTransacoes(transacoesCarregadas);
 
@@ -196,9 +194,7 @@ export default function FinanceiroCompleto() {
   // Carregar contas bancárias
   const carregarContas = async () => {
     try {
-      const response = await fetch('/api/financial/contas');
-      if (!response.ok) throw new Error('Erro ao carregar contas');
-      const data = await response.json();
+      const data = await request<any>('/financial/contas');
       setContas(data.contas || []);
     } catch (error) {
       console.error('❌ Erro ao carregar contas:', error);
@@ -474,12 +470,10 @@ export default function FinanceiroCompleto() {
           metodo_pagamento: batchForm.metodo_pagamento || original.metodo_pagamento,
           data: batchForm.data || original.data
         };
-        const response = await fetch('/api/financial/transactions', {
+        await request<any>('/financial/transactions', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (!response.ok) throw new Error('Erro ao atualizar transação');
       }
       toast.success('Transações atualizadas em lote');
       setShowBatchModal(false);
@@ -569,23 +563,10 @@ export default function FinanceiroCompleto() {
   const salvarTransacaoEvoluida = async (data: any) => {
     try {
       const isEdit = modalMode === 'edit' && data.id;
-      const url = '/api/financial/transactions';
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const result = await request<any>(isEdit ? '/financial/transactions' : '/financial/transactions', {
+        method: isEdit ? 'PUT' : 'POST',
         body: JSON.stringify(data),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao salvar transação');
-      }
-
-      const result = await response.json();
 
       // Recarregar transações
       await carregarTransacoes();
@@ -629,15 +610,10 @@ export default function FinanceiroCompleto() {
         observacoes: formData.observacoes
       };
 
-      const response = await fetch('/api/financial/transactions', {
+      const result = await request<any>('/financial/transactions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dados)
       });
-
-      if (!response.ok) throw new Error('Erro ao salvar');
-
-      const result = await response.json();
 
       toast.success(`Transação criada! ID: ${result.id}`);
       setShowModal(false);
@@ -654,11 +630,9 @@ export default function FinanceiroCompleto() {
     if (!confirm('Excluir esta transação?')) return;
 
     try {
-      const response = await fetch(`/api/financial/transactions/${id}`, {
+      await request(`/financial/transactions/${id}`, {
         method: 'DELETE'
       });
-
-      if (!response.ok) throw new Error('Erro ao excluir');
 
       toast.success('Transação excluída!');
       await carregarTransacoes();
@@ -678,13 +652,10 @@ export default function FinanceiroCompleto() {
       return;
     }
     try {
-      const response = await fetch('/api/financial/transactions/bulk-delete', {
+      const data = await request<any>('/financial/transactions/bulk-delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: selectedIds })
       });
-      if (!response.ok) throw new Error('Erro ao excluir transações');
-      const data = await response.json();
       toast.success(data.message || `${selectedIds.length} transações excluídas`);
       setSelectedIds([]);
       await carregarTransacoes();

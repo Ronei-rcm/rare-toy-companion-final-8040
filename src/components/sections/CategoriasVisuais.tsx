@@ -10,9 +10,9 @@ import LazyImage from '@/components/ui/lazy-image';
 
 const CategoriasVisuais = () => {
   const { config } = useHomeConfig();
-  const { categorias, loading, error } = useCategories();
+  const { categories: categorias, isLoading: loading, error } = useCategories();
   const navigate = useNavigate();
-  
+
   // Estados de loading e error
   if (loading) {
     return (
@@ -94,7 +94,7 @@ const CategoriasVisuais = () => {
                   <>
                     {/* Background Gradient */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${categoria.cor} opacity-90 group-hover:opacity-100 transition-opacity`} />
-                    
+
                     {/* Pattern Overlay */}
                     <div className="absolute inset-0 opacity-20">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
@@ -108,7 +108,7 @@ const CategoriasVisuais = () => {
                     <div className="text-4xl mb-4 drop-shadow-lg">{categoria.icon}</div>
                     <h3 className="text-xl font-bold mb-2 drop-shadow-lg">{categoria.nome}</h3>
                     <p className="text-white/90 text-sm mb-2 drop-shadow-md">{categoria.descricao}</p>
-                    
+
                     {/* Stats */}
                     <div className="space-y-1 mb-4">
                       <Badge variant="secondary" className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
@@ -146,36 +146,36 @@ const CategoriasVisuais = () => {
           className="mt-16 text-center"
         >
           <div className="flex flex-wrap justify-center gap-3">
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="px-4 py-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => navigate('/loja?sort=popular')}
             >
               Mais Populares
             </Badge>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="px-4 py-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => navigate('/loja?sort=newest')}
             >
               Lançamentos
             </Badge>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="px-4 py-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => navigate('/loja?sort=price-low')}
             >
               Menor Preço
             </Badge>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="px-4 py-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => navigate('/loja?sort=price-high')}
             >
               Maior Preço
             </Badge>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="px-4 py-2 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => navigate('/loja?sort=rating')}
             >

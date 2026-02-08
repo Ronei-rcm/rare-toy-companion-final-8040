@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { onImageError } from '@/utils/resolveImage';
+import { request } from '@/services/api-config';
 
 interface BlogPost {
   id: string;
@@ -56,11 +57,15 @@ const BlogNoticias = () => {
   useEffect(() => {
     const loadPosts = async () => {
       try {
-        const response = await fetch('/api/blog/posts?limit=3&status=publicado');
-        if (!response.ok) throw new Error('Erro ao carregar posts');
-        
-        const data = await response.json();
-        setPosts(data);
+        const data = await request<any>('/blog/posts?limit=3&status=publicado');
+        if (data && data.posts && Array.isArray(data.posts)) {
+          setPosts(data.posts);
+        } else if (Array.isArray(data)) {
+          setPosts(data);
+        } else {
+          console.warn('⚠️ [BlogNoticias] Formato de dados inesperado:', data);
+          setPosts([]);
+        }
       } catch (error) {
         console.error('Erro ao carregar posts do blog:', error);
       } finally {
@@ -104,6 +109,18 @@ const BlogNoticias = () => {
     );
   }
 
+  if (!Array.isArray(posts) || posts.length === 0) {
+    if (loading) return null; // Já tratado acima, mas por segurança
+    return (
+      <section className="py-20 bg-background">
+        <div className="container max-w-7xl mx-auto px-6 text-center text-muted-foreground">
+          <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Nenhum post publicado ainda</p>
+        </div>
+      </section>
+    );
+  }
+
   const [postDestaque, ...outrosPosts] = posts;
 
   return (
@@ -142,12 +159,12 @@ const BlogNoticias = () => {
                 transition={{ duration: 0.6 }}
                 className="lg:col-span-2"
               >
-                <div 
+                <div
                   className="group cursor-pointer"
                   onClick={() => handlePostClick(postDestaque.slug)}
                 >
                   <div className="relative h-80 rounded-2xl overflow-hidden mb-6">
-                    <img 
+                    <img
                       src={postDestaque.imagem_destaque || postDestaque.imagem_url || '/placeholder.svg'}
                       alt={postDestaque.titulo}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -184,9 +201,8 @@ const BlogNoticias = () => {
               </motion.div>
             )}
 
-            {/* Artigos Secundários */}
             <div className="space-y-6">
-              {outrosPosts.map((post, index) => (
+              {Array.isArray(outrosPosts) && outrosPosts.map((post, index) => (
                 <motion.div
                   key={post.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -198,7 +214,7 @@ const BlogNoticias = () => {
                   <div className="bg-card border rounded-xl p-4 hover:shadow-lg transition-shadow">
                     <div className="flex gap-4">
                       <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                        <img 
+                        <img
                           src={post.imagem_url || '/placeholder.svg'}
                           alt={post.titulo}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -248,7 +264,7 @@ const BlogNoticias = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {guiasColecionador.map((guia, index) => (
+            {Array.isArray(guiasColecionador) && guiasColecionador.map((guia, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}

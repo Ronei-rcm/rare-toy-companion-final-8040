@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Produto } from '@/types/produto';
+import { request } from './api-config';
 
 export interface DatabaseProduct {
   id: string;
@@ -96,15 +97,7 @@ export const productsService = {
   // Get featured products (via REST API)
   async getFeaturedProducts(): Promise<Produto[]> {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-      const response = await fetch(`${API_BASE_URL}/produtos?featured=true`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      // Se retornar array, usar diretamente; se retornar objeto com items, usar items
+      const data = await request<any>('/produtos?featured=true');
       const products = Array.isArray(data) ? data : (data.items || []);
       return products.map((p: any) => ({
         id: p.id,
@@ -140,15 +133,7 @@ export const productsService = {
   // Get products on sale (via REST API)
   async getPromotionProducts(): Promise<Produto[]> {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-      const response = await fetch(`${API_BASE_URL}/produtos?onSale=true`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      // Se retornar array, usar diretamente; se retornar objeto com items, usar items
+      const data = await request<any>('/produtos?onSale=true');
       const products = Array.isArray(data) ? data : (data.items || []);
       return products.map((p: any) => ({
         id: p.id,
@@ -184,15 +169,7 @@ export const productsService = {
   // Get new products (via REST API)
   async getNewProducts(): Promise<Produto[]> {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-      const response = await fetch(`${API_BASE_URL}/produtos?novo=true`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      // Se retornar array, usar diretamente; se retornar objeto com items, usar items
+      const data = await request<any>('/produtos?novo=true');
       const products = Array.isArray(data) ? data : (data.items || []);
       return products.map((p: any) => ({
         id: p.id,

@@ -2,6 +2,7 @@
  * Cliente CSRF - Utilitários para trabalhar com tokens CSRF no frontend
  */
 import { csrfApi } from '@/services/csrf-api';
+import { API_BASE_URL } from '@/services/api-config';
 
 const CSRF_TOKEN_KEY = 'csrf-token';
 const CSRF_TOKEN_EXPIRY_KEY = 'csrf-token-expiry';
@@ -61,14 +62,20 @@ export async function fetchWithCsrf(
   const method = options.method?.toUpperCase() || 'GET';
 
   // Métodos seguros não precisam de CSRF
+  const finalUrl = url.startsWith('/api')
+    ? `${API_BASE_URL}${url.slice(4)}`
+    : url.startsWith('/')
+      ? `${API_BASE_URL}${url}`
+      : url;
+
   if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-    return fetch(url, options);
+    return fetch(finalUrl, options);
   }
 
   // Adicionar token CSRF aos headers
   const headers = await addCsrfHeader(options.headers);
 
-  return fetch(url, {
+  return fetch(finalUrl, {
     ...options,
     headers,
     credentials: 'include', // Importante para cookies
@@ -79,9 +86,9 @@ export async function fetchWithCsrf(
  * Hook React para usar CSRF
  */
 export function useCsrfToken() {
-  const [token, setToken] = React.useState<string>('');
+  const [token, setToken] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<Error | null>(null);
+  const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
     loadToken();
@@ -94,7 +101,7 @@ export function useCsrfToken() {
       const newToken = await getCsrfToken();
       setToken(newToken);
     } catch (err) {
-      setError(err as Error);
+      setError(err);
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +113,7 @@ export function useCsrfToken() {
       const newToken = await fetchCsrfToken();
       setToken(newToken);
     } catch (err) {
-      setError(err as Error);
+      setError(err);
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +148,7 @@ export function enableGlobalCsrfProtection() {
     const url = typeof input === 'string' ? input : input.toString();
 
     // Se for requisição para nossa API, adicionar CSRF
-    if (url.startsWith('/api') || url.includes(window.location.origin)) {
+    if (url.startsWith('/api') || url.startsWith(API_BASE_URL) || url.includes(window.location.origin)) {
       return fetchWithCsrf(url, init);
     }
 

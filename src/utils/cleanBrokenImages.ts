@@ -1,6 +1,7 @@
 /**
  * Utilitário para limpar imagens quebradas do localStorage
  */
+import { API_BASE_URL } from '@/services/api-config';
 
 const BROKEN_IMAGES = [
   '1762026196857-967272339.png',
@@ -67,7 +68,7 @@ function getBrokenImagesFromStorage(): string[] {
   if (brokenImagesCache && (now - cacheTimestamp) < CACHE_TTL) {
     return brokenImagesCache;
   }
-  
+
   try {
     const stored = localStorage.getItem('broken_images_list');
     if (stored) {
@@ -79,7 +80,7 @@ function getBrokenImagesFromStorage(): string[] {
   } catch (e) {
     // Ignorar erros de parsing
   }
-  
+
   brokenImagesCache = [];
   cacheTimestamp = now;
   return brokenImagesCache;
@@ -101,27 +102,31 @@ async function verifyImageExists(url: string): Promise<boolean> {
   if (brokenImagesVerifiedCache.has(url)) {
     return false;
   }
-  
+
   // Função auxiliar para verificar uma URL
-  const checkUrl = async (checkUrl: string): Promise<boolean> => {
+  const checkUrl = async (urlToCheck: string): Promise<boolean> => {
     try {
-      const response = await fetch(checkUrl, { method: 'HEAD', cache: 'no-cache' });
+      // Garantir HTTPS se for nossa URL
+      const finalUrl = urlToCheck.startsWith('http://muhlstore')
+        ? urlToCheck.replace('http://', 'https://')
+        : urlToCheck;
+
+      const response = await fetch(finalUrl, { method: 'HEAD', cache: 'no-cache' });
       return response.ok;
     } catch {
       return false;
     }
   };
-  
+
   try {
     // Tentar URL original primeiro
     let exists = await checkUrl(url);
-    
+
     // Se não existir e for /lovable-uploads/, tentar via /api/uploads/
     if (!exists && url.includes('/lovable-uploads/')) {
       const filename = url.split('/').pop()?.split('?')[0] || '';
       if (filename) {
-        const baseUrl = window.location.origin;
-        const apiUrl = `${baseUrl}/api/uploads/${filename}`;
+        const apiUrl = `${API_BASE_URL}/uploads/${filename}`;
         console.log(`🔄 Tentando verificar imagem via API: ${apiUrl}`);
         exists = await checkUrl(apiUrl);
         if (exists) {
@@ -129,13 +134,13 @@ async function verifyImageExists(url: string): Promise<boolean> {
         }
       }
     }
-    
+
     if (exists) {
       verifiedImagesCache.add(url);
     } else {
       brokenImagesVerifiedCache.add(url);
     }
-    
+
     return exists;
   } catch {
     // Se der erro na verificação, assumir que não existe
@@ -146,17 +151,17 @@ async function verifyImageExists(url: string): Promise<boolean> {
 
 function isLikelyBrokenImage(url: string): boolean {
   if (!url) return false;
-  
+
   // Extrair nome do arquivo
   const filename = url.split('/').pop()?.split('?')[0] || '';
   if (!filename) return false;
-  
+
   // Verificar lista conhecida (comparação exata do filename)
   // Esta lista contém imagens que realmente não existem
   if (BROKEN_IMAGES.some(img => filename === img || url.includes(img))) {
     return true;
   }
-  
+
   // Verificar lista do localStorage (com cache)
   const storedList = getBrokenImagesFromStorage();
   if (storedList.includes(filename)) {
@@ -174,7 +179,7 @@ function isLikelyBrokenImage(url: string): boolean {
       }
       return false;
     }
-    
+
     // Se estiver na lista mas não foi verificada ainda, verificar em background
     // Mas não bloquear imediatamente - deixar tentar carregar
     // Se der erro, será adicionado novamente
@@ -204,12 +209,12 @@ function isLikelyBrokenImage(url: string): boolean {
     }).catch(() => {
       // Erro na verificação, manter na lista
     });
-    
+
     // Não bloquear imediatamente - deixar tentar carregar
     // Se realmente não existir, o erro será capturado e a imagem será bloqueada
     return false;
   }
-  
+
   // Verificar padrão suspeito: /lovable-uploads/176[2-9]XXXXX-*.png
   // (imagens com timestamp recente que podem estar dando 404)
   const suspiciousPattern = /lovable-uploads\/176[2-9]\d{8,}-\d+\.(png|jpe?g|webp|gif)/i;
@@ -221,7 +226,7 @@ function isLikelyBrokenImage(url: string): boolean {
     // Para outras imagens suspeitas, não bloquear ainda
     // A detecção automática vai adicionar à lista quando der 404
   }
-  
+
   return false;
 }
 
@@ -232,9 +237,9 @@ function cleanImageUrl(url: string, context: string): string {
   if (!isLikelyBrokenImage(url)) {
     return url;
   }
-  
+
   console.warn(`🧹 Limpando imagem quebrada (${context}): ${url.split('/').pop()}`);
-  
+
   // Retornar valor padrão baseado no contexto
   if (context.includes('background') || context.includes('hero')) {
     return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
@@ -248,31 +253,31 @@ function cleanImageUrl(url: string, context: string): string {
 function cleanConfigKey(key: string): boolean {
   try {
     let hasChanges = false;
-    
+
     const storedConfig = localStorage.getItem(key);
-    
+
     if (storedConfig) {
       let config = JSON.parse(storedConfig);
-      
+
       // Limpar heroBackground
       if (config.theme?.heroBackground && isLikelyBrokenImage(config.theme.heroBackground)) {
         config.theme.heroBackground = cleanImageUrl(config.theme.heroBackground, 'heroBackground');
         hasChanges = true;
       }
-      
+
       // Limpar logoUrl
       if (config.theme?.logoUrl && isLikelyBrokenImage(config.theme.logoUrl)) {
         config.theme.logoUrl = cleanImageUrl(config.theme.logoUrl, 'logoUrl');
         hasChanges = true;
       }
-      
+
       // Limpar faviconUrl
       if (config.theme?.faviconUrl && isLikelyBrokenImage(config.theme.faviconUrl)) {
         config.theme.faviconUrl = '/favicon.ico';
         hasChanges = true;
         console.warn(`🧹 Limpando favicon quebrado`);
       }
-      
+
       // Percorrer recursivamente para encontrar outras URLs
       const cleanConfigRecursive = (obj: any, path = ''): any => {
         if (typeof obj === 'string') {
@@ -282,11 +287,11 @@ function cleanConfigKey(key: string): boolean {
           }
           return obj;
         }
-        
+
         if (Array.isArray(obj)) {
           return obj.map((item, idx) => cleanConfigRecursive(item, `${path}[${idx}]`));
         }
-        
+
         if (obj && typeof obj === 'object') {
           const cleaned: any = {};
           for (const key in obj) {
@@ -294,19 +299,19 @@ function cleanConfigKey(key: string): boolean {
           }
           return cleaned;
         }
-        
+
         return obj;
       };
-      
+
       config = cleanConfigRecursive(config, 'root');
-      
+
       if (hasChanges) {
         localStorage.setItem(key, JSON.stringify(config));
         console.log(`✅ Imagens quebradas removidas do localStorage (${key})`);
         return true;
       }
     }
-    
+
     return false;
   } catch (error) {
     console.error(`❌ Erro ao limpar imagens quebradas (${key}):`, error);
@@ -333,13 +338,13 @@ function interceptBrokenImageLoads() {
 
   // Interceptar criação de elementos <img>
   const originalCreateElement = document.createElement.bind(document);
-  document.createElement = function(tagName: string, options?: ElementCreationOptions) {
+  document.createElement = function (tagName: string, options?: ElementCreationOptions) {
     const element = originalCreateElement(tagName, options);
-    
+
     if (tagName.toLowerCase() === 'img') {
       // Interceptar setAttribute ANTES de qualquer outra coisa
       const originalSetAttribute = element.setAttribute.bind(element);
-      element.setAttribute = function(name: string, value: string) {
+      element.setAttribute = function (name: string, value: string) {
         if (name === 'src' && value) {
           // Verificar se é imagem quebrada ANTES de definir
           if (isLikelyBrokenImage(value)) {
@@ -355,15 +360,15 @@ function interceptBrokenImageLoads() {
         }
         return originalSetAttribute(name, value);
       };
-      
+
       // Interceptar propriedade src diretamente (mais comum no React)
       let currentSrc = '';
       let isBlocked = false;
-      
+
       // Interceptar ANTES de definir qualquer src
       const checkAndBlock = (value: string): boolean => {
         if (!value) return false;
-        
+
         // Verificar se é imagem quebrada ANTES de definir
         if (isLikelyBrokenImage(value)) {
           const filename = value.split('/').pop() || '';
@@ -379,13 +384,13 @@ function interceptBrokenImageLoads() {
         }
         return false;
       };
-      
+
       Object.defineProperty(element, 'src', {
         set(value: string) {
           if (checkAndBlock(value)) {
             return; // Bloqueado
           }
-          
+
           // Se não for quebrada, definir normalmente
           currentSrc = value;
           isBlocked = false;
@@ -397,11 +402,11 @@ function interceptBrokenImageLoads() {
         configurable: true,
         enumerable: true
       });
-      
+
       // Interceptar também quando o elemento é inserido no DOM
       const originalAppendChild = element.appendChild.bind(element);
       const originalInsertBefore = element.insertBefore.bind(element);
-      
+
       // Interceptar quando o elemento img é inserido no DOM
       const checkOnInsert = () => {
         const src = element.getAttribute('src') || currentSrc;
@@ -410,7 +415,7 @@ function interceptBrokenImageLoads() {
           element.setAttribute('data-broken-image', 'true');
         }
       };
-      
+
       // Monkey patch para quando o elemento é inserido
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
@@ -422,12 +427,12 @@ function interceptBrokenImageLoads() {
           }
         });
       });
-      
+
       // Observar mudanças no elemento imediatamente
       // Não esperar pelo parentNode, observar assim que o elemento é criado
       try {
-        observer.observe(element, { 
-          attributes: true, 
+        observer.observe(element, {
+          attributes: true,
           attributeFilter: ['src'],
           attributeOldValue: true
         });
@@ -435,8 +440,8 @@ function interceptBrokenImageLoads() {
         // Se falhar, tentar novamente quando o elemento for inserido
         const checkOnInsert = () => {
           try {
-            observer.observe(element, { 
-              attributes: true, 
+            observer.observe(element, {
+              attributes: true,
               attributeFilter: ['src'],
               attributeOldValue: true
             });
@@ -444,13 +449,13 @@ function interceptBrokenImageLoads() {
             // Ignorar erros
           }
         };
-        
+
         // Tentar quando o elemento for inserido no DOM
         const originalAppendChild = Node.prototype.appendChild;
         const originalInsertBefore = Node.prototype.insertBefore;
-        
+
         const wrapInsert = (original: Function) => {
-          return function(this: Node, ...args: any[]) {
+          return function (this: Node, ...args: any[]) {
             const result = original.apply(this, args);
             if (args[0] === element || (args[0] && args[0].contains && args[0].contains(element))) {
               checkOnInsert();
@@ -458,17 +463,17 @@ function interceptBrokenImageLoads() {
             return result;
           };
         };
-        
+
         Node.prototype.appendChild = wrapInsert(originalAppendChild) as any;
         Node.prototype.insertBefore = wrapInsert(originalInsertBefore) as any;
       }
-      
+
       // Verificar src imediatamente se já estiver definido
       const existingSrc = element.getAttribute('src');
       if (existingSrc && isLikelyBrokenImage(existingSrc)) {
         checkAndBlock(existingSrc);
       }
-      
+
       // Interceptar também o atributo data-src (usado por lazy loading)
       Object.defineProperty(element, 'dataset', {
         get() {
@@ -488,7 +493,7 @@ function interceptBrokenImageLoads() {
         configurable: true
       });
     }
-    
+
     return element;
   };
 
@@ -498,7 +503,7 @@ function interceptBrokenImageLoads() {
     if (target && target.tagName === 'IMG' && target.src) {
       const filename = target.src.split('/').pop() || '';
       const url = target.src;
-      
+
       // Verificar se é uma imagem quebrada conhecida
       if (BROKEN_IMAGES.some(img => filename === img || url.includes(img))) {
         console.warn(`🚫 Erro 404 interceptado para imagem quebrada: ${filename}`);
@@ -509,13 +514,12 @@ function interceptBrokenImageLoads() {
         event.stopPropagation();
         return;
       }
-      
+
       // Se for uma imagem do padrão suspeito (/lovable-uploads/176[2-9]...), verificar via API antes de adicionar
       if (url.includes('/lovable-uploads/') && filename.match(/^176[2-9]\d{8,}-\d+\.(png|jpe?g|webp|gif)$/i)) {
         // Antes de adicionar à lista, tentar carregar via API
-        const baseUrl = window.location.origin;
-        const apiUrl = `${baseUrl}/api/uploads/${filename}`;
-        
+        const apiUrl = `${API_BASE_URL}/uploads/${filename}`;
+
         // Verificar via API em background
         fetch(apiUrl, { method: 'HEAD', cache: 'no-cache' })
           .then(response => {
@@ -573,13 +577,13 @@ function interceptBrokenImageLoads() {
             event.preventDefault();
             event.stopPropagation();
           });
-        
+
         // Não bloquear imediatamente - aguardar resultado da verificação
         return;
       }
     }
   }, true);
-  
+
   // Interceptar erros de carregamento de imagens via onerror global
   // Adicionar listener global para erros de imagem
   window.addEventListener('error', (event) => {
@@ -587,7 +591,7 @@ function interceptBrokenImageLoads() {
     if (target && target instanceof HTMLImageElement) {
       const src = target.src || '';
       const filename = src.split('/').pop() || '';
-      
+
       // Verificar se é uma imagem quebrada conhecida
       if (BROKEN_IMAGES.some(img => filename === img || src.includes(img))) {
         console.warn(`🚫 Erro de carregamento interceptado (global): ${filename}`);
@@ -597,13 +601,12 @@ function interceptBrokenImageLoads() {
         event.stopPropagation();
         return;
       }
-      
+
       // Se for uma imagem do padrão suspeito, verificar via API antes de adicionar
       if (src.includes('/lovable-uploads/') && filename.match(/^176[2-9]\d{8,}-\d+\.(png|jpe?g|webp|gif)$/i)) {
         // Antes de adicionar à lista, tentar carregar via API
-        const baseUrl = window.location.origin;
-        const apiUrl = `${baseUrl}/api/uploads/${filename}`;
-        
+        const apiUrl = `${API_BASE_URL}/uploads/${filename}`;
+
         // Verificar via API em background
         fetch(apiUrl, { method: 'HEAD', cache: 'no-cache' })
           .then(response => {
@@ -657,18 +660,21 @@ function interceptBrokenImageLoads() {
             event.preventDefault();
             event.stopPropagation();
           });
-        
+
         // Não bloquear imediatamente - aguardar resultado da verificação
         return;
       }
     }
   }, true);
-  
+
   // Interceptar requisições HTTP 404 para imagens
   const originalFetch = window.fetch;
-  window.fetch = async function(...args) {
-    const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
-    
+  window.fetch = async function (...args) {
+    const firstArg = args[0];
+    const url = typeof firstArg === 'string'
+      ? firstArg
+      : (firstArg instanceof URL ? firstArg.toString() : (firstArg as any)?.url || '');
+
     // Se for uma requisição para uma imagem quebrada conhecida, bloquear
     if (url.includes('/lovable-uploads/')) {
       const filename = url.split('/').pop()?.split('?')[0] || '';
@@ -677,20 +683,22 @@ function interceptBrokenImageLoads() {
         return Promise.reject(new Error(`Imagem quebrada: ${filename}`));
       }
     }
-    
+
     try {
       const response = await originalFetch.apply(this, args);
-      
+
       // Se a resposta for 404 para uma imagem, verificar via API antes de adicionar
       if (response.status === 404 && url.includes('/lovable-uploads/')) {
         const filename = url.split('/').pop()?.split('?')[0] || '';
         if (filename.match(/^176[2-9]\d{8,}-\d+\.(png|jpe?g|webp|gif)$/i)) {
           // Tentar verificar via API antes de adicionar à lista
-          const baseUrl = window.location.origin;
-          const apiUrl = `${baseUrl}/api/uploads/${filename}`;
-          
+          const apiUrl = `${API_BASE_URL}/uploads/${filename}`;
+
           try {
-            const apiResponse = await fetch(apiUrl, { method: 'HEAD', cache: 'no-cache' });
+            const finalApiUrl = apiUrl.startsWith('http://muhlstore')
+              ? apiUrl.replace('http://', 'https://')
+              : apiUrl;
+            const apiResponse = await fetch(finalApiUrl, { method: 'HEAD', cache: 'no-cache' });
             if (apiResponse.ok) {
               console.log(`✅ Imagem existe via API (404 na original): ${filename}`);
               // Não adicionar à lista, a imagem existe via API
@@ -699,7 +707,7 @@ function interceptBrokenImageLoads() {
           } catch {
             // Se der erro na verificação, continuar e adicionar à lista
           }
-          
+
           // Se não existir via API também, adicionar à lista
           console.warn(`⚠️ 404 detectado para imagem: ${filename}`);
           if (!BROKEN_IMAGES.includes(filename)) {
@@ -718,7 +726,7 @@ function interceptBrokenImageLoads() {
           }
         }
       }
-      
+
       return response;
     } catch (error) {
       // Se for erro de rede para imagem suspeita, adicionar à lista
@@ -756,47 +764,50 @@ export async function cleanBrokenImagesList(): Promise<number> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
     return 0;
   }
-  
+
   try {
     const stored = localStorage.getItem('broken_images_list');
     if (!stored) {
       return 0;
     }
-    
+
     const list = JSON.parse(stored);
     if (!Array.isArray(list)) {
       return 0;
     }
-    
+
     const baseUrl = window.location.origin;
     let removedCount = 0;
     const verifiedList: string[] = [];
-    
+
     // Verificar cada imagem da lista
     for (const filename of list) {
-      const imageUrl = `${baseUrl}/lovable-uploads/${filename}`;
-      const apiUrl = `${baseUrl}/api/uploads/${filename}`;
-      
+      const imageUrl = `${API_BASE_URL.replace('/api', '')}/lovable-uploads/${filename}`;
+      const apiUrl = `${API_BASE_URL}/uploads/${filename}`;
+
       // Função auxiliar para verificar uma URL
       const checkUrl = async (url: string): Promise<boolean> => {
         try {
-          const response = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+          const finalUrl = url.startsWith('http://muhlstore')
+            ? url.replace('http://', 'https://')
+            : url;
+          const response = await fetch(finalUrl, { method: 'HEAD', cache: 'no-cache' });
           return response.ok;
         } catch {
           return false;
         }
       };
-      
+
       try {
         // Tentar URL original primeiro
         let exists = await checkUrl(imageUrl);
-        
+
         // Se não existir, tentar via API
         if (!exists) {
           console.log(`🔄 Tentando verificar via API: ${apiUrl}`);
           exists = await checkUrl(apiUrl);
         }
-        
+
         if (exists) {
           // Imagem existe, não adicionar à lista verificada
           removedCount++;
@@ -810,7 +821,7 @@ export async function cleanBrokenImagesList(): Promise<number> {
         verifiedList.push(filename);
       }
     }
-    
+
     // Atualizar lista no localStorage
     if (removedCount > 0) {
       localStorage.setItem('broken_images_list', JSON.stringify(verifiedList));
@@ -818,7 +829,7 @@ export async function cleanBrokenImagesList(): Promise<number> {
       cacheTimestamp = Date.now();
       console.log(`🧹 Limpeza concluída: ${removedCount} imagens removidas da lista de quebradas`);
     }
-    
+
     return removedCount;
   } catch (e) {
     console.warn('Erro ao limpar lista de imagens quebradas:', e);

@@ -81,10 +81,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import OrderTracking from '@/components/cliente/OrderTracking';
 import { getProductImage } from '@/utils/imageUtils';
 import { useAdminOrders } from '@/hooks/useAdminOrders';
+import { request } from '@/services/api-config';
 
 const PedidosAdminEvolved = () => {
   const { toast } = useToast();
-  
+
   // Hook personalizado para gerenciar pedidos
   const {
     orders,
@@ -120,7 +121,7 @@ const PedidosAdminEvolved = () => {
   const [associateModal, setAssociateModal] = useState<any>(null);
   const [bulkActionModal, setBulkActionModal] = useState(false);
   const [bulkActionType, setBulkActionType] = useState('');
-  
+
   // Estados para associação de cliente
   const [userSearch, setUserSearch] = useState('');
   const [userResults, setUserResults] = useState<any[]>([]);
@@ -215,22 +216,18 @@ const PedidosAdminEvolved = () => {
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+      await request(`/orders/${orderId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Status atualizado!',
-          description: 'O status do pedido foi atualizado com sucesso',
-        });
-        loadOrders();
-        loadStats();
-        setStatusModal(null);
-      }
+      toast({
+        title: 'Status atualizado!',
+        description: 'O status do pedido foi atualizado com sucesso',
+      });
+      loadOrders();
+      loadStats();
+      setStatusModal(null);
     } catch (error) {
       toast({
         title: 'Erro ao atualizar status',
@@ -242,21 +239,17 @@ const PedidosAdminEvolved = () => {
 
   const handleAddTracking = async (orderId: string, trackingCode: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/tracking`, {
+      await request(`/orders/${orderId}/tracking`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ tracking_code: trackingCode }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Código de rastreamento adicionado!',
-          description: 'O cliente receberá uma notificação',
-        });
-        loadOrders();
-        setTrackingModal(null);
-      }
+      toast({
+        title: 'Código de rastreamento adicionado!',
+        description: 'O cliente receberá uma notificação',
+      });
+      loadOrders();
+      setTrackingModal(null);
     } catch (error) {
       toast({
         title: 'Erro ao adicionar código',
@@ -270,7 +263,7 @@ const PedidosAdminEvolved = () => {
     if (!bulkActionType || selectedOrders.length === 0) return;
 
     const success = await bulkAction(selectedOrders, bulkActionType);
-    
+
     if (success) {
       setSelectedOrders([]);
       setBulkActionModal(false);
@@ -287,14 +280,8 @@ const PedidosAdminEvolved = () => {
 
     try {
       setSearchingUsers(true);
-      const response = await fetch(`${API_BASE_URL}/admin/users/search?q=${encodeURIComponent(query)}`, {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const users = await response.json();
-        setUserResults(users);
-      }
+      const users = await request<any[]>(`/admin/users/search?q=${encodeURIComponent(query)}`);
+      setUserResults(users);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
     } finally {
@@ -305,23 +292,19 @@ const PedidosAdminEvolved = () => {
   // Associar pedido com cliente
   const handleAssociateUser = async (orderId: string, userId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/associate-user`, {
+      await request(`/orders/${orderId}/associate-user`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ user_id: userId }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Cliente associado!',
-          description: 'O pedido foi associado ao cliente com sucesso',
-        });
-        setAssociateModal(null);
-        setUserSearch('');
-        setUserResults([]);
-        loadOrders();
-      }
+      toast({
+        title: 'Cliente associado!',
+        description: 'O pedido foi associado ao cliente com sucesso',
+      });
+      setAssociateModal(null);
+      setUserSearch('');
+      setUserResults([]);
+      loadOrders();
     } catch (error) {
       toast({
         title: 'Erro ao associar cliente',
@@ -334,30 +317,20 @@ const PedidosAdminEvolved = () => {
   // Auto-associar por email
   const handleAutoAssociate = async (orderId: string, customerEmail: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/associate-user`, {
+      await request(`/orders/${orderId}/associate-user`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ customer_email: customerEmail }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Cliente associado automaticamente!',
-          description: 'Pedido associado pelo email',
-        });
-        loadOrders();
-      } else {
-        toast({
-          title: 'Cliente não encontrado',
-          description: 'Nenhum usuário cadastrado com este email',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
       toast({
-        title: 'Erro na associação automática',
-        description: 'Não foi possível associar automaticamente',
+        title: 'Cliente associado automaticamente!',
+        description: 'Pedido associado pelo email',
+      });
+      loadOrders();
+    } catch (error: any) {
+      toast({
+        title: error?.status === 404 ? 'Cliente não encontrado' : 'Erro na associação automática',
+        description: error?.status === 404 ? 'Nenhum usuário cadastrado com este email' : 'Não foi possível associar automaticamente',
         variant: 'destructive',
       });
     }
@@ -368,7 +341,7 @@ const PedidosAdminEvolved = () => {
       status: statusFilter !== 'all' ? statusFilter : undefined,
       search: searchTerm || undefined,
     };
-    
+
     await exportOrders(format, filters);
   };
 
@@ -791,7 +764,7 @@ const PedidosAdminEvolved = () => {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => {/* Enviar email */}}>
+                              <DropdownMenuItem onClick={() => {/* Enviar email */ }}>
                                 <Mail className="w-4 h-4 mr-2" />
                                 Notificar Cliente
                               </DropdownMenuItem>
@@ -843,14 +816,14 @@ const PedidosAdminEvolved = () => {
                     <p><strong>Email:</strong> {detailsModal.customer?.email || detailsModal.email || 'Não informado'}</p>
                     <p><strong>Telefone:</strong> {detailsModal.customer?.telefone || detailsModal.telefone || 'Não informado'}</p>
                     {detailsModal.customer?.type && (
-                      <p><strong>Tipo:</strong> 
+                      <p><strong>Tipo:</strong>
                         <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                           {detailsModal.customer.type}
                         </span>
                       </p>
                     )}
                     {(detailsModal.user_id || detailsModal.customer_id) && (
-                      <p><strong>ID do Cliente:</strong> 
+                      <p><strong>ID do Cliente:</strong>
                         <span className="font-mono text-xs ml-2 bg-muted px-2 py-1 rounded">
                           {detailsModal.customer_id || detailsModal.user_id}
                         </span>
@@ -1060,11 +1033,11 @@ const PedidosAdminEvolved = () => {
                   className="pl-10"
                 />
               </div>
-              
+
               {searchingUsers && (
                 <p className="text-sm text-muted-foreground mt-2">Buscando...</p>
               )}
-              
+
               {userResults.length > 0 && (
                 <div className="mt-2 max-h-48 overflow-y-auto border rounded-lg">
                   {userResults.map((user) => (
@@ -1082,7 +1055,7 @@ const PedidosAdminEvolved = () => {
                   ))}
                 </div>
               )}
-              
+
               {userSearch.length >= 2 && userResults.length === 0 && !searchingUsers && (
                 <p className="text-sm text-muted-foreground mt-2">
                   Nenhum cliente encontrado com "{userSearch}"

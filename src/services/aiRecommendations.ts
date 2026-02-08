@@ -1,3 +1,6 @@
+import { request } from './api-config';
+import { useState, useCallback } from 'react';
+
 /**
  * Sistema de IA para recomendações de produtos
  * Utiliza algoritmos de machine learning para sugerir produtos relevantes
@@ -72,12 +75,22 @@ class AIRecommendationEngine {
   // Carregar produtos do sistema
   private async loadProducts() {
     try {
-      const response = await fetch('/api/produtos');
-      if (response.ok) {
-        this.products = await response.json();
+      const data = await request<any>('/produtos');
+      if (Array.isArray(data)) {
+        this.products = data;
+      } else if (data && data.items && Array.isArray(data.items)) {
+        this.products = data.items;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        this.products = data.data;
+      } else if (data && data.produtos && Array.isArray(data.produtos)) {
+        this.products = data.produtos;
+      } else {
+        console.warn('⚠️ [AIRecommendation] Resposta de produtos inesperada:', data);
+        this.products = [];
       }
     } catch (error) {
       console.error('Erro ao carregar produtos para IA:', error);
+      this.products = [];
     }
   }
 
@@ -85,14 +98,14 @@ class AIRecommendationEngine {
   private async buildSimilarityMatrix() {
     for (const productA of this.products) {
       const similarities = new Map<string, number>();
-      
+
       for (const productB of this.products) {
         if (productA.id !== productB.id) {
           const similarity = this.calculateSimilarity(productA, productB);
           similarities.set(productB.id, similarity);
         }
       }
-      
+
       this.similarityMatrix.set(productA.id, similarities);
     }
   }
@@ -210,7 +223,7 @@ class AIRecommendationEngine {
   }
 
   // Obter produtos similares
-  private getSimilarProducts(product: Product, limit: number): Array<{produto: Product, score: number}> {
+  private getSimilarProducts(product: Product, limit: number): Array<{ produto: Product, score: number }> {
     const similarities = this.similarityMatrix.get(product.id) || new Map();
     const similarProducts = Array.from(similarities.entries())
       .map(([productId, score]) => ({
@@ -225,7 +238,7 @@ class AIRecommendationEngine {
   }
 
   // Obter produtos da categoria
-  private getCategoryProducts(categoria: string, limit: number): Array<{produto: Product, score: number}> {
+  private getCategoryProducts(categoria: string, limit: number): Array<{ produto: Product, score: number }> {
     return this.products
       .filter(p => p.categoria === categoria)
       .map(p => ({
@@ -242,19 +255,19 @@ class AIRecommendationEngine {
 
     // Produtos em destaque têm score maior
     if (product.destaque) score += 0.3;
-    
+
     // Produtos com boa avaliação
     if (product.avaliacao >= 4) score += 0.2;
-    
+
     // Produtos com muitas vendas
     if (product.vendas > 10) score += 0.2;
-    
+
     // Produtos em promoção
     if (product.promocao) score += 0.1;
-    
+
     // Produtos lançamento
     if (product.lancamento) score += 0.1;
-    
+
     // Produtos com muitas avaliações
     if (product.totalAvaliacoes > 5) score += 0.1;
 
@@ -266,7 +279,7 @@ class AIRecommendationEngine {
     userProfile: UserProfile,
     context: RecommendationContext,
     limit: number
-  ): Array<{produto: Product, score: number}> {
+  ): Array<{ produto: Product, score: number }> {
     return this.products
       .map(product => ({
         produto: product,
@@ -319,7 +332,7 @@ class AIRecommendationEngine {
   }
 
   // Obter produtos em tendência
-  private getTrendingProducts(limit: number): Array<{produto: Product, score: number}> {
+  private getTrendingProducts(limit: number): Array<{ produto: Product, score: number }> {
     return this.products
       .map(product => ({
         produto: product,
@@ -349,7 +362,7 @@ class AIRecommendationEngine {
   }
 
   // Obter produtos complementares
-  private getComplementaryProducts(carrinhoIds: string[], limit: number): Array<{produto: Product, score: number}> {
+  private getComplementaryProducts(carrinhoIds: string[], limit: number): Array<{ produto: Product, score: number }> {
     const carrinhoProducts = carrinhoIds
       .map(id => this.products.find(p => p.id === id))
       .filter(Boolean) as Product[];
@@ -418,12 +431,9 @@ class AIRecommendationEngine {
     }
 
     try {
-      const response = await fetch(`/api/usuarios/${userId}/perfil`);
-      if (response.ok) {
-        const profile = await response.json();
-        this.userProfiles.set(userId, profile);
-        return profile;
-      }
+      const profile = await request<UserProfile>(`/usuarios/${userId}/perfil`);
+      this.userProfiles.set(userId, profile);
+      return profile;
     } catch (error) {
       console.error('Erro ao carregar perfil do usuário:', error);
     }
@@ -437,12 +447,11 @@ class AIRecommendationEngine {
     if (currentProfile) {
       const updatedProfile = { ...currentProfile, ...updates };
       this.userProfiles.set(userId, updatedProfile);
-      
+
       // Salvar no servidor
       try {
-        await fetch(`/api/usuarios/${userId}/perfil`, {
+        await request(`/usuarios/${userId}/perfil`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedProfile)
         });
       } catch (error) {
@@ -507,7 +516,7 @@ class AIRecommendationEngine {
     });
 
     const topCategories = Object.entries(categoryCount)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
       .map(([cat]) => cat);
 
@@ -532,7 +541,7 @@ export const useAIRecommendations = (userId: string, context: RecommendationCont
   const getRecommendations = useCallback(async (limit: number = 10) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const results = await aiRecommendationEngine.getRecommendations(userId, context, limit);
       setRecommendations(results);

@@ -3,10 +3,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { request } from '@/services/api-config';
 
 const RecuperacaoAdmin = () => {
   const { toast } = useToast();
-  const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
   const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -19,12 +19,8 @@ const RecuperacaoAdmin = () => {
   const load = async (pg: number) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/recovery/emails?page=${pg}&pageSize=${pageSize}&email=${encodeURIComponent(emailFilter)}`, {
-        credentials: 'include',
-        // @ts-ignore
-        headers: { 'X-Admin-Token': localStorage.getItem('admin_token') || '' },
-      });
-      const data = await res.json();
+      const data = await request<any>(`/recovery/emails?page=${pg}&pageSize=${pageSize}&email=${encodeURIComponent(emailFilter)}`);
+
       setItems(Array.isArray(data.items) ? data.items : []);
       setPage(data.page || pg);
       setTotal(Number(data.total || 0));
@@ -40,14 +36,11 @@ const RecuperacaoAdmin = () => {
   const resend = async (email: string) => {
     try {
       setIsResending(true);
-      const res = await fetch(`${API_BASE_URL}/recovery/notify`, {
+      await request<any>('/recovery/notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email })
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.message || 'Falha ao reenviar');
+
       toast({ title: 'Reenviado', description: email });
       load(page);
     } catch (e: any) {
@@ -64,9 +57,9 @@ const RecuperacaoAdmin = () => {
       r.email,
       r.status,
       r.sent_at ? new Date(r.sent_at).toISOString() : '',
-      (r.error || '').replaceAll('\n', ' ')
+      (r.error || '').replace(/\n/g, ' ')
     ]);
-    const csv = [header, ...rows].map((arr) => arr.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const csv = [header, ...rows].map((arr) => arr.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -37,9 +37,13 @@ export const productsApi = {
   async getProducts(): Promise<Produto[]> {
     try {
       console.log('🔄 Buscando produtos...');
-      const data = await request<Produto[]>('/produtos');
-      console.log('✅ Produtos carregados:', data.length);
-      return data;
+      const data = await request<any>('/produtos');
+      if (Array.isArray(data)) return data;
+      if (data && data.items && Array.isArray(data.items)) return data.items;
+      if (data && data.data && Array.isArray(data.data)) return data.data;
+      if (data && data.produtos && Array.isArray(data.produtos)) return data.produtos;
+      console.warn('⚠️ [productsApi] Resposta de produtos inesperada:', data);
+      return [];
     } catch (error) {
       console.error('❌ Erro ao buscar produtos:', error);
       throw error;
@@ -145,9 +149,13 @@ export const productsApi = {
   async getProductsByCategory(categoria: string): Promise<Produto[]> {
     try {
       console.log('🔄 Buscando produtos por categoria:', categoria);
-      const data = await request<Produto[]>(`/produtos/categoria/${encodeURIComponent(categoria)}`);
-      console.log('✅ Produtos por categoria carregados:', data.length);
-      return data;
+      const data = await request<any>(`/produtos/categoria/${encodeURIComponent(categoria)}`);
+      if (Array.isArray(data)) return data;
+      if (data && data.items && Array.isArray(data.items)) return data.items;
+      if (data && data.data && Array.isArray(data.data)) return data.data;
+      if (data && data.produtos && Array.isArray(data.produtos)) return data.produtos;
+      console.warn('⚠️ [productsApi] Resposta por categoria inesperada:', data);
+      return [];
     } catch (error) {
       console.error('❌ Erro ao buscar produtos por categoria:', error);
       throw error;
@@ -158,9 +166,13 @@ export const productsApi = {
   async getFeaturedProducts(): Promise<Produto[]> {
     try {
       console.log('🔄 Buscando produtos em destaque...');
-      const data = await request<Produto[]>('/produtos/destaque');
-      console.log('✅ Produtos em destaque carregados:', data.length);
-      return data;
+      const data = await request<any>('/produtos/destaque');
+      if (Array.isArray(data)) return data;
+      if (data && data.items && Array.isArray(data.items)) return data.items;
+      if (data && data.data && Array.isArray(data.data)) return data.data;
+      if (data && data.produtos && Array.isArray(data.produtos)) return data.produtos;
+      console.warn('⚠️ [productsApi] Resposta de destaque inesperada:', data);
+      return [];
     } catch (error) {
       console.error('❌ Erro ao buscar produtos em destaque:', error);
       throw error;

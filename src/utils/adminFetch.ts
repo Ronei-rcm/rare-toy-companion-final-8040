@@ -1,3 +1,5 @@
+import { request } from '../services/api-config';
+
 /**
  * Utilitário para fazer requisições autenticadas como administrador
  * 
@@ -18,12 +20,12 @@ function getAdminToken(): string | null {
  */
 export function addAdminHeaders(headers: HeadersInit = {}): HeadersInit {
   const adminToken = getAdminToken();
-  
-  const headersObj = headers instanceof Headers 
+
+  const headersObj = headers instanceof Headers
     ? Object.fromEntries(headers.entries())
     : typeof headers === 'object' && headers !== null
-    ? { ...headers }
-    : {};
+      ? { ...headers }
+      : {};
 
   if (adminToken) {
     headersObj['X-Admin-Token'] = adminToken;
@@ -45,17 +47,17 @@ export function addAdminHeaders(headers: HeadersInit = {}): HeadersInit {
  * const data = await response.json();
  * ```
  */
-export async function fetchAdmin(
+export async function fetchAdmin<T = any>(
   url: string,
   options: RequestInit = {}
-): Promise<Response> {
+): Promise<T> {
   const isAdminEndpoint = url.startsWith('/api/admin') || url.includes('/api/admin');
-  
+
   // Adicionar headers de autenticação se for endpoint admin
   const baseHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   // Mesclar headers existentes
   if (options.headers) {
     if (options.headers instanceof Headers) {
@@ -66,7 +68,7 @@ export async function fetchAdmin(
       Object.assign(baseHeaders, options.headers);
     }
   }
-  
+
   // Adicionar token de admin se for endpoint admin
   if (isAdminEndpoint) {
     const adminToken = getAdminToken();
@@ -75,10 +77,9 @@ export async function fetchAdmin(
     }
   }
 
-  return fetch(url, {
+  return request<T>(url, {
     ...options,
     headers: baseHeaders,
-    credentials: 'include', // Importante para cookies
   });
 }
 

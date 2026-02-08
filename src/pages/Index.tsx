@@ -23,7 +23,9 @@ const Index = () => {
     window.scrollTo(0, 0);
     console.log('🏠 [Index] Componente Index montado');
     console.log('🏠 [Index] Config disponível:', !!config);
-    console.log('🏠 [Index] Sections:', config?.sections?.map(s => `${s.id}:${s.enabled}`).join(', '));
+    if (config?.sections && Array.isArray(config.sections)) {
+      console.log('🏠 [Index] Sections:', config.sections.map(s => `${s?.id}:${s?.enabled}`).join(', '));
+    }
   }, [config]);
 
   // Renderizar seções baseado na configuração
@@ -38,7 +40,7 @@ const Index = () => {
       console.log(`⚠️ [Index] Seção não encontrada: ${sectionId}`);
       return null;
     }
-    
+
     if (!section.enabled) {
       console.log(`⚠️ [Index] Seção desabilitada: ${sectionId}`);
       return null;
@@ -70,7 +72,7 @@ const Index = () => {
             return <VideoGallerySection key="video-gallery-always" />;
           } catch (error) {
             console.error('❌ [Index] Erro ao renderizar VideoGallerySection:', error);
-            return <div style={{padding: '20px', background: 'red', color: 'white'}}>ERRO: {String(error)}</div>;
+            return <div style={{ padding: '20px', background: 'red', color: 'white' }}>ERRO: {String(error)}</div>;
           }
         })()}
         {renderSection('social-proof', SocialProof)}

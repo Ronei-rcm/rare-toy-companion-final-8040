@@ -1,3 +1,6 @@
+import { request, API_BASE_URL } from './api-config';
+import { useState, useCallback, useEffect } from 'react';
+
 /**
  * Sistema Avançado de Lista de Desejos e Favoritos
  * Gestão completa de produtos favoritos e alertas
@@ -125,13 +128,10 @@ class WishlistManager {
   // Carregar listas de desejos
   private async loadWishlists() {
     try {
-      const response = await fetch('/api/wishlist', { credentials: 'include' });
-      if (response.ok) {
-        const wishlists = await response.json();
-        wishlists.forEach((wishlist: Wishlist) => {
-          this.wishlists.set(wishlist.id, wishlist);
-        });
-      }
+      const wishlists = await request<Wishlist[]>('/wishlist');
+      wishlists.forEach((wishlist: Wishlist) => {
+        this.wishlists.set(wishlist.id, wishlist);
+      });
     } catch (error) {
       console.error('Erro ao carregar wishlists:', error);
     }
@@ -140,24 +140,18 @@ class WishlistManager {
   // Carregar alertas
   private async loadAlerts() {
     try {
-      const [priceResponse, stockResponse] = await Promise.all([
-        fetch('/api/wishlist/alerts/price', { credentials: 'include' }),
-        fetch('/api/wishlist/alerts/stock', { credentials: 'include' })
+      const [priceAlerts, stockAlerts] = await Promise.all([
+        request<PriceAlert[]>('/wishlist/alerts/price'),
+        request<StockAlert[]>('/wishlist/alerts/stock')
       ]);
 
-      if (priceResponse.ok) {
-        const priceAlerts = await priceResponse.json();
-        priceAlerts.forEach((alert: PriceAlert) => {
-          this.priceAlerts.set(alert.id, alert);
-        });
-      }
+      priceAlerts.forEach((alert: PriceAlert) => {
+        this.priceAlerts.set(alert.id, alert);
+      });
 
-      if (stockResponse.ok) {
-        const stockAlerts = await stockResponse.json();
-        stockAlerts.forEach((alert: StockAlert) => {
-          this.stockAlerts.set(alert.id, alert);
-        });
-      }
+      stockAlerts.forEach((alert: StockAlert) => {
+        this.stockAlerts.set(alert.id, alert);
+      });
     } catch (error) {
       console.error('Erro ao carregar alertas:', error);
     }
@@ -166,23 +160,17 @@ class WishlistManager {
   // Criar lista de desejos
   async createWishlist(name: string, description?: string, isPublic: boolean = false): Promise<string | null> {
     try {
-      const response = await fetch('/api/wishlist', {
+      const wishlist = await request<Wishlist>('/wishlist', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ name, description, isPublic })
       });
 
-      if (response.ok) {
-        const wishlist = await response.json();
-        this.wishlists.set(wishlist.id, wishlist);
-        return wishlist.id;
-      }
+      this.wishlists.set(wishlist.id, wishlist);
+      return wishlist.id;
     } catch (error) {
       console.error('Erro ao criar wishlist:', error);
+      return null;
     }
-
-    return null;
   }
 
   // Adicionar item à wishlist
@@ -192,60 +180,51 @@ class WishlistManager {
     targetPrice?: number
   ): Promise<boolean> {
     try {
-      const response = await fetch(`/api/wishlist/${wishlistId}/items`, {
+      await request(`/wishlist/${wishlistId}/items`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ ...product, targetPrice })
       });
 
-      if (response.ok) {
-        const wishlist = this.wishlists.get(wishlistId);
-        if (wishlist) {
-          const newItem: WishlistItem = {
-            ...product,
-            id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            addedAt: new Date().toISOString()
-          };
-          wishlist.items.push(newItem);
-          wishlist.updatedAt = new Date().toISOString();
-        }
-
-        // Criar alerta de preço se especificado
-        if (targetPrice && targetPrice < product.price) {
-          await this.createPriceAlert(product.productId, product.price, targetPrice);
-        }
-
-        return true;
+      const wishlist = this.wishlists.get(wishlistId);
+      if (wishlist) {
+        const newItem: WishlistItem = {
+          ...product,
+          id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          addedAt: new Date().toISOString()
+        };
+        wishlist.items.push(newItem);
+        wishlist.updatedAt = new Date().toISOString();
       }
+
+      // Criar alerta de preço se especificado
+      if (targetPrice && targetPrice < product.price) {
+        await this.createPriceAlert(product.productId, product.price, targetPrice);
+      }
+
+      return true;
     } catch (error) {
       console.error('Erro ao adicionar à wishlist:', error);
+      return false;
     }
-
-    return false;
   }
 
   // Remover item da wishlist
   async removeFromWishlist(wishlistId: string, itemId: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/wishlist/${wishlistId}/items/${itemId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      await request(`/wishlist/${wishlistId}/items/${itemId}`, {
+        method: 'DELETE'
       });
 
-      if (response.ok) {
-        const wishlist = this.wishlists.get(wishlistId);
-        if (wishlist) {
-          wishlist.items = wishlist.items.filter(item => item.id !== itemId);
-          wishlist.updatedAt = new Date().toISOString();
-        }
-        return true;
+      const wishlist = this.wishlists.get(wishlistId);
+      if (wishlist) {
+        wishlist.items = wishlist.items.filter(item => item.id !== itemId);
+        wishlist.updatedAt = new Date().toISOString();
       }
+      return true;
     } catch (error) {
       console.error('Erro ao remover da wishlist:', error);
+      return false;
     }
-
-    return false;
   }
 
   // Atualizar item da wishlist
@@ -255,29 +234,24 @@ class WishlistManager {
     updates: Partial<WishlistItem>
   ): Promise<boolean> {
     try {
-      const response = await fetch(`/api/wishlist/${wishlistId}/items/${itemId}`, {
+      await request(`/wishlist/${wishlistId}/items/${itemId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(updates)
       });
 
-      if (response.ok) {
-        const wishlist = this.wishlists.get(wishlistId);
-        if (wishlist) {
-          const itemIndex = wishlist.items.findIndex(item => item.id === itemId);
-          if (itemIndex >= 0) {
-            wishlist.items[itemIndex] = { ...wishlist.items[itemIndex], ...updates };
-            wishlist.updatedAt = new Date().toISOString();
-          }
+      const wishlist = this.wishlists.get(wishlistId);
+      if (wishlist) {
+        const itemIndex = wishlist.items.findIndex(item => item.id === itemId);
+        if (itemIndex >= 0) {
+          wishlist.items[itemIndex] = { ...wishlist.items[itemIndex], ...updates };
+          wishlist.updatedAt = new Date().toISOString();
         }
-        return true;
       }
+      return true;
     } catch (error) {
       console.error('Erro ao atualizar item da wishlist:', error);
+      return false;
     }
-
-    return false;
   }
 
   // Mover item entre wishlists
@@ -287,33 +261,28 @@ class WishlistManager {
     itemId: string
   ): Promise<boolean> {
     try {
-      const response = await fetch(`/api/wishlist/move-item`, {
+      await request('/wishlist/move-item', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ fromWishlistId, toWishlistId, itemId })
       });
 
-      if (response.ok) {
-        const fromWishlist = this.wishlists.get(fromWishlistId);
-        const toWishlist = this.wishlists.get(toWishlistId);
+      const fromWishlist = this.wishlists.get(fromWishlistId);
+      const toWishlist = this.wishlists.get(toWishlistId);
 
-        if (fromWishlist && toWishlist) {
-          const item = fromWishlist.items.find(item => item.id === itemId);
-          if (item) {
-            fromWishlist.items = fromWishlist.items.filter(item => item.id !== itemId);
-            toWishlist.items.push(item);
-            fromWishlist.updatedAt = new Date().toISOString();
-            toWishlist.updatedAt = new Date().toISOString();
-          }
+      if (fromWishlist && toWishlist) {
+        const item = fromWishlist.items.find(item => item.id === itemId);
+        if (item) {
+          fromWishlist.items = fromWishlist.items.filter(item => item.id !== itemId);
+          toWishlist.items.push(item);
+          fromWishlist.updatedAt = new Date().toISOString();
+          toWishlist.updatedAt = new Date().toISOString();
         }
-        return true;
       }
+      return true;
     } catch (error) {
       console.error('Erro ao mover item:', error);
+      return false;
     }
-
-    return false;
   }
 
   // Criar alerta de preço
@@ -324,84 +293,59 @@ class WishlistManager {
     alertType: PriceAlert['alertType'] = 'price_drop'
   ): Promise<string | null> {
     try {
-      const response = await fetch('/api/wishlist/alerts/price', {
+      const alert = await request<PriceAlert>('/wishlist/alerts/price', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ productId, currentPrice, targetPrice, alertType })
       });
 
-      if (response.ok) {
-        const alert = await response.json();
-        this.priceAlerts.set(alert.id, alert);
-        return alert.id;
-      }
+      this.priceAlerts.set(alert.id, alert);
+      return alert.id;
     } catch (error) {
       console.error('Erro ao criar alerta de preço:', error);
+      return null;
     }
-
-    return null;
   }
 
   // Criar alerta de estoque
   async createStockAlert(productId: string): Promise<string | null> {
     try {
-      const response = await fetch('/api/wishlist/alerts/stock', {
+      const alert = await request<StockAlert>('/wishlist/alerts/stock', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ productId })
       });
 
-      if (response.ok) {
-        const alert = await response.json();
-        this.stockAlerts.set(alert.id, alert);
-        return alert.id;
-      }
+      this.stockAlerts.set(alert.id, alert);
+      return alert.id;
     } catch (error) {
       console.error('Erro ao criar alerta de estoque:', error);
+      return null;
     }
-
-    return null;
   }
 
   // Compartilhar wishlist
   async shareWishlist(wishlistId: string, expiresInDays: number = 30): Promise<string | null> {
     try {
-      const response = await fetch(`/api/wishlist/${wishlistId}/share`, {
+      const share = await request<WishlistShare>(`/wishlist/${wishlistId}/share`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ expiresInDays })
       });
 
-      if (response.ok) {
-        const share = await response.json();
-        this.shares.set(share.id, share);
-        return share.shareCode;
-      }
+      this.shares.set(share.id, share);
+      return share.shareCode;
     } catch (error) {
       console.error('Erro ao compartilhar wishlist:', error);
+      return null;
     }
-
-    return null;
   }
 
   // Acessar wishlist compartilhada
   async getSharedWishlist(shareCode: string): Promise<Wishlist | null> {
     try {
-      const response = await fetch(`/api/wishlist/shared/${shareCode}`, {
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        return await response.json();
-      }
+      return await request<Wishlist>(`/wishlist/shared/${shareCode}`);
     } catch (error) {
       console.error('Erro ao acessar wishlist compartilhada:', error);
+      return null;
     }
-
-    return null;
   }
 
   // Obter wishlists do usuário
@@ -512,7 +456,11 @@ class WishlistManager {
   // Exportar wishlist
   async exportWishlist(wishlistId: string, format: 'json' | 'csv' | 'pdf' = 'json'): Promise<string | null> {
     try {
-      const response = await fetch(`/api/wishlist/${wishlistId}/export?format=${format}`, {
+      const url = `${API_BASE_URL}/wishlist/${wishlistId}/export?format=${format}`;
+      const response = await fetch(url, {
+        headers: {
+          'Accept': format === 'json' ? 'application/json' : 'application/octet-stream'
+        },
         credentials: 'include'
       });
 
@@ -535,10 +483,11 @@ class WishlistManager {
       formData.append('file', file);
       if (wishlistId) formData.append('wishlistId', wishlistId);
 
-      const response = await fetch('/api/wishlist/import', {
+      const url = `${API_BASE_URL}/wishlist/import`;
+      const response = await fetch(url, {
         method: 'POST',
-        credentials: 'include',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -558,20 +507,15 @@ class WishlistManager {
   // Deletar wishlist
   async deleteWishlist(wishlistId: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/wishlist/${wishlistId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      await request(`/wishlist/${wishlistId}`, {
+        method: 'DELETE'
       });
-
-      if (response.ok) {
-        this.wishlists.delete(wishlistId);
-        return true;
-      }
+      this.wishlists.delete(wishlistId);
+      return true;
     } catch (error) {
       console.error('Erro ao deletar wishlist:', error);
+      return false;
     }
-
-    return false;
   }
 }
 

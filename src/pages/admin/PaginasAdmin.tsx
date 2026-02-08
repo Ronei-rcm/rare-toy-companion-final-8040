@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { request } from '@/services/api-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,13 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Save, 
-  RefreshCw, 
-  Eye, 
-  FileText, 
-  Plus, 
-  Trash2, 
+import {
+  Save,
+  RefreshCw,
+  Eye,
+  FileText,
+  Plus,
+  Trash2,
   Edit,
   Search,
   Copy,
@@ -217,7 +218,6 @@ const PaginasAdmin = () => {
 </ul>`
   };
 
-  // Blocos HTML reutilizáveis
   const htmlBlocks = {
     titulo: '<h2>Novo Título</h2>',
     paragrafo: '<p>Seu texto aqui.</p>',
@@ -249,11 +249,8 @@ const PaginasAdmin = () => {
   const loadPages = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/legal-pages', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
+      const data = await request<LegalPage[]>('/admin/legal-pages');
+      if (data) {
         setPages(data);
         if (!selectedPage && data.length > 0) {
           setSelectedPage(data[0]);
@@ -272,21 +269,15 @@ const PaginasAdmin = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/legal-pages/${selectedPage.id}`, {
+      await request(`/admin/legal-pages/${selectedPage.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(formData)
       });
 
-      if (response.ok) {
-        toast.success('✅ Página salva com sucesso!');
-        loadPages();
-      } else {
-        toast.error('❌ Erro ao salvar página');
-      }
-    } catch (error) {
-      toast.error('❌ Erro ao salvar página');
+      toast.success('✅ Página salva com sucesso!');
+      loadPages();
+    } catch (error: any) {
+      toast.error(error.message || '❌ Erro ao salvar página');
     } finally {
       setLoading(false);
     }
@@ -357,7 +348,7 @@ const PaginasAdmin = () => {
             Editor avançado com templates, preview e blocos HTML reutilizáveis
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
@@ -376,7 +367,7 @@ const PaginasAdmin = () => {
           <CardHeader>
             <CardTitle className="text-lg">Páginas</CardTitle>
             <CardDescription>Selecione para editar</CardDescription>
-            
+
             {/* Busca */}
             <div className="relative mt-2">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -393,11 +384,10 @@ const PaginasAdmin = () => {
               <button
                 key={page.id}
                 onClick={() => setSelectedPage(page)}
-                className={`w-full text-left p-3 rounded-lg transition-all ${
-                  selectedPage?.id === page.id
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'bg-muted hover:bg-muted/80'
-                }`}
+                className={`w-full text-left p-3 rounded-lg transition-all ${selectedPage?.id === page.id
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-muted hover:bg-muted/80'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-medium">{page.title}</span>
@@ -533,7 +523,7 @@ const PaginasAdmin = () => {
                       />
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          Linhas: {formData.content.split('\n').length} | 
+                          Linhas: {formData.content.split('\n').length} |
                           Caracteres: {formData.content.length}
                         </span>
                         <span>
@@ -564,12 +554,12 @@ const PaginasAdmin = () => {
                   {/* TAB: Preview */}
                   <TabsContent value="preview" className="space-y-4">
                     <div className="bg-white p-6 rounded-lg border min-h-[600px]">
-                      <div 
+                      <div
                         dangerouslySetInnerHTML={{ __html: formData.content }}
                         className="prose prose-slate max-w-none legal-content"
                       />
                     </div>
-                    
+
                     <style>{`
                       .legal-content h1 {
                         font-size: 2.25rem;
@@ -619,7 +609,7 @@ const PaginasAdmin = () => {
                     <p className="text-sm text-muted-foreground">
                       Escolha um template pronto para começar rapidamente
                     </p>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleApplyTemplate('privacidade')}>
                         <CardHeader>
@@ -670,7 +660,7 @@ const PaginasAdmin = () => {
                     <p className="text-sm text-muted-foreground">
                       Clique em um bloco para inseri-lo no final do conteúdo
                     </p>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {Object.entries(htmlBlocks).map(([key, value]) => (
                         <Button
@@ -692,7 +682,7 @@ const PaginasAdmin = () => {
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                       <h3 className="font-semibold text-blue-900 mb-2">💡 Dica</h3>
                       <p className="text-sm text-blue-800">
-                        Você pode combinar blocos para criar layouts complexos. 
+                        Você pode combinar blocos para criar layouts complexos.
                         Todos os blocos usam classes Tailwind CSS para estilização.
                       </p>
                     </div>
