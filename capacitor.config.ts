@@ -13,9 +13,6 @@ const config: CapacitorConfig = {
     // IMPORTANTE: Para APK de produção, deixe vazio (usa .env.production)
     // O app vai usar VITE_API_URL definido em .env.production
   },
-  android: {
-    allowMixedContent: true,
-  },
 };
 
 export default config;
