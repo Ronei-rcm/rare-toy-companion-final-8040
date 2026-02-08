@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { getProductImage } from '@/utils/imageUtils';
+import { MOCK_PRODUCTS } from '@/services/fallback-data';
 
 interface OptimizedProductImageProps {
   produto: any;
@@ -18,7 +19,7 @@ interface OptimizedProductImageProps {
  * Componente otimizado para exibir imagens de produtos
  * - Lazy loading automático
  * - Skeleton/placeholder durante carregamento
- * - Fallback para imagem padrão
+ * - Fallback inteligente para imagem base64 (MOCK_PRODUCTS)
  * - Suporte a diferentes aspect ratios
  */
 const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
@@ -34,7 +35,8 @@ const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  
+  const [usedFallback, setUsedFallback] = useState(false);
+
   const imageUrl = getProductImage(produto);
   const isPlaceholder = imageUrl === '/placeholder.svg';
 
@@ -44,9 +46,33 @@ const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
   };
 
   const handleError = () => {
+    // Se deu erro na imagem principal, tenta achar o fallback no MOCK_PRODUCTS
+    if (!usedFallback) {
+      const fallbackProduct = MOCK_PRODUCTS.find(p => p.id === produto?.id || p.nome === produto?.nome);
+      if (fallbackProduct && fallbackProduct.imagemUrl && fallbackProduct.imagemUrl !== imageUrl) {
+        console.warn(`⚠️ Imagem falhou para "${produto.nome}". Usando fallback SVG.`);
+        setUsedFallback(true);
+        // O re-render vai pegar o novo src abaixo
+        return;
+      }
+    }
+
+    console.error(`❌ Falha definitiva ao carregar imagem: ${imageUrl}`);
     setImageError(true);
     onError?.();
   };
+
+  // Determinar qual fonte usar
+  let finalSrc = imageUrl;
+  if (imageError) {
+    finalSrc = '/placeholder.svg';
+  } else if (usedFallback) {
+    // Tenta pegar do mock
+    const fallback = MOCK_PRODUCTS.find(p => p.id === produto?.id || p.nome === produto?.nome);
+    if (fallback?.imagemUrl) {
+      finalSrc = fallback.imagemUrl;
+    }
+  }
 
   return (
     <div
@@ -64,12 +90,12 @@ const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
 
       {/* Imagem principal */}
       <img
-        src={imageError ? '/placeholder.svg' : imageUrl}
+        src={finalSrc}
         alt={alt}
         className={cn(
           'w-full h-full object-cover transition-all duration-300',
           imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95',
-          isPlaceholder && 'object-contain p-4',
+          (isPlaceholder || imageError) && 'object-contain p-4',
           className
         )}
         loading={priority ? 'eager' : 'lazy'}
@@ -80,7 +106,7 @@ const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
       />
 
       {/* Badge de promoção */}
-      {produto?.promocao && imageLoaded && (
+      {produto?.promocao && imageLoaded && !imageError && (
         <div className="absolute top-2 right-2 z-10">
           <div className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
             PROMO
@@ -89,7 +115,7 @@ const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
       )}
 
       {/* Badge de lançamento */}
-      {produto?.lancamento && imageLoaded && (
+      {produto?.lancamento && imageLoaded && !imageError && (
         <div className="absolute top-2 left-2 z-10">
           <div className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
             NOVO
@@ -98,7 +124,7 @@ const OptimizedProductImage: React.FC<OptimizedProductImageProps> = ({
       )}
 
       {/* Badge de estoque baixo */}
-      {produto?.estoque !== undefined && produto.estoque > 0 && produto.estoque <= 5 && imageLoaded && (
+      {produto?.estoque !== undefined && produto.estoque > 0 && produto.estoque <= 5 && imageLoaded && !imageError && (
         <div className="absolute bottom-2 left-2 z-10">
           <div className="bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
             Últimas unidades
