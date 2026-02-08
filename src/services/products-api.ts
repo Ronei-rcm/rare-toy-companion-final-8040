@@ -1,5 +1,6 @@
 import { Produto } from '@/types/produto';
-import { request } from './api-config';
+import { request, ApiError } from './api-config';
+import { MOCK_PRODUCTS } from './fallback-data';
 
 export interface CreateProductData {
   nome: string;
@@ -46,6 +47,13 @@ export const productsApi = {
       return [];
     } catch (error) {
       console.error('❌ Erro ao buscar produtos:', error);
+
+      // Se for erro de CORS, usar dados mockados
+      if (error instanceof ApiError && error.data?.corsError) {
+        console.warn('📦 Usando dados mockados de produtos (CORS bloqueado)');
+        return MOCK_PRODUCTS as unknown as Produto[];
+      }
+
       throw error;
     }
   },

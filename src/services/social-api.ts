@@ -1,4 +1,5 @@
-import { request } from './api-config';
+import { request, ApiError } from './api-config';
+import { MOCK_SOCIAL_STATS, MOCK_RECENT_PURCHASES } from './fallback-data';
 
 export const socialApi = {
     // User Social Data
@@ -28,20 +29,16 @@ export const socialApi = {
     getSocialProofStats: async () => {
         try {
             const data = await request<any>('/stats');
-            return data || {
-                totalProdutos: 0,
-                produtosAtivos: 0,
-                produtosDestaque: 0,
-                produtosPromocao: 0,
-                avaliacaoMedia: "4.9",
-                totalAvaliacoes: 12500,
-                precoMinimo: 0,
-                precoMaximo: 0,
-                precoMedio: "0",
-                totalCategorias: 350
-            };
+            return data || MOCK_SOCIAL_STATS;
         } catch (error) {
             console.error('Error fetching social proof stats:', error);
+
+            // Se for erro de CORS, usar dados mockados
+            if (error instanceof ApiError && error.data?.corsError) {
+                console.warn('📦 Usando dados mockados de social stats (CORS bloqueado)');
+                return MOCK_SOCIAL_STATS;
+            }
+
             return null;
         }
     },
@@ -54,6 +51,13 @@ export const socialApi = {
             return [];
         } catch (error) {
             console.error('Error fetching recent purchases:', error);
+
+            // Se for erro de CORS, usar dados mockados
+            if (error instanceof ApiError && error.data?.corsError) {
+                console.warn('📦 Usando dados mockados de compras recentes (CORS bloqueado)');
+                return MOCK_RECENT_PURCHASES;
+            }
+
             return [];
         }
     }
