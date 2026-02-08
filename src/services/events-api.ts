@@ -1,13 +1,26 @@
 import { Event, EventInsert, EventUpdate } from '@/types/event';
-import { request } from './api-config';
+import { request, ApiError } from './api-config';
+import { MOCK_EVENTS } from './fallback-data';
 
 export const eventsApi = {
   // Buscar todos os eventos
   async getEvents(): Promise<Event[]> {
-    console.log('🔄 Buscando eventos...');
-    const data = await request<Event[]>('/events');
-    console.log('✅ Eventos carregados:', data.length);
-    return data;
+    try {
+      console.log('🔄 Buscando eventos...');
+      const data = await request<Event[]>('/events');
+      console.log('✅ Eventos carregados:', data.length);
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar eventos:', error);
+
+      // Se for erro de CORS, usar dados mockados
+      if (error instanceof ApiError && error.data?.corsError) {
+        console.warn('📦 Usando dados mockados de eventos (CORS bloqueado)');
+        return MOCK_EVENTS as unknown as Event[];
+      }
+
+      throw error;
+    }
   },
 
   // Buscar evento por ID

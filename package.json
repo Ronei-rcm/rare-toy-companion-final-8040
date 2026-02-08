@@ -74,6 +74,8 @@
     "apk:release": "npm run build:android && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
+    "@capacitor/haptics": "^5.0.8",
+    "@capacitor/splash-screen": "^5.0.8",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",

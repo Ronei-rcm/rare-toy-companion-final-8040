@@ -11,6 +11,7 @@ import { useCurrentUser } from '@/contexts/CurrentUserContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import CartLoadingOverlay from './CartLoadingOverlay';
 import OptimizedProductImage from '@/components/ui/OptimizedProductImage';
+import { haptics } from '@/utils/haptics';
 
 const CarrinhoDrawer = () => {
   const { state, removeItem, updateQuantity, toggleCart, setCartOpen } = useCart();
@@ -63,9 +64,9 @@ const CarrinhoDrawer = () => {
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 relative">
-          <CartLoadingOverlay 
-            isLoading={state.isLoading} 
-            message="Atualizando carrinho..." 
+          <CartLoadingOverlay
+            isLoading={state.isLoading}
+            message="Atualizando carrinho..."
           />
           {state.itens.length === 0 ? (
             <div className="text-center py-8">
@@ -95,7 +96,7 @@ const CarrinhoDrawer = () => {
               </div>
               {state.itens.map((item, index) => {
                 const produto = item.produto;
-                
+
                 return (
                   <div key={item.id}>
                     <div className="flex gap-3">
@@ -123,7 +124,7 @@ const CarrinhoDrawer = () => {
                             <span className="text-[10px] text-muted-foreground">• {produto.cor}</span>
                           )}
                         </div>
-                      
+
                         <div className="flex items-center justify-between mt-2">
                           {/* Controles de quantidade */}
                           <div className="flex items-center gap-1" role="group" aria-label={`Controles de quantidade para ${produto.nome}`}>
@@ -131,14 +132,17 @@ const CarrinhoDrawer = () => {
                               variant="outline"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() => handleUpdateQuantity(item.id, item.quantidade - 1)}
+                              onClick={() => {
+                                haptics.light();
+                                handleUpdateQuantity(item.id, item.quantidade - 1);
+                              }}
                               disabled={state.isLoading || item.quantidade <= 1}
                               aria-label={`Diminuir quantidade de ${produto.nome}`}
                             >
                               <Minus className="h-3 w-3" aria-hidden="true" />
                             </Button>
-                            <span 
-                              className="text-sm w-6 text-center font-medium" 
+                            <span
+                              className="text-sm w-6 text-center font-medium"
                               aria-label={`Quantidade atual: ${item.quantidade}`}
                               role="status"
                             >
@@ -148,7 +152,10 @@ const CarrinhoDrawer = () => {
                               variant="outline"
                               size="icon"
                               className="h-6 w-6"
-                              onClick={() => handleUpdateQuantity(item.id, item.quantidade + 1)}
+                              onClick={() => {
+                                haptics.light();
+                                handleUpdateQuantity(item.id, item.quantidade + 1);
+                              }}
                               disabled={state.isLoading}
                               aria-label={`Aumentar quantidade de ${produto.nome}`}
                             >
@@ -176,7 +183,10 @@ const CarrinhoDrawer = () => {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemoveItem(item.id)}
+                        onClick={() => {
+                          haptics.medium(); // Feedback mais forte para remoção
+                          handleRemoveItem(item.id);
+                        }}
                         disabled={state.isLoading}
                         aria-label={`Remover ${produto.nome} do carrinho`}
                         title="Remover item"
@@ -184,7 +194,7 @@ const CarrinhoDrawer = () => {
                         <Trash2 className="h-3 w-3" aria-hidden="true" />
                       </Button>
                     </div>
-                    
+
                     {index < state.itens.length - 1 && <Separator className="my-3" />}
                   </div>
                 );
@@ -252,7 +262,7 @@ const CarrinhoDrawer = () => {
 
               {state.total > 0 && (
                 <div className="text-xs text-muted-foreground text-center">
-                  Pagando com PIX: economize R$ {Number((state.total * (settings.pix_discount_percent/100)) || 0).toFixed(2)}
+                  Pagando com PIX: economize R$ {Number((state.total * (settings.pix_discount_percent / 100)) || 0).toFixed(2)}
                 </div>
               )}
 
@@ -266,10 +276,10 @@ const CarrinhoDrawer = () => {
           </>
         )}
       </DrawerContent>
-      
+
       {/* Checkout Rápido */}
-      <CheckoutRapido 
-        isOpen={showCheckoutRapido} 
+      <CheckoutRapido
+        isOpen={showCheckoutRapido}
         onClose={() => setShowCheckoutRapido(false)}
         variant="drawer"
       />

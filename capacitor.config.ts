@@ -13,6 +13,21 @@ const config: CapacitorConfig = {
     // IMPORTANTE: Para APK de produção, deixe vazio (usa .env.production)
     // O app vai usar VITE_API_URL definido em .env.production
   },
+  plugins: {
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      backgroundColor: "#1e1e2e", // Cor de fundo escura do app
+      androidSplashResourceName: "splash",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: true,
+      androidSpinnerStyle: "large",
+      spinnerColor: "#9b87f5", // Cor primária do app
+    },
+  },
 };
 
 export default config;

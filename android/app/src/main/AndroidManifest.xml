@@ -36,7 +36,12 @@
         </provider>
     </application>
 
+    <!-- Features - Declarar hardware opcional para compatibilidade com ChromeOS -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
+

@@ -67,13 +67,58 @@ export async function handleApiResponse<T>(response: Response, defaultErrorMessa
     }
 }
 
+// Sistema de Cache Simples (LocalStorage)
+const CACHE_PREFIX = 'api_cache_';
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 horas
+
+interface CacheItem<T> {
+    data: T;
+    timestamp: number;
+}
+
+function saveToCache<T>(key: string, data: T) {
+    try {
+        if (typeof window === 'undefined') return;
+        const item: CacheItem<T> = {
+            data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(item));
+    } catch (e) {
+        console.warn('Falha ao salvar no cache:', e);
+    }
+}
+
+function getFromCache<T>(key: string): T | null {
+    try {
+        if (typeof window === 'undefined') return null;
+        const cached = localStorage.getItem(CACHE_PREFIX + key);
+        if (!cached) return null;
+
+        const item: CacheItem<T> = JSON.parse(cached);
+        const now = Date.now();
+
+        // Validar expiração
+        if (now - item.timestamp > CACHE_EXPIRY) {
+            localStorage.removeItem(CACHE_PREFIX + key);
+            return null;
+        }
+
+        return item.data;
+    } catch (e) {
+        return null;
+    }
+}
+
 /**
  * Função helper para realizar requisições HTTP padronizadas.
  * Automaticamente adiciona a URL base, credenciais e headers padrão.
  * Detecta erros de CORS/rede e ativa modo offline automaticamente.
+ * Implementa estratégia Cache-Network-Fallback para GET requests.
  */
 export async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const isGetRequest = !options.method || options.method === 'GET';
 
     const headers: Record<string, string> = {
         ...(options.headers as Record<string, string> || {}),
@@ -104,8 +149,17 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
 
     try {
         const response = await fetch(url, config);
-        return handleApiResponse<T>(response);
+        const data = await handleApiResponse<T>(response);
+
+        // Se for GET e sucesso, salva no cache
+        if (isGetRequest) {
+            saveToCache(endpoint, data);
+        }
+
+        return data;
     } catch (error) {
+        console.error(`Erro na requisição para ${endpoint}:`, error);
+
         // Detectar erro de CORS ou rede (TypeError: Failed to fetch)
         const isCorsOrNetworkError = error instanceof TypeError &&
             (error.message.includes('Failed to fetch') ||
@@ -121,6 +175,15 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
                 window.dispatchEvent(new CustomEvent('api-offline-detected', {
                     detail: { endpoint, error: error.message }
                 }));
+            }
+
+            // Tentar recuperar do cache se for GET
+            if (isGetRequest) {
+                const cachedData = getFromCache<T>(endpoint);
+                if (cachedData) {
+                    console.info(`📦 Recuperado do cache local: ${endpoint}`);
+                    return cachedData;
+                }
             }
         }
 

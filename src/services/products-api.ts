@@ -166,6 +166,13 @@ export const productsApi = {
       return [];
     } catch (error) {
       console.error('❌ Erro ao buscar produtos por categoria:', error);
+
+      // Se for erro de CORS, usar dados mockados filtrados por categoria
+      if (error instanceof ApiError && error.data?.corsError) {
+        console.warn('📦 Usando dados mockados de produtos por categoria (CORS bloqueado)');
+        return MOCK_PRODUCTS.filter(p => p.categoria === categoria) as unknown as Produto[];
+      }
+
       throw error;
     }
   },
@@ -183,6 +190,13 @@ export const productsApi = {
       return [];
     } catch (error) {
       console.error('❌ Erro ao buscar produtos em destaque:', error);
+
+      // Se for erro de CORS, usar dados mockados
+      if (error instanceof ApiError && error.data?.corsError) {
+        console.warn('📦 Usando dados mockados de produtos em destaque (CORS bloqueado)');
+        return MOCK_PRODUCTS.filter(p => p.destaque) as unknown as Produto[];
+      }
+
       throw error;
     }
   },

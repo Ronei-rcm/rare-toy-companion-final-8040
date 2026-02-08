@@ -46,7 +46,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
         preco: 299.99,
         precoOriginal: 399.99,
         categoria: 'Star Wars',
-        imagem: 'https://via.placeholder.com/300x300/FF6B6B/FFFFFF?text=Mario+Stormtrooper',
+        imagem: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0ZGNkI2QiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+TWFyaW8gU3Rvcm10cm9vcGVyPC90ZXh0Pjwvc3ZnPg==',
         descricao: 'Action figure colecionável premium do Mario vestido como Stormtrooper. Edição limitada.',
         estoque: 15,
         destaque: true,
@@ -57,7 +57,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
         nome: 'Yoshi Rebelde',
         preco: 249.99,
         categoria: 'Star Wars',
-        imagem: 'https://via.placeholder.com/300x300/4ECDC4/FFFFFF?text=Yoshi+Rebelde',
+        imagem: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzRFQ0RDNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjI4IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+WW9zaGkgUmViZWxkZTwvdGV4dD48L3N2Zz4=',
         descricao: 'Yoshi como piloto da Aliança Rebelde. Detalhes incríveis!',
         estoque: 22,
         novo: true
@@ -68,7 +68,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
         preco: 349.99,
         precoOriginal: 449.99,
         categoria: 'Star Wars',
-        imagem: 'https://via.placeholder.com/300x300/FF6B6B/FFFFFF?text=Bowser+Darth',
+        imagem: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzI4MjgyOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjMwIiBmaWxsPSIjRkYwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXdlaWdodD0iYm9sZCI+Qm93c2VyIERhcnRoPC90ZXh0Pjwvc3ZnPg==',
         descricao: 'Bowser como Darth Vader. O vilão supremo!',
         estoque: 8,
         destaque: true,
@@ -79,7 +79,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
         nome: 'Princesa Leia Peach',
         preco: 279.99,
         categoria: 'Star Wars',
-        imagem: 'https://via.placeholder.com/300x300/FFD93D/FFFFFF?text=Leia+Peach',
+        imagem: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0ZGRDkzRCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjI2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+TGVpYSBQZWFjaDwvdGV4dD48L3N2Zz4=',
         descricao: 'Princesa Peach como Princesa Leia. Realeza galáctica!',
         estoque: 18,
         novo: true
@@ -89,7 +89,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
         nome: 'Toad Comandante',
         preco: 199.99,
         categoria: 'Star Wars',
-        imagem: 'https://via.placeholder.com/300x300/95E1D3/FFFFFF?text=Toad+Comandante',
+        imagem: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzk1RTFEMyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+VG9hZCBDb21hbmRhbnRlPC90ZXh0Pjwvc3ZnPg==',
         descricao: 'Toad como comandante clone. Pequeno mas valente!',
         estoque: 30,
         destaque: false
@@ -99,7 +99,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
         nome: 'Wario Contrabandista',
         preco: 329.99,
         categoria: 'Star Wars',
-        imagem: 'https://via.placeholder.com/300x300/F38181/FFFFFF?text=Wario+Contrabandista',
+        imagem: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0YzODE4MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNDUlIiBmb250LXNpemU9IjIyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+V2FyaW88L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1NSUiIGZvbnQtc2l6ZT0iMjIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIj5Db250cmFiYW5kaXN0YTwvdGV4dD48L3N2Zz4=',
         descricao: 'Wario como Han Solo. O contrabandista mais ganancioso!',
         estoque: 12,
         promocao: true,
@@ -199,7 +199,7 @@ export const MOCK_RECENT_PURCHASES = [
         cliente: 'João Silva',
         produto: 'Mario Stormtrooper',
         preco: 299.99,
-        imagemUrl: 'https://via.placeholder.com/50x50/FF6B6B/FFFFFF?text=MS',
+        imagemUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjRkY2QjZCIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIj5NUzwvdGV4dD48L3N2Zz4=',
         timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() // 5 min atrás
     },
     {
@@ -207,7 +207,7 @@ export const MOCK_RECENT_PURCHASES = [
         cliente: 'Maria Santos',
         produto: 'Yoshi Rebelde',
         preco: 249.99,
-        imagemUrl: 'https://via.placeholder.com/50x50/4ECDC4/FFFFFF?text=YR',
+        imagemUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjNEVDREM0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1mYW1pbHk9IkFyaWFsIj5ZUjwvdGV4dD48L3N2Zz4=',
         timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString() // 12 min atrás
     },
     {
@@ -215,7 +215,7 @@ export const MOCK_RECENT_PURCHASES = [
         cliente: 'Pedro Costa',
         produto: 'Bowser Darth',
         preco: 349.99,
-        imagemUrl: 'https://via.placeholder.com/50x50/FF6B6B/FFFFFF?text=BD',
+        imagemUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMjgyODI4Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiNGRjAwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmb250LWZhbWlseT0iQXJpYWwiPkJEPC90ZXh0Pjwvc3ZnPg==',
         timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString() // 25 min atrás
     }
 ];
@@ -227,7 +227,7 @@ export const MOCK_VIDEOS = [
         titulo: 'EXPOAER 2025',
         descricao: 'Highlights da feira',
         videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        thumbnailUrl: 'https://via.placeholder.com/640x360/FF6B6B/FFFFFF?text=EXPOAER',
+        thumbnailUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgZmlsbD0iI0ZGNkI2QiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjM2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+RVhQT0FFUjwvdGV4dD48L3N2Zz4=',
         categoria: 'eventos',
         ativo: true
     },
@@ -236,7 +236,7 @@ export const MOCK_VIDEOS = [
         titulo: 'Gasômetro POA',
         descricao: 'Evento no Gasômetro',
         videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        thumbnailUrl: 'https://via.placeholder.com/640x360/4ECDC4/FFFFFF?text=Gasometro',
+        thumbnailUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgZmlsbD0iIzRFQ0RDNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjM2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+R2Fzw7RtZXRybzwvdGV4dD48L3N2Zz4=',
         categoria: 'eventos',
         ativo: true
     },
@@ -245,7 +245,7 @@ export const MOCK_VIDEOS = [
         titulo: 'Redenção Porto Alegre',
         descricao: 'Tour pela coleção',
         videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        thumbnailUrl: 'https://via.placeholder.com/640x360/FFD93D/FFFFFF?text=Redencao',
+        thumbnailUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgZmlsbD0iI0ZGRDkzRCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjM2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZvbnQtZmFtaWx5PSJBcmlhbCI+UmVkZW7Dp8OjbzwvdGV4dD48L3N2Zz4=',
         categoria: 'tours',
         ativo: true
     }
